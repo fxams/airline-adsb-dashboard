@@ -4,12 +4,10 @@ const fs = require("fs");
 const path = require("path");
 
 const PORT = process.env.PORT || 10000;
-const REFRESH_MS = Number(process.env.REFRESH_SECONDS || 30) * 1000;
+const REFRESH_MS = Number(process.env.REFRESH_SECONDS || 90) * 1000;
 // Public hub points (airports), 250 nm radius each.
-const HUBS = [
-  ["New York", 40.64, -73.78], ["London", 51.47, -0.45], ["Los Angeles", 33.94, -118.41],
-  ["Frankfurt", 50.03, 8.57], ["Doha", 25.27, 51.61], ["Singapore", 1.36, 103.99],
-];
+// Global feed: adsb.lol has no "whole world" endpoint, so we query every common airliner type globally (/v2/type).
+const TYPES = (process.env.TYPES || "A20N,A21N,A319,A320,A321,A318,BCS1,BCS3,B737,B738,B739,B38M,B39M,B3XM,B752,B753,B763,B764,B772,B77L,B77W,B788,B789,B78X,B744,B748,A306,A332,A333,A338,A339,A343,A346,A359,A35K,A388,E170,E75L,E75S,E190,E195,E290,E295,CRJ7,CRJ9,CRJX,AT75,AT76,DH8D,MD11,B712,C919,A21N").split(",");
 const traced = JSON.parse(fs.readFileSync(path.join(__dirname, "data/traced.json"), "utf8"));
 const map = JSON.parse(fs.readFileSync(path.join(__dirname, "data/map.json"), "utf8"));
 const h2h = fs.readFileSync(path.join(__dirname, "data/h2h.json"), "utf8");
@@ -20,24 +18,46 @@ let live = { at: null, fields: ["hex","callsign","airline","type","lat","lon","a
 const trails = new Map(); 
 const tracks = fs.readFileSync(path.join(__dirname, "data/tracks.json"), "utf8");
 const csroute = fs.readFileSync(path.join(__dirname, "data/csroute.json"), "utf8");
-const hist = []; // [iso, total aircraft] last 60 refreshes
+const hist = [];
+// adsbdb.com callsign -> route lookup; cached per callsign (24 h hit, 6 h miss), max 1 upstream request per second.
+const rc = new Map(); let lastDb = 0;
+async function adsbdb(cs) {
+  const c = rc.get(cs); if (c && Date.now() - c.t < (c.v.found ? 24 : 6) * 3600e3) return { ...c.v, cached: true };
+  const wait = Math.max(0, lastDb + 1000 - Date.now()); lastDb = Date.now() + wait; if (wait) await new Promise((r) => setTimeout(r, wait));
+  let v = { callsign: cs, found: false, source: "adsbdb.com" };
+  try {
+    const r = await fetch(`https://api.adsbdb.com/v0/callsign/${cs}`, { headers: { "User-Agent": "airline-adsb-dashboard" }, signal: AbortSignal.timeout(8000) });
+    const f = r.ok ? ((await r.json()).response || {}).flightroute : null;
+    const ap = (x) => x && { iata: x.iata_code, icao: x.icao_code, name: x.name, city: x.municipality, lat: x.latitude, lon: x.longitude };
+    if (f && f.origin && f.destination) v = { callsign: cs, found: true, source: "adsbdb.com", airline: f.airline && f.airline.name, origin: ap(f.origin), destination: ap(f.destination) };
+  } catch (e) { v.error = "lookup failed"; return v; }
+  rc.set(cs, { t: Date.now(), v }); if (rc.size > 20000) rc.clear();
+  return v;
+} // [iso, total aircraft] last 60 refreshes
 
-async function fetchHub([region, lat, lon]) {
-  const r = await fetch(`https://api.adsb.lol/v2/lat/${lat}/lon/${lon}/dist/250`, {
-    headers: { "User-Agent": "airline-adsb-dashboard (github.com/fxams/airline-adsb-dashboard)" },
-    signal: AbortSignal.timeout(20000),
-  });
+async function fetchType(t) {
+  const r = await fetch(`https://api.adsb.lol/v2/type/${t}`, { headers: { "User-Agent": "airline-adsb-dashboard (github.com/fxams/airline-adsb-dashboard)" }, signal: AbortSignal.timeout(25000) });
   if (!r.ok) throw new Error(`adsb.lol ${r.status}`);
-  const j = await r.json();
-  return (j.ac || []).map((a) => ({ ...a, region }));
+  return (await r.json()).ac || [];
 }
-
+const lastT = new Map(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const cov = new Map(); // "lat2,lon2" 2-degree cells with at least one position, last seen ms
+let busy = false;
 async function refresh() {
+  if (busy) return; busy = true;
   try {
     const seen = new Map();
-    for (const hub of HUBS) {
-      try { for (const a of await fetchHub(hub)) { const p = seen.get(a.hex); if (!p || (a.seen_pos ?? 99) < (p.seen_pos ?? 99)) seen.set(a.hex, a); } } catch (e) { console.error(hub[0], e.message); }
+    const T = [...new Set(TYPES)];
+    for (const t of T) { // serial + spaced to stay under adsb.lol rate limits; reuse last good result (<5 min) on failure
+      let ac = null;
+      for (let k = 0; k < 2 && !ac; k++) { try { ac = await fetchType(t); } catch (e) { await sleep(3000); } }
+      if (ac) lastT.set(t, { ts: Date.now(), ac }); else { const o = lastT.get(t); if (o && Date.now() - o.ts < 300e3) ac = o.ac; else console.error(t, "failed"); }
+      for (const a of ac || []) { const p = seen.get(a.hex); if (!p || (a.seen_pos ?? 99) < (p.seen_pos ?? 99)) seen.set(a.hex, a); }
+      await sleep(800);
     }
+    const nowc = Date.now();
+    for (const a of seen.values()) if (typeof a.lat === "number" && (a.seen_pos ?? 0) <= 60) cov.set(`${Math.floor(a.lat / 2) * 2},${Math.floor(a.lon / 2) * 2}`, nowc);
+    for (const [k, t] of cov) if (nowc - t > 6 * 3600e3) cov.delete(k);
     const by = {};
     for (const a of seen.values()) {
       const cs = (a.flight || "").trim();
@@ -66,17 +86,29 @@ async function refresh() {
       hist.push([at, seen.size, live.ac.length]); if (hist.length > 60) hist.shift();
     }
   } catch (e) { snapshot.error = e.message; }
+  busy = false;
 }
 refresh();
 setInterval(refresh, REFRESH_MS);
 
-const send = (res, code, type, body, cache) => { res.writeHead(code, { "Content-Type": type, "Cache-Control": cache || "no-store, no-cache, must-revalidate, max-age=0", "Access-Control-Allow-Origin": "*" }); res.end(body); };
+const zlib = require("zlib");
+const send = (res, code, type, body, cache) => {
+  const h = { "Content-Type": type, "Cache-Control": cache || "no-store, no-cache, must-revalidate, max-age=0", "Access-Control-Allow-Origin": "*", "Vary": "Accept-Encoding" };
+  if (res.req && /gzip/.test(res.req.headers["accept-encoding"] || "") && body && body.length > 2048) { h["Content-Encoding"] = "gzip"; body = zlib.gzipSync(body); }
+  res.writeHead(code, h); res.end(body);
+};
 http.createServer(async (req, res) => {
   const u = req.url.split("?")[0]; const q = new URL(req.url, "http://x").searchParams;
   if (u === "/api/snapshot") return send(res, 200, "application/json", JSON.stringify(snapshot));
   if (u === "/api/tracks") return send(res, 200, "application/json", tracks, "public, max-age=300");
   if (u === "/api/trails") { const o = {}; for (const [h, t] of trails) o[h] = t.slice(-12).map((p) => [p[1], p[2]]); return send(res, 200, "application/json", JSON.stringify(o)); }
   if (u === "/api/track") { const h = (q.get("hex") || "").toLowerCase(); return send(res, 200, "application/json", JSON.stringify({ hex: h, fields: ["t_ms", "lon", "lat", "alt_ft", "gs_kt", "vrate_fpm"], note: "Positions collected by this server every refresh since it last restarted (max ~3 h)", points: trails.get(h) || [] })); }
+  if (u === "/api/coverage") return send(res, 200, "application/json", JSON.stringify({ cell_deg: 2, window_h: 6, note: "2-degree cells where at least one airliner position was received in the last 6 h (since server start). Empty areas = no receivers or no traffic.", cells: [...cov.keys()].map((k) => k.split(",").map(Number)) }));
+  if (u === "/api/route") {
+    const cs = (q.get("cs") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+    if (!cs) return send(res, 400, "application/json", "{}");
+    return send(res, 200, "application/json", JSON.stringify(await adsbdb(cs)));
+  }
   if (u === "/api/csroute") return send(res, 200, "application/json", csroute, "public, max-age=300");
   if (u === "/api/traced") return send(res, 200, "application/json", JSON.stringify(traced));
   if (u === "/api/h2h") return send(res, 200, "application/json", h2h, "public, max-age=300");

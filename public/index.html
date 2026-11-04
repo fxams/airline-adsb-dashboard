@@ -20,25 +20,32 @@ main{padding:0 22px 40px}.tab{display:none}.tab.on{display:block}
 .btn{background:transparent;color:var(--c1);border:1px solid var(--c1);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px}
 .tw{overflow:auto;max-height:460px}table{border-collapse:collapse;width:100%;font-size:12.5px}th,td{padding:6px 8px;border-bottom:1px solid rgba(120,200,255,.08);text-align:right;white-space:nowrap}th{position:sticky;top:0;background:#0b1222;cursor:pointer;color:var(--c1)}td:first-child,th:first-child{text-align:left}
 code{color:var(--c3)}a{color:var(--c1)}@media(max-width:560px){.g2{grid-template-columns:1fr}#map{height:380px}}
+.fb{display:none;float:right;font-size:12px}.lg summary{cursor:pointer;font-weight:600}
+@media(max-width:700px){html,body{overflow-x:hidden}main{padding:8px!important}header{flex-wrap:wrap;gap:6px}nav{overflow-x:auto;white-space:nowrap;display:flex;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}nav button{flex:0 0 auto;min-height:44px;padding:10px 14px}
+.g4,.g3{grid-template-columns:1fr 1fr!important;gap:8px}.g2{grid-template-columns:1fr!important}.card{padding:10px;border-radius:12px}#kpis .card h3,#kpis .card .v{font-size:20px}
+.fb{display:inline-block;min-height:40px}#mfl{display:none;flex-direction:column;align-items:stretch}#mfl.open{display:flex}#mfl label,#mfl input,#mfl select,#mfl .btn{min-height:40px;font-size:15px;width:100%}
+#map{height:72vh}.lg{max-width:62vw;font-size:11px}.lg:not([open]){padding:6px 10px}
+#sp{position:fixed;left:0!important;right:0!important;bottom:0!important;width:auto!important;overflow-y:auto;z-index:50;max-height:55vh;border-radius:16px 16px 0 0;padding:14px 14px 24px}#sp .x{min-width:44px;min-height:44px;font-size:18px}#sp::before{content:"";display:block;width:40px;height:4px;background:#556;border-radius:2px;margin:0 auto 8px}
+.kv{gap:12px}.kv b{font-size:15px}.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}table{min-width:640px}.f{flex-wrap:wrap}.ch{height:280px}}
 </style></head><body>
 <header><h1><b>◆</b> Airline ADS-B Analytics <span class="mu">· Qatar Airways vs Emirates, 365-day full dumps · global sample · live</span></h1>
 <div class="st"><span id="dot" class="dot"></span><span id="lst">connecting…</span><span id="cnt"></span></div></header>
 <nav id="nav"></nav><main>
 <section class="tab" id="t-overview">
  <div class="g g4" id="kpis"></div>
- <div class="card"><h2>Live traffic map</h2><div class="f">
+ <div class="card"><h2>Live traffic map <button class="btn fb" id="fbtn">Filters ☰</button></h2><div class="f" id="mfl">
 <label>Find <input id="qs" placeholder="callsign, reg or hex" size="16"></label><button class="btn" id="qsb">Go</button>
 <label>Airline <select id="mf"><option value="all">All airlines</option><option value="QTR">QTR</option><option value="UAE">UAE</option><option value="other">Other airlines</option></select></label>
 <label>Type <input id="tyf" placeholder="e.g. B77W" size="6"></label>
 <label>Colour <select id="cm"><option value="air">By airline</option><option value="alt">By altitude</option></select></label>
-<label><input type="checkbox" id="trl" checked> Trails</label><label><input type="checkbox" id="arcs"> 365-day route network</label>
+<label><input type="checkbox" id="trl" checked> Trails</label><label><input type="checkbox" id="covt" checked> Coverage</label><label><input type="checkbox" id="arcs"> 365-day route network</label>
 <label>Flown tracks <select id="tks"><option value="">Off</option></select></label></div>
 <div class="mw"><div id="map"></div>
-<div class="lg"><div><svg width="14" height="14" viewBox="0 0 48 48"><path fill="#ffc400" d="M24 2l3 6v11l18 10v4l-18-6v11l6 5v3l-9-3-9 3v-3l6-5V27L3 33v-4l18-10V8z"/></svg> Live aircraft, nose = heading</div><div id="lgc"></div><div><i style="background:#8a94a6"></i>on ground <i style="background:#fff"></i>selected</div>
+<details class="lg" open><summary>Legend</summary><div><svg width="14" height="14" viewBox="0 0 48 48"><path fill="#ffc400" d="M24 2l3 6v11l18 10v4l-18-6v11l6 5v3l-9-3-9 3v-3l6-5V27L3 33v-4l18-10V8z"/></svg> Live aircraft, nose = heading</div><div id="lgc"></div><div><i style="background:#8a94a6"></i>on ground <i style="background:#fff"></i>selected</div>
 <div><span class="ln" style="background:linear-gradient(90deg,transparent,#ffc400)"></span> trail (recent positions)</div><div><span class="ln" style="background:#ffe14d"></span> selected: flown track</div><div><span class="ln dash"></span> remaining route (est.) / great circle</div>
-<div><span class="ln" style="background:linear-gradient(90deg,#00e5ff,#ff2fd6)"></span> real flown track (trace data)</div><div><span class="ln dash" style="border-color:#ff2fd6"></span> 365-day route (faint = low confidence)</div><div><i style="background:rgba(255,196,0,.3);border:1px solid #ffc400"></i>cluster (zoom in)</div><div class="mu">Positions move between refreshes by dead reckoning (estimate).</div></div>
+<div><span class="ln" style="background:linear-gradient(90deg,#00e5ff,#ff2fd6)"></span> real flown track (trace data)</div><div><span class="ln dash" style="border-color:#ff2fd6"></span> 365-day route (faint = low confidence)</div><div><i style="background:rgba(255,196,0,.3);border:1px solid #ffc400"></i>cluster (zoom in)</div><div class="mu">Positions move between refreshes by dead reckoning (estimate).</div><div><i style="background:rgba(58,160,255,.35);border-radius:2px"></i>receiver coverage (last 6 h)</div></details>
 <div id="sp"><button class="btn x" id="spx">✕</button><div id="spb"></div><div id="prof" style="height:200px"></div><p class="mu" id="spn"></p></div></div>
-<p class="mu" id="tki"></p><p class="mu">Live positions from adsb.lol within 250 nm of six hubs, refreshed every 30 s (airline callsigns only). Data © adsb.lol contributors (ODbL). Times UTC.</p></div>
+<p class="mu" id="tki"></p><p class="mu">Live positions: worldwide adsb.lol feed, queried by ~50 common airliner types every 60 s (airline callsigns only; aircraft with no type in the database are missed). Blue cells = areas where receivers picked up aircraft in the last 6 h; everything else (most oceans, much of Africa, Siberia, polar routes) has no receiver coverage, so aircraft there are not visible. <span id="covn"></span>. Data © adsb.lol contributors (ODbL). Times UTC.</p></div>
  <div class="g g2"><div class="card"><h2>Fleet coverage: distinct aircraft seen vs registered fleet</h2><div id="gauge" class="chs"></div><p class="mu">Fleet = airliner registrations in the tar1090 aircraft database (QTR A7-, UAE A6-E). Seen can exceed fleet when the database lags new deliveries.</p></div>
  <div class="card"><h2>Live aircraft tracked (last refreshes)</h2><div id="livehist" class="chs"></div></div></div>
 </section>
@@ -76,7 +83,7 @@ code{color:var(--c3)}a{color:var(--c1)}@media(max-width:560px){.g2{grid-template
  <li>City pairs: flights are stitched across coverage gaps (same aircraft and callsign, up to 16 h). When only one end is seen (e.g. the far end over the ocean or Australia/Asia had no receivers), the other end is set to the hub (DOH/DXB) and flagged “one end inferred”. Every pair is listed, including single flights, with a low-confidence flag (under 5 flights or mostly inferred).</li>
  <li>Flown tracks: real positions from one full UTC day of adsb.lol trace data, simplified with Douglas-Peucker (0.05°); breaks show no coverage. The white dashed line is the great circle for comparison.</li>
  <li>All figures are estimates. No delay, punctuality, fuel or safety figures are shown. Times are UTC.</li>
- <li>Data © adsb.lol contributors, <a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL 1.0</a>; airports from OurAirports; basemap © OpenStreetMap contributors, © CARTO.</li></ul></div>
+ <li>Data © adsb.lol contributors, <a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL 1.0</a>; airports from OurAirports; live flight routes (origin/destination on click) from <a href="https://www.adsbdb.com">adsbdb.com</a>, cross-checked with routes inferred from adsb.lol history; basemap © OpenStreetMap contributors, © CARTO.</li></ul></div>
 </section></main>
 <script>
 const $=id=>document.getElementById(id),C1="#00e5ff",C2="#ff2fd6",AC={QTR:C1,UAE:C2},TABS=[["overview","Overview · Live"],["h2h","QTR vs UAE · 365 days"],["dist","Distributions"],["global","Global leaderboard"],["data","Data tables"],["api","API and dictionary"],["method","Method"]];
@@ -95,7 +102,7 @@ function gc(a,b,n=48){const r=Math.PI/180,[la1,lo1,la2,lo2]=[a[0]*r,a[1]*r,b[0]*
 async function poll(){try{const r=await fetch("/api/live?t="+Date.now(),{cache:"no-store"});L=await r.json();lastOk=Date.now();onPoll();
  $("cnt").textContent=`· ${fmt(L.ac.length)} live airline aircraft`;ch("livehist",{xAxis:ax({type:"category",data:L.history.map(h=>h[0].slice(11,16))}),yAxis:ax({type:"value"}),series:[{type:"line",smooth:true,areaStyle:{opacity:.15},data:L.history.map(h=>h[2]),color:"#7cff6b",name:"airline aircraft"}]});if($("ts").value==="live")table()}catch(e){}status()}
 function status(){const at=L&&L.at?new Date(L.at):null,age=at?(Date.now()-at)/1000:1e9,live=age<180&&Date.now()-lastOk<90000;$("dot").className="dot "+(live?"live":"stale");$("lst").textContent=at?`${live?"LIVE":"STALE"} · data ${at.toISOString().slice(0,19).replace("T"," ")} UTC · ${Math.round(age)} s ago`:"waiting for first refresh"}
-setInterval(poll,15000);setInterval(status,1000);
+setInterval(poll,30000);setInterval(status,1000);
 // ---------- H2H ----------
 const spark=(id,data,c)=>ch(id,{grid:{left:0,right:0,top:4,bottom:0},tooltip:{show:false},xAxis:{type:"category",show:false,data:data.map((_,i)=>i)},yAxis:{type:"value",show:false,scale:true},series:[{type:"line",data,smooth:true,symbol:"none",lineStyle:{color:c,width:2},areaStyle:{color:c,opacity:.12}}]});
 function kpis(){const m=a=>H.mon[a].filter(r=>r[0]>="2026-07"&&r[0]<"2026-11");const t={};H.tot.forEach(r=>t[r[0]]=r);
@@ -141,5 +148,5 @@ $("ag").onclick=async()=>{const r=await fetch($("ae").value+"?t="+Date.now(),{ca
  $("d0").value=H.dayKeys.find(d=>d>="2025-11-04");$("d1").value=H.dayKeys[H.dayKeys.length-1];$("dayinfo").textContent=`Days processed in this build: ${H.days.length} of 364.`;
  show((location.hash||"#overview").slice(1));kpis();h2h();dist();lead();initMap();await poll();table()})();
 </script><script src="/map.js"></script>
-<script>$("qsb").onclick=search;$("qs").onkeydown=e=>{$("qs").style.borderColor="";if(e.key==="Enter")search()};["mf","tyf"].forEach(i=>$(i).oninput=drawLive);$("cm").onchange=colorMode;$("trl").onchange=drawLive;$("tks").onchange=tkDraw;$("spx").onclick=unsel;$("arcs").onchange=e=>map.setLayoutProperty("arcs","visibility",e.target.checked?"visible":"none");</script>
+<script>$("qsb").onclick=search;$("qs").onkeydown=e=>{$("qs").style.borderColor="";if(e.key==="Enter")search()};["mf","tyf"].forEach(i=>$(i).oninput=drawLive);$("cm").onchange=colorMode;$("trl").onchange=drawLive;$("tks").onchange=tkDraw;$("spx").onclick=unsel;if(innerWidth<700)document.querySelector(".lg").open=false;$("fbtn").onclick=()=>$("mfl").classList.toggle("open");$("covt").onchange=e=>map.setLayoutProperty("cov","visibility",e.target.checked?"visible":"none");$("arcs").onchange=e=>map.setLayoutProperty("arcs","visibility",e.target.checked?"visible":"none");</script>
 </body></html>

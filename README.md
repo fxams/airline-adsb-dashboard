@@ -24,3 +24,9 @@ All figures are estimates from samples, US and Europe heavy. The efficiency inde
 - Land outline: [Natural Earth](https://www.naturalearthdata.com/) (public domain).
 
 Code: MIT.
+
+## Live feed, routes and coverage (v3)
+- Live positions are fetched worldwide from adsb.lol `/v2/type/{type}` for ~50 common airliner types (serial, spaced, every 90 s). Aircraft without a type in the database are not included.
+- Clicking an aircraft looks up its route from [adsbdb.com](https://www.adsbdb.com) (`/api/route?cs=`; cached 24 h, misses 6 h, max 1 request/s) and cross-checks it with routes inferred from adsb.lol history. Remaining route is an estimated great circle.
+- `/api/coverage` returns 2-degree cells with receptions in the last 6 h; the map shades them. Unshaded areas have no ADS-B receivers feeding adsb.lol (most oceans, much of Africa, Siberia), so aircraft there are not visible.
+- Mobile layout: bottom-sheet flight panel, filter drawer, scrollable tabs and tables. Times in UTC.
