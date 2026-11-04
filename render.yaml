@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: airline-adsb-dashboard
+    runtime: node
+    plan: free
+    buildCommand: "true"
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: REFRESH_MINUTES
+        value: "10"
