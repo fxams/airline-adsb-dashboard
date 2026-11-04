@@ -1,104 +1,144 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Airline ADS-B Dashboard (estimated)</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Airline ADS-B Analytics · QTR vs UAE · Live</title>
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <style>
-:root{--bg:#0f1115;--card:#171a21;--line:#2a2f3a;--tx:#e6e8ee;--mut:#9aa3b2;--a1:#4f8cff;--a2:#f2a33a;--a3:#3fc28a;--oth:#6b7280;--land:#232834}
-@media (prefers-color-scheme:light){:root{--bg:#f6f7f9;--card:#fff;--line:#e3e6ec;--tx:#1b1f27;--mut:#5c6574;--land:#e4e8ee}}
-*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--tx)}
-main{max-width:1280px;margin:0 auto;padding:24px}h1{margin:0 0 4px}h2{margin:0 0 12px;font-size:18px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:16px 0}
-.mut{color:var(--mut)}.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.kpi b{display:block;font-size:22px}
-select,button{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:inherit}
-button.on{border-color:var(--a1);color:var(--a1)}table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th:nth-child(2),td:nth-child(2){text-align:left}
-th{cursor:pointer;color:var(--mut);font-weight:600}.tw{overflow-x:auto}
-.bar{display:grid;grid-template-columns:220px 1fr 110px;gap:8px;align-items:center;margin:3px 0}.bar i{display:block;height:12px;background:var(--a1);border-radius:4px}
-.warn{border-left:4px solid var(--a2)}svg{width:100%;height:auto;display:block;border-radius:10px}
-</style></head><body><main>
-<h1>Airline ADS-B Dashboard</h1>
-<p class="mut">All figures are <b>estimates</b> from free <a href="https://adsb.lol" style="color:inherit">adsb.lol</a> data (ODbL). Times in UTC. No delay or on-time figures are shown.</p>
-
-<section class="card"><h2>Qatar Airways (QTR, A7-) vs Emirates (UAE, A6-E): full daily dumps</h2><p class="mut">Interim: processing every UTC day 2025-11-04 to 2026-11-03 from adsb.lol globe_history (2026-05-06 has no dump). Estimates; long-haul distances are great-circle when stitched across coverage gaps.</p><div id="hk" class="kpis"></div><h3>Monthly</h3><div class="tw"><table id="hmon"></table></div><h3>By aircraft type</h3><div class="tw"><table id="htyp"></table></div><h3>Top routes</h3><div class="tw"><table id="hrt"></table></div></section>
-<section class="card warn"><h2>Coverage warning</h2><p>Other airlines come from 3 sampled UTC days (2026-11-01 to 03) and live snapshots; known fleet is n/a for them, so totals cover only aircraft seen.</p></section>
-<section class="card"><h2>Traced flights at a glance</h2><div id="kpi" class="kpis"></div></section>
-
-<section class="card"><h2>Compare by airline, aircraft type and route</h2>
-<div class="row" id="views"></div>
-<div class="row">Metric <select id="metric"></select> Airline <select id="fair"></select> Route <select id="froute"></select>
-<button id="ord" class="on">Highest first</button></div>
-<div id="bars"></div><div class="tw"><table id="tbl"></table></div>
-<p class="mut">Minimum samples: airline and type 5 flights; route, airline × type, airline × route 3; airline × route × type 2. Efficiency index needs 8 scored flights.</p></section>
-
-<section class="card"><h2>Route map</h2>
-<div class="row">Area <select id="mbox"><option value="0 0 360 180">World</option><option value="50 35 80 40">North America</option><option value="165 18 50 40">Europe</option></select>
-Airline <select id="mair"></select> Type <select id="mtype"></select> Route <select id="mroute"></select></div>
-<div class="row mut"><span style="color:var(--a1)">■ RPA</span><span style="color:var(--a2)">■ SWA</span><span style="color:var(--a3)">■ RYR</span><span style="color:var(--oth)">■ other</span></div>
-<div id="map"></div></section>
-
-<section class="card"><h2>Live snapshot (refreshed every 10 min)</h2><p id="snapat" class="mut"></p><div class="tw"><table id="snap"></table></div></section>
-
-<section class="card warn"><h2>Efficiency index: what it does and does not mean</h2>
-<p>Index (0–100, 50 = typical) = 50% route directness + 30% share of airborne time within 1,000 ft of top altitude + 20% fewer descent level-offs, each a percentile within the same aircraft type. It is <b>not</b> fuel burn, delay, punctuality or safety. ATC, airspace, weather and winds drive much of it; small samples are low confidence. Mach, max speed, holding, go-arounds and taxi time are left out as unreliable.</p>
-<p class="mut">Traced sample: full adsb.lol traces for about 160 aircraft, split into flights at gaps over 20 min; kept only flights that start and end below 4,000 ft within 15 nm of a scheduled airport and cover over 100 nm. Coverage is US and Europe heavy. Airline names: OpenFlights (ODbL). Airports: OurAirports (public domain). Land: Natural Earth (public domain).</p></section>
-</main>
+:root{--bg:#05070d;--glass:rgba(20,28,48,.55);--bd:rgba(120,200,255,.18);--tx:#e6f1ff;--mu:#8aa0bf;--c1:#00e5ff;--c2:#ff2fd6;--c3:#7cff6b;--warn:#ffb020}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 Inter,system-ui,sans-serif;color:var(--tx);background:radial-gradient(1200px 600px at 10% -10%,#0d2a4a 0,transparent 60%),radial-gradient(900px 500px at 110% 10%,#3a0d4a 0,transparent 55%),var(--bg);min-height:100vh}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--bd);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5;background:rgba(5,7,13,.7)}
+h1{margin:0;font-size:20px;letter-spacing:.5px}h1 b{color:var(--c1);text-shadow:0 0 12px var(--c1)}h2{margin:0 0 10px;font-size:16px}h3{margin:14px 0 6px;font-size:13px;color:var(--mu);text-transform:uppercase;letter-spacing:1px}
+.st{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--mu)}.dot{width:10px;height:10px;border-radius:50%;background:#555}.dot.live{background:var(--c3);box-shadow:0 0 10px var(--c3);animation:p 1.6s infinite}.dot.stale{background:var(--warn);box-shadow:0 0 10px var(--warn)}@keyframes p{50%{opacity:.35}}
+nav{display:flex;gap:6px;flex-wrap:wrap;padding:12px 22px}nav button{background:var(--glass);color:var(--tx);border:1px solid var(--bd);border-radius:999px;padding:7px 14px;cursor:pointer}nav button.on{border-color:var(--c1);box-shadow:0 0 12px rgba(0,229,255,.4);color:var(--c1)}
+main{padding:0 22px 40px}.tab{display:none}.tab.on{display:block}
+.g{display:grid;gap:14px}.g4{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.g2{grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}
+.card{background:var(--glass);border:1px solid var(--bd);border-radius:16px;padding:16px;backdrop-filter:blur(14px);box-shadow:0 8px 30px rgba(0,0,0,.35);margin-bottom:14px;min-width:0}
+.kpi .v{font-size:28px;font-weight:700}.kpi .l{color:var(--mu);font-size:12px}.kpi .sp{height:42px}
+.ch{height:340px}.chs{height:260px}#map{height:520px;border-radius:12px;overflow:hidden}
+.mu{color:var(--mu);font-size:12px}.warn{border-color:rgba(255,176,32,.5)}.warn h2{color:var(--warn)}
+.f{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}select,input{background:#0b1222;color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:6px 8px}
+.btn{background:transparent;color:var(--c1);border:1px solid var(--c1);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px}
+.tw{overflow:auto;max-height:460px}table{border-collapse:collapse;width:100%;font-size:12.5px}th,td{padding:6px 8px;border-bottom:1px solid rgba(120,200,255,.08);text-align:right;white-space:nowrap}th{position:sticky;top:0;background:#0b1222;cursor:pointer;color:var(--c1)}td:first-child,th:first-child{text-align:left}
+code{color:var(--c3)}a{color:var(--c1)}@media(max-width:560px){.g2{grid-template-columns:1fr}#map{height:380px}}
+</style></head><body>
+<header><h1><b>◆</b> Airline ADS-B Analytics <span class="mu">· Qatar Airways vs Emirates, 365-day full dumps · global sample · live</span></h1>
+<div class="st"><span id="dot" class="dot"></span><span id="lst">connecting…</span><span id="cnt"></span></div></header>
+<nav id="nav"></nav><main>
+<section class="tab" id="t-overview">
+ <div class="g g4" id="kpis"></div>
+ <div class="card"><h2>Live traffic and QTR / UAE route network</h2><div class="f"><label>Markers <select id="mf"><option value="all">All airline callsigns</option><option value="QTR">QTR</option><option value="UAE">UAE</option></select></label><label><input type="checkbox" id="arcs" checked> Route arcs (365-day top routes)</label><span class="mu">Live positions from adsb.lol around 6 hubs, refreshed every 60 s. Arcs: cyan QTR, magenta UAE.</span></div><div id="map"></div></div>
+ <div class="g g2"><div class="card"><h2>Fleet coverage: distinct aircraft seen vs registered fleet</h2><div id="gauge" class="chs"></div><p class="mu">Fleet = airliner registrations in the tar1090 aircraft database (QTR A7-, UAE A6-E). Seen can exceed fleet when the database lags new deliveries.</p></div>
+ <div class="card"><h2>Live aircraft tracked (last refreshes)</h2><div id="livehist" class="chs"></div></div></div>
+</section>
+<section class="tab" id="t-h2h">
+ <div class="card"><div class="f"><label>From <input type="date" id="d0"></label><label>To <input type="date" id="d1"></label><label>Metric <select id="mm"><option value="1">Flights</option><option value="3">Avg distance nm</option><option value="5">Avg speed kt</option><option value="6">Avg altitude ft</option><option value="8">Avg flight time min</option><option value="11">Efficiency index</option></select></label></div>
+ <h2>Daily flights (UTC)</h2><div id="daily" class="ch"></div><p class="mu">Dips are adsb.lol coverage gaps or real disruptions; they are not cancellation figures.</p></div>
+ <div class="g g2"><div class="card"><h2>Monthly trend</h2><div id="monthly" class="ch"></div></div><div class="card"><h2>Head-to-head scorecard</h2><div id="radar" class="ch"></div></div></div>
+ <div class="g g2"><div class="card"><h2>By aircraft type</h2><div id="typbar" class="ch"></div></div><div class="card"><h2>Top routes, ranked</h2><div id="rtbar" class="ch"></div></div></div>
+</section>
+<section class="tab" id="t-dist">
+ <div class="g g2"><div class="card"><h2>Speed distribution by airline and type (box: p5, p25, median, p75, p95)</h2><div id="boxgs" class="ch"></div></div><div class="card"><h2>Altitude distribution by airline and type</h2><div id="boxalt" class="ch"></div></div>
+ <div class="card"><h2>Distance vs flight time</h2><div id="sc1" class="ch"></div></div><div class="card"><h2>Directness (extra distance %) vs cruise share</h2><div id="sc2" class="ch"></div><p class="mu">Only fully traced single-leg flights have extra distance.</p></div>
+ <div class="card"><h2>Departures heatmap: weekday × hour (UTC)</h2><div class="f"><select id="hma"><option>QTR</option><option>UAE</option></select></div><div id="heat" class="ch"></div></div><div class="card"><h2>Correlation matrix (Pearson, all QTR+UAE flights)</h2><div id="corr" class="ch"></div></div>
+ <div class="card"><h2>Distance histogram (500 nm bins)</h2><div id="hist" class="ch"></div></div></div>
+</section>
+<section class="tab" id="t-global">
+ <div class="card warn"><h2>Coverage warning</h2><p>Airlines other than QTR and UAE come from 3 sampled UTC days (2026-11-01 to 2026-11-03). Their known fleet size is not available in the open databases used, so totals cover only aircraft seen; Gulf, African and Asian coverage is thinner than US and Europe.</p></div>
+ <div class="card"><div class="f"><label>View <select id="gv"><option value="air">Airline</option><option value="typ">Aircraft type</option><option value="route">Route</option><option value="at">Airline × type</option><option value="ar">Airline × route</option><option value="art">Airline × route × type</option></select></label><label>Rank by <select id="gm"><option value="13">Efficiency index</option><option value="1">Flights</option><option value="4">Avg distance</option><option value="6">Avg speed</option><option value="7">Avg altitude</option><option value="9">Avg time</option><option value="5">Extra distance %</option></select></label><label>Airline <input id="ga" placeholder="e.g. QTR" size="6"></label></div>
+ <h2>Leaderboard</h2><div id="lead" class="ch"></div></div>
+</section>
+<section class="tab" id="t-data">
+ <div class="card"><div class="f"><label>Table <select id="ts"><option value="h:typ">QTR vs UAE by type</option><option value="h:route">QTR vs UAE top routes</option><option value="h:mon">QTR vs UAE monthly</option><option value="g:air">Global by airline (3 days)</option><option value="g:typ">Global by type</option><option value="g:route">Global by route</option><option value="g:at">Global airline × type</option><option value="g:ar">Global airline × route</option><option value="live">Live aircraft</option></select></label><label>Search <input id="tq" placeholder="filter rows"></label><button class="btn" id="csv">Export CSV</button><button class="btn" id="jsn">Export JSON</button></div><div class="tw"><table id="tbl"></table></div><p class="mu">Click a column header to sort.</p></div>
+</section>
+<section class="tab" id="t-api">
+ <div class="card"><h2>API explorer</h2><div class="f"><select id="ae"><option>/api/live</option><option>/api/h2h</option><option>/api/global</option><option>/api/snapshot</option><option>/api/traced</option><option>/healthz</option></select><button class="btn" id="ag">GET</button></div><pre id="ao" class="tw" style="font-size:12px;white-space:pre-wrap"></pre></div>
+ <div class="card"><h2>Data dictionary</h2><div class="tw"><table><tr><th>Field</th><th>Meaning</th></tr>
+ <tr><td>flights</td><td>Flights between two identified airports (stitched across coverage gaps of up to 8 h)</td></tr><tr><td>aircraft</td><td>Distinct ICAO hex codes</td></tr><tr><td>avg nm</td><td>Mean distance flown; great-circle for stitched flights</td></tr><tr><td>extra %</td><td>Track distance ÷ great-circle − 1, single fully traced legs only (−1 = n/a)</td></tr><tr><td>gs / speed</td><td>Mean ground speed, knots</td></tr><tr><td>alt / cruise alt</td><td>Mean barometric altitude over the flight / mean top altitude, ft</td></tr><tr><td>min</td><td>Airborne time, minutes</td></tr><tr><td>cruise %</td><td>Share of airborne time within 1,000 ft of top altitude</td></tr><tr><td>level-offs</td><td>Level segments during descent</td></tr><tr><td>index</td><td>0–100: 50% directness + 30% cruise share + 20% fewer level-offs, percentiles within aircraft type (−1 = n/a)</td></tr><tr><td>live.ac</td><td>[hex, callsign, airline, type, lat, lon, alt_ft, gs_kt, track] per aircraft</td></tr></table></div></div>
+</section>
+<section class="tab" id="t-method">
+ <div class="card"><h2>Method and limitations</h2><ul>
+ <li>QTR vs UAE: every UTC day of adsb.lol <code>globe_history</code> daily dumps for 2025-11-04 to 2026-11-03 is streamed and filtered to A7- (QTR) and A6-E (UAE) registrations with QTR/UAE callsigns; only compact per-flight aggregates are kept. The 2026-05-06 dump does not exist. <span id="dayinfo"></span></li>
+ <li>Mar to Jun 2026 dumps contain far fewer QTR/UAE flights than later months; whether that is ADS-B coverage or real operations is not verified here.</li>
+ <li>Fleet counts come from the tar1090 aircraft database; they may include stored aircraft and exclude leased or foreign-registered ones.</li>
+ <li>Other airlines: 3 sampled days, global; live view: 250 nm around six hub airports.</li>
+ <li>All figures are estimates. No delay, punctuality, fuel or safety figures are shown. Times are UTC.</li>
+ <li>Data © adsb.lol contributors, <a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL 1.0</a>; airports from OurAirports; basemap © OpenStreetMap contributors, © CARTO.</li></ul></div>
+</section></main>
 <script>
-const $=id=>document.getElementById(id), f=n=>n==null?"n/a":Number(n).toLocaleString("en-US");
-const VIEWS=[["air","Airline"],["typ","Aircraft type"],["route","Route"],["at","Airline × type"],["ar","Airline × route"],["art","Airline × route × type"]];
-const MET=[["avg","Avg distance"," nm"],["gs","Avg speed"," kt"],["alt","Avg altitude"," ft"],["tm","Avg flight time"," min"],["tot","Total distance"," nm"],["ex","Extra distance","%"],["idx","Efficiency index",""]];
-const COLS=[["n","Flights"],["avg","Avg nm"],["gs","Avg kt"],["alt","Avg alt ft"],["tm","Avg min"],["tot","Total nm"],["th","Total h"],["ex","Extra %"],["cr","Cruise alt ft"],["cru","Cruise share %"],["lv","Descent level-offs"],["idx","Index"]];
-let T,view="air",metric="avg",desc=true;
-const parts=(k)=>k.split("|"), routeOf=k=>view==="route"?k:parts(k)[1], airOf=k=>parts(k)[0];
-function opts(el,list,lab){el.innerHTML=list.map(v=>`<option value="${v}">${v==="all"?lab:v}</option>`).join("")}
-function render(){
-  const hasAir=!["typ","route"].includes(view), hasRoute=["route","ar","art"].includes(view);
-  $("fair").disabled=!hasAir;$("froute").disabled=!hasRoute;
-  let rows=T.views[view].filter(([k,s])=>metric!=="idx"||s.idx!=null);
-  if(hasAir&&$("fair").value!=="all")rows=rows.filter(([k])=>airOf(k)===$("fair").value);
-  if(hasRoute&&$("froute").value!=="all")rows=rows.filter(([k])=>routeOf(k)===$("froute").value);
-  rows.sort((a,b)=>desc?b[1][metric]-a[1][metric]:a[1][metric]-b[1][metric]);
-  const m=MET.find(x=>x[0]===metric),mx=Math.max(...rows.map(r=>r[1][metric]||0),1);
-  $("bars").innerHTML=rows.slice(0,15).map(([k,s])=>`<div class="bar"><span>${k.replaceAll("|"," · ")}</span><i style="width:${Math.max(1,100*(s[metric]||0)/mx)}%"></i><span>${f(s[metric])}${m[2]}</span></div>`).join("");
-  $("tbl").innerHTML="<tr><th>Rank</th><th>Group</th>"+COLS.map(c=>`<th data-k="${c[0]}">${c[1]}</th>`).join("")+"</tr>"+
-    rows.map(([k,s],i)=>`<tr><td>${i+1}</td><td>${k.replaceAll("|"," · ")}</td>${COLS.map(c=>`<td>${f(s[c[0]])}</td>`).join("")}</tr>`).join("");
-  document.querySelectorAll("#tbl th[data-k]").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(MET.some(x=>x[0]===k)){metric=k;$("metric").value=k}else{return}desc=!desc;$("ord").textContent=desc?"Highest first":"Lowest first";render()});
-}
-function setView(v){view=v;document.querySelectorAll("#views button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
-  const rs=T.views[v];opts($("fair"),["all",...new Set(rs.map(r=>airOf(r[0])))],"All airlines");opts($("froute"),["all",...new Set(rs.map(r=>routeOf(r[0])))],"All routes");render()}
-// Map
-let M,LEGS,APTS={};
-function arc(a,b){const r=Math.PI/180,v=(p)=>{const la=(90-p.y)*r,lo=(p.x-180)*r;return[Math.cos(la)*Math.cos(lo),Math.cos(la)*Math.sin(lo),Math.sin(la)]},v1=v(a),v2=v(b),pts=[];
-  for(let i=0;i<=16;i++){const t=i/16,q=v1.map((c,j)=>c*(1-t)+v2[j]*t),lat=Math.atan2(q[2],Math.hypot(q[0],q[1])),lon=Math.atan2(q[1],q[0]);pts.push(`${(lon/r+180).toFixed(2)},${(90-lat/r).toFixed(2)}`)}return"M"+pts.join("L")}
-function drawMap(){const vb=$("mbox").value,s=Number(vb.split(" ")[2])/360,A=$("mair").value,Ty=$("mtype").value,R=$("mroute").value;
-  const legs=LEGS.filter(l=>(A==="all"||l.a===A)&&(Ty==="all"||l.t===Ty)&&(R==="all"||`${l.o}-${l.d}`===R)&&APTS[l.o]&&APTS[l.d]);
-  const col=a=>({RPA:"var(--a1)",SWA:"var(--a2)",RYR:"var(--a3)"}[a]||"var(--oth)"),used=[...new Set(legs.flatMap(l=>[l.o,l.d]))];
-  const top=[...used].sort((a,b)=>APTS[b].n-APTS[a].n).slice(0,vb.startsWith("0 ")?10:18);
-  $("map").innerHTML=`<svg viewBox="${vb}" style="background:var(--bg)"><path d="${M.land}" fill="var(--land)" stroke="var(--line)" stroke-width="${.3*s}"/>`+
-   legs.map(l=>`<path d="${arc(APTS[l.o],APTS[l.d])}" fill="none" stroke="${col(l.a)}" stroke-opacity=".75" stroke-width="${(.6+.3*l.n)*s}"/>`).join("")+
-   used.map(k=>`<circle cx="${APTS[k].x}" cy="${APTS[k].y}" r="${(.9+Math.sqrt(APTS[k].n)*.25)*s}" fill="var(--tx)"/>`).join("")+
-   top.map(k=>`<text x="${APTS[k].x+1.6*s}" y="${APTS[k].y-1.2*s}" font-size="${4*s}" fill="var(--mut)">${k}</text>`).join("")+"</svg>"}
-async function main(){
-  T=await (await fetch("/api/traced")).json();
-  const a=T.views.air.map(r=>r[1]),tot=a.reduce((x,s)=>x+s.tot,0);
-  $("kpi").innerHTML=[[f(T.flights),"Flights traced"],[f(T.aircraft),"Aircraft sampled"],[f(tot)+" nm","Distance flown (shown airlines)"],[T.window,"Window"]].map(([v,l])=>`<div class="kpi"><b>${v}</b><span class="mut">${l}</span></div>`).join("");
-  $("views").innerHTML=VIEWS.map(([v,l])=>`<button data-v="${v}">${l}</button>`).join("");document.querySelectorAll("#views button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
-  $("metric").innerHTML=MET.map(m=>`<option value="${m[0]}">${m[1]}</option>`).join("");$("metric").onchange=e=>{metric=e.target.value;render()};
-  $("fair").onchange=render;$("froute").onchange=render;$("ord").onclick=()=>{desc=!desc;$("ord").textContent=desc?"Highest first":"Lowest first";render()};
-  setView("air");
-  M=await (await fetch("/api/map")).json();
-  LEGS=M.routes.split("|").map(s=>{const p=s.split(",");return{o:p[0],d:p[1],a:p[2],t:p[3],n:+p[4]}});
-  M.airports.split("|").forEach(s=>{const p=s.split(",");APTS[p[0]]={x:+p[1]+180,y:90-+p[2],n:+p[3]}});
-  opts($("mair"),["all",...new Set(LEGS.map(l=>l.a))],"All airlines");opts($("mtype"),["all",...[...new Set(LEGS.map(l=>l.t))].sort()],"All types");opts($("mroute"),["all",...[...new Set(LEGS.map(l=>`${l.o}-${l.d}`))].sort()],"All routes");
-  ["mbox","mair","mtype","mroute"].forEach(id=>$(id).onchange=drawMap);drawMap();
-  const S=await (await fetch("/api/snapshot")).json();
-  $("snapat").textContent=S.at?`${f(S.total)} aircraft around six hubs at ${S.at.replace("T"," ").slice(0,19)} UTC; airlines with 5+ aircraft.`:`Snapshot not ready: ${S.error}`;
-  $("snap").innerHTML="<tr><th>Rank</th><th>Airline</th><th>Aircraft</th><th>Airborne</th><th>Avg alt ft</th><th>Avg speed kt</th><th>Top types</th></tr>"+
-    S.airlines.map((s,i)=>`<tr><td>${i+1}</td><td>${s.code} ${s.name}</td><td>${s.n}</td><td>${s.air}</td><td>${f(s.avgAlt)}</td><td>${f(s.avgGs)}</td><td>${s.types.map(t=>t[0]+" "+t[1]).join(", ")}</td></tr>`).join("");
-}
-main();
-</script><script>(async()=>{const H=await (await fetch("/api/h2h")).json();const C=["Group","Flights","Aircraft","Avg nm","Extra %","Avg kt","Avg alt ft","Cruise alt ft","Avg min","Cruise %","Level-offs","Index"];
-const tb=(id,rows)=>{document.getElementById(id).innerHTML="<tr>"+C.map(c=>"<th>"+c+"</th>").join("")+"</tr>"+rows.map(r=>"<tr>"+r.map(v=>"<td>"+(v===-1?"–":v)+"</td>").join("")+"</tr>").join("")};
-document.getElementById("hk").innerHTML=["QTR","UAE"].map(a=>`<div><b>${H.seenAll[a]} / ${H.fleet[a]}</b><br>${a} aircraft seen / fleet</div>`).join("")+H.tot.map(r=>`<div><b>${r[1].toLocaleString()}</b><br>${r[0]} flights, avg ${r[3]} nm</div>`).join("");
-const L=(o,f)=>[].concat(...["QTR","UAE"].map(a=>o[a].filter(f||(()=>1)).map(r=>[a+" · "+r[0],...r.slice(1)])));
-tb("hmon",L(H.mon,r=>r[0]>="2026-07"&&r[0]<"2026-11"));tb("htyp",L(H.typ));tb("hrt",L(H.route));})();</script>
-</body></html>
+const $=id=>document.getElementById(id),C1="#00e5ff",C2="#ff2fd6",AC={QTR:C1,UAE:C2},TABS=[["overview","Overview · Live"],["h2h","QTR vs UAE · 365 days"],["dist","Distributions"],["global","Global leaderboard"],["data","Data tables"],["api","API and dictionary"],["method","Method"]];
+const fmt=n=>typeof n==="number"?n.toLocaleString("en-US"):n;let H,G,L,charts={},map,lastOk=0;
+const T={backgroundColor:"transparent",textStyle:{color:"#cfe3ff"},grid:{left:56,right:20,top:36,bottom:40},tooltip:{trigger:"axis",backgroundColor:"#0b1222",borderColor:"#1e3a5f",textStyle:{color:"#e6f1ff"}},legend:{textStyle:{color:"#cfe3ff"}}};
+const ax=o=>Object.assign({axisLine:{lineStyle:{color:"#2a3d5c"}},splitLine:{lineStyle:{color:"rgba(120,200,255,.08)"}},axisLabel:{color:"#8aa0bf"}},o);
+function ch(id,opt){const c=charts[id]||(charts[id]=echarts.init($(id)));c.setOption(Object.assign({},T,opt),true);return c}
+addEventListener("resize",()=>Object.values(charts).forEach(c=>c.resize()));
+$("nav").innerHTML=TABS.map(([k,l])=>`<button data-k="${k}">${l}</button>`).join("");
+function show(k){document.querySelectorAll(".tab").forEach(e=>e.classList.toggle("on",e.id==="t-"+k));document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.k===k));location.hash=k;setTimeout(()=>{Object.values(charts).forEach(c=>c.resize());map&&map.resize()},50)}
+$("nav").onclick=e=>e.target.dataset.k&&show(e.target.dataset.k);
+// ---------- great circle ----------
+function gc(a,b,n=48){const r=Math.PI/180,[la1,lo1,la2,lo2]=[a[0]*r,a[1]*r,b[0]*r,b[1]*r],v=(la,lo)=>[Math.cos(la)*Math.cos(lo),Math.cos(la)*Math.sin(lo),Math.sin(la)],p=v(la1,lo1),q=v(la2,lo2),out=[];
+ for(let i=0;i<=n;i++){const f=i/n,x=p.map((c,j)=>c*(1-f)+q[j]*f);let lon=Math.atan2(x[1],x[0])/r;if(out.length&&Math.abs(lon-out[out.length-1][0])>180)lon+=lon<0?360:-360;out.push([lon,Math.atan2(x[2],Math.hypot(x[0],x[1]))/r])}return out}
+function initMap(){map=new maplibregl.Map({container:"map",style:"https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",center:[45,30],zoom:1.6,attributionControl:{compact:true}});
+ map.addControl(new maplibregl.NavigationControl());
+ map.on("load",()=>{const f=H.map.filter(r=>H.ap[r[1]]&&H.ap[r[2]]).map(r=>({type:"Feature",properties:{a:r[0],n:r[3],r:r[1]+"-"+r[2]},geometry:{type:"LineString",coordinates:gc(H.ap[r[1]],H.ap[r[2]])}}));
+  map.addSource("arcs",{type:"geojson",data:{type:"FeatureCollection",features:f}});
+  map.addLayer({id:"arcs-glow",type:"line",source:"arcs",paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":["interpolate",["linear"],["get","n"],200,2,1600,7],"line-opacity":.15,"line-blur":3}});
+  map.addLayer({id:"arcs",type:"line",source:"arcs",paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":["interpolate",["linear"],["get","n"],200,.8,1600,2.6],"line-dasharray":[0,4,3]}});
+  map.addSource("live",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+  map.addLayer({id:"live",type:"circle",source:"live",paint:{"circle-radius":["case",["in",["get","a"],["literal",["QTR","UAE"]]],4.5,2.4],"circle-color":["match",["get","a"],"QTR",C1,"UAE",C2,"#7cff6b"],"circle-opacity":.9,"circle-stroke-width":.5,"circle-stroke-color":"#000"}});
+  const pop=new maplibregl.Popup({closeButton:false});map.on("mousemove","live",e=>{const p=e.features[0].properties;pop.setLngLat(e.lngLat).setHTML(`<b style="color:#000">${p.cs}</b><br><span style="color:#000">${p.t||"?"} · ${fmt(p.alt)} ft · ${p.gs} kt</span>`).addTo(map)});map.on("mouseleave","live",()=>pop.remove());
+  map.on("click","arcs",e=>new maplibregl.Popup().setLngLat(e.lngLat).setHTML(`<span style="color:#000">${e.features[0].properties.a} ${e.features[0].properties.r}: ${fmt(e.features[0].properties.n)} flights</span>`).addTo(map));
+  const seq=[[0,4,3],[0.5,4,2.5],[1,4,2],[1.5,4,1.5],[2,4,1],[2.5,4,0.5],[3,4,0],[0,0.5,3,3.5],[0,1,3,3],[0,1.5,3,2.5],[0,2,3,2],[0,2.5,3,1.5],[0,3,3,1],[0,3.5,3,0.5]];let s=0;
+  setInterval(()=>{if(map.getLayer("arcs")){s=(s+1)%seq.length;map.setPaintProperty("arcs","line-dasharray",seq[s])}},90);
+  drawLive()})}
+function drawLive(){if(!map||!map.getSource("live")||!L)return;const mf=$("mf").value;map.getSource("live").setData({type:"FeatureCollection",features:L.ac.filter(a=>mf==="all"||a[2]===mf).map(a=>({type:"Feature",properties:{cs:a[1],a:a[2],t:a[3],alt:a[6],gs:a[7]},geometry:{type:"Point",coordinates:[a[5],a[4]]}}))})}
+$("mf").onchange=drawLive;$("arcs").onchange=e=>["arcs","arcs-glow"].forEach(l=>map.setLayoutProperty(l,"visibility",e.target.checked?"visible":"none"));
+// ---------- live polling ----------
+async function poll(){try{const r=await fetch("/api/live?t="+Date.now(),{cache:"no-store"});L=await r.json();lastOk=Date.now();drawLive();
+ $("cnt").textContent=`· ${fmt(L.ac.length)} live airline aircraft`;ch("livehist",{xAxis:ax({type:"category",data:L.history.map(h=>h[0].slice(11,16))}),yAxis:ax({type:"value"}),series:[{type:"line",smooth:true,areaStyle:{opacity:.15},data:L.history.map(h=>h[2]),color:"#7cff6b",name:"airline aircraft"}]});if($("ts").value==="live")table()}catch(e){}status()}
+function status(){const at=L&&L.at?new Date(L.at):null,age=at?(Date.now()-at)/1000:1e9,live=age<180&&Date.now()-lastOk<90000;$("dot").className="dot "+(live?"live":"stale");$("lst").textContent=at?`${live?"LIVE":"STALE"} · data ${at.toISOString().slice(0,19).replace("T"," ")} UTC · ${Math.round(age)} s ago`:"waiting for first refresh"}
+setInterval(poll,30000);setInterval(status,1000);
+// ---------- H2H ----------
+const spark=(id,data,c)=>ch(id,{grid:{left:0,right:0,top:4,bottom:0},tooltip:{show:false},xAxis:{type:"category",show:false,data:data.map((_,i)=>i)},yAxis:{type:"value",show:false,scale:true},series:[{type:"line",data,smooth:true,symbol:"none",lineStyle:{color:c,width:2},areaStyle:{color:c,opacity:.12}}]});
+function kpis(){const m=a=>H.mon[a].filter(r=>r[0]>="2026-07"&&r[0]<"2026-11");const t={};H.tot.forEach(r=>t[r[0]]=r);
+ const K=[["QTR flights",fmt(t.QTR[1]),"QTR","f1",m("QTR").map(r=>r[1]),C1],["UAE flights",fmt(t.UAE[1]),"UAE","f2",m("UAE").map(r=>r[1]),C2],["QTR seen / fleet",`${H.seenAll.QTR} / ${H.fleet.QTR}`,"distinct A7- airliners","f3",Object.values(H.seenMon.QTR),C1],["UAE seen / fleet",`${H.seenAll.UAE} / ${H.fleet.UAE}`,"distinct A6-E airliners","f4",Object.values(H.seenMon.UAE),C2],["Avg distance",`${fmt(t.QTR[3])} vs ${fmt(t.UAE[3])} nm`,"QTR vs UAE, monthly QTR","f5",m("QTR").map(r=>r[3]),C1],["Efficiency index",`${t.QTR[11]} vs ${t.UAE[11]}`,"QTR vs UAE, monthly UAE","f6",m("UAE").map(r=>r[11]),C2]];
+ $("kpis").innerHTML=K.map(k=>`<div class="card kpi"><div class="l">${k[0]}</div><div class="v">${k[1]}</div><div class="l">${k[2]}</div><div class="sp" id="${k[3]}"></div></div>`).join("");K.forEach(k=>spark(k[3],k[4],k[5]));
+ const g=(a,c,x)=>({type:"gauge",center:[x,"58%"],radius:"78%",min:0,max:100,progress:{show:true,width:12,itemStyle:{color:c,shadowBlur:12,shadowColor:c}},axisLine:{lineStyle:{width:12,color:[[1,"rgba(255,255,255,.08)"]]}},axisTick:{show:false},splitLine:{show:false},axisLabel:{show:false},pointer:{show:false},title:{offsetCenter:[0,"70%"],color:"#cfe3ff"},detail:{offsetCenter:[0,0],formatter:"{value}%",color:c,fontSize:26},data:[{value:Math.min(100,Math.round(100*H.seenAll[a]/H.fleet[a])),name:a}]});
+ ch("gauge",{tooltip:{show:false},series:[g("QTR",C1,"25%"),g("UAE",C2,"75%")]})}
+function h2h(){const d0=$("d0").value,d1=$("d1").value,k=H.dayKeys,idx=k.map((x,i)=>i).filter(i=>k[i]>=d0&&k[i]<=d1),mm=+$("mm").value,ml=$("mm").selectedOptions[0].text;
+ ch("daily",{legend:{data:["QTR","UAE"]},dataZoom:[{type:"inside"},{type:"slider",height:16,bottom:6,textStyle:{color:"#8aa0bf"}}],grid:{left:56,right:20,top:36,bottom:56},xAxis:ax({type:"category",data:idx.map(i=>k[i])}),yAxis:ax({type:"value"}),series:["QTR","UAE"].map(a=>({name:a,type:"line",symbol:"none",data:idx.map(i=>H.day[a][i]),lineStyle:{color:AC[a],width:1.6,shadowBlur:8,shadowColor:AC[a]},itemStyle:{color:AC[a]},areaStyle:{color:AC[a],opacity:.06}}))});
+ const ms=[...new Set([...H.mon.QTR,...H.mon.UAE].map(r=>r[0]))].filter(m=>m>=d0.slice(0,7)&&m<=d1.slice(0,7)).sort();
+ ch("monthly",{legend:{data:["QTR","UAE"]},xAxis:ax({type:"category",data:ms}),yAxis:ax({type:"value",name:ml,scale:mm!==1}),series:["QTR","UAE"].map(a=>({name:a,type:"bar",data:ms.map(m=>{const r=H.mon[a].find(x=>x[0]===m);return r?(r[mm]<0?null:r[mm]):null}),itemStyle:{color:AC[a],borderRadius:[4,4,0,0]}}))});
+ const t={};H.tot.forEach(r=>t[r[0]]=r);const dims=[["Avg distance",3,3500],["Avg speed",5,450],["Avg altitude",6,32000],["Cruise share %",9,60],["Index",11,60],["Aircraft seen",2,320]];
+ ch("radar",{tooltip:{},legend:{data:["QTR","UAE"]},radar:{indicator:dims.map(d=>({name:d[0],max:d[2]})),axisName:{color:"#cfe3ff"},splitLine:{lineStyle:{color:"rgba(120,200,255,.15)"}},splitArea:{show:false}},series:[{type:"radar",data:["QTR","UAE"].map(a=>({name:a,value:dims.map(d=>t[a][d[1]]),lineStyle:{color:AC[a]},itemStyle:{color:AC[a]},areaStyle:{color:AC[a],opacity:.15}}))}]});
+ const ty=[...H.typ.QTR.map(r=>["QTR",...r]),...H.typ.UAE.map(r=>["UAE",...r])].sort((a,b)=>b[2]-a[2]);const mi=mm+1;
+ ch("typbar",{grid:{left:90,right:30,top:20,bottom:30},xAxis:ax({type:"value",name:ml}),yAxis:ax({type:"category",data:ty.map(r=>r[0]+" "+r[1]),inverse:true}),series:[{type:"bar",data:ty.map(r=>({value:r[mi]<0?null:r[mi],itemStyle:{color:AC[r[0]]}}))}]});
+ const rt=[...H.route.QTR.map(r=>["QTR",...r]),...H.route.UAE.map(r=>["UAE",...r])].sort((a,b)=>(b[mi]||0)-(a[mi]||0)).slice(0,24);
+ ch("rtbar",{grid:{left:110,right:30,top:20,bottom:30},xAxis:ax({type:"value",name:ml}),yAxis:ax({type:"category",data:rt.map(r=>r[0]+" "+r[1]),inverse:true}),series:[{type:"bar",data:rt.map(r=>({value:r[mi]<0?null:r[mi],itemStyle:{color:AC[r[0]]}}))}]})}
+["d0","d1","mm"].forEach(i=>$(i).onchange=h2h);
+function dist(){const S=H.stats,bk=Object.keys(S.box).sort((a,b)=>(a.includes("|")-b.includes("|"))||a.localeCompare(b));
+ const bx=(id,f,u)=>ch(id,{tooltip:{trigger:"item"},grid:{left:56,right:20,top:20,bottom:70},xAxis:ax({type:"category",data:bk.map(k=>k.replace("|"," ")),axisLabel:{rotate:45,color:"#8aa0bf"}}),yAxis:ax({type:"value",name:u,scale:true}),series:[{type:"boxplot",data:bk.map(k=>({value:S.box[k][f],itemStyle:{color:"rgba(0,0,0,.2)",borderColor:AC[k.slice(0,3)]}}))}]});
+ bx("boxgs","gs","kt");bx("boxalt","alt","ft");
+ const sc=(id,fx,fy,xn,yn)=>ch(id,{tooltip:{trigger:"item",formatter:p=>`${p.seriesName} ${p.data[2]}: ${p.data[0]}, ${p.data[1]}`},legend:{data:["QTR","UAE"]},xAxis:ax({type:"value",name:xn,scale:true}),yAxis:ax({type:"value",name:yn,scale:true}),series:["QTR","UAE"].map(a=>({name:a,type:"scatter",symbolSize:4,itemStyle:{color:AC[a],opacity:.55},data:S.sc[a].filter(r=>fx(r)!=null&&fy(r)!=null).map(r=>[fx(r),fy(r),r[4]])}))});
+ sc("sc1",r=>r[0],r=>r[1],"distance nm","minutes");sc("sc2",r=>r[2],r=>r[3],"extra distance %","cruise share %");
+ heat();const cv=S.corr.vars;ch("corr",{tooltip:{trigger:"item",formatter:p=>`${cv[p.data[0]]} × ${cv[p.data[1]]}: ${p.data[2]}`},grid:{left:100,right:20,top:20,bottom:80},xAxis:ax({type:"category",data:cv,axisLabel:{rotate:40,color:"#8aa0bf"}}),yAxis:ax({type:"category",data:cv}),visualMap:{min:-1,max:1,calculable:true,orient:"horizontal",left:"center",bottom:0,itemHeight:120,textStyle:{color:"#cfe3ff"},inRange:{color:[C2,"#101828",C1]}},series:[{type:"heatmap",label:{show:true,color:"#fff",fontSize:10},data:S.corr.m.flatMap((r,i)=>r.map((v,j)=>[j,i,v]))}]});
+ ch("hist",{legend:{data:["QTR","UAE"]},xAxis:ax({type:"category",data:S.hist.QTR.map((_,i)=>i===15?"7500+":`${i*500}`),name:"nm"}),yAxis:ax({type:"value"}),series:["QTR","UAE"].map(a=>({name:a,type:"bar",data:S.hist[a],itemStyle:{color:AC[a]}}))})}
+function heat(){const a=$("hma").value,h=H.stats.heat[a],mx=Math.max(...h.flat());ch("heat",{tooltip:{trigger:"item"},grid:{left:56,right:20,top:20,bottom:70},xAxis:ax({type:"category",data:[...Array(24).keys()].map(x=>x+"h")}),yAxis:ax({type:"category",data:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]}),visualMap:{min:0,max:mx,orient:"horizontal",left:"center",bottom:0,itemHeight:140,textStyle:{color:"#cfe3ff"},inRange:{color:["#0b1222",AC[a]]}},series:[{type:"heatmap",data:h.flatMap((r,d)=>r.map((v,x)=>[x,d,v]))}]})}
+$("hma").onchange=heat;
+function lead(){const v=$("gv").value,c=+$("gm").value,q=$("ga").value.trim().toUpperCase(),rows=G.D[v].filter(r=>!q||r[0].includes(q)).filter(r=>r[c]>=0).sort((a,b)=>b[c]-a[c]).slice(0,25),cov=Object.fromEntries(G.cov.map(r=>[r[0],r]));
+ ch("lead",{grid:{left:150,right:40,top:10,bottom:30},tooltip:{trigger:"axis",formatter:p=>{const r=rows[p[0].dataIndex];return `${r[0]}<br>${r[1]} flights, ${r[2]} aircraft`}},xAxis:ax({type:"value"}),yAxis:ax({type:"category",inverse:true,data:rows.map(r=>r[0].split("|").join(" · "))}),series:[{type:"bar",data:rows.map((r,i)=>({value:r[c],itemStyle:{color:new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:C2},{offset:1,color:C1}])}})),label:{show:true,position:"right",color:"#cfe3ff"}}]})}
+["gv","gm"].forEach(i=>$(i).onchange=lead);$("ga").oninput=lead;
+// ---------- tables ----------
+const GC=["Group","Flights","Aircraft","Total nm","Avg nm","Extra %","Avg kt","Avg alt ft","Cruise alt ft","Avg min","Total h","Cruise %","Level-offs","Index"],HC=["Airline","Group","Flights","Aircraft","Avg nm","Extra %","Avg kt","Avg alt ft","Cruise alt ft","Avg min","Cruise %","Level-offs","Index"];
+let cur={cols:[],rows:[]},sortC=-1,sortD=-1;
+function tdata(){const v=$("ts").value;if(v==="live")return{cols:L?L.fields:[],rows:L?L.ac:[]};const[s,k]=v.split(":");if(s==="g")return{cols:GC,rows:G.D[k]};return{cols:HC,rows:["QTR","UAE"].flatMap(a=>H[k][a].map(r=>[a,...r]))}}
+function table(){cur=tdata();const q=$("tq").value.toLowerCase();let r=cur.rows.filter(x=>!q||x.join(" ").toLowerCase().includes(q));if(sortC>=0)r=[...r].sort((a,b)=>(a[sortC]>b[sortC]?1:-1)*sortD);cur.view=r;
+ $("tbl").innerHTML="<tr>"+cur.cols.map((c,i)=>`<th data-i="${i}">${c}${i===sortC?(sortD>0?" ▲":" ▼"):""}</th>`).join("")+"</tr>"+r.slice(0,1500).map(x=>"<tr>"+x.map(v=>`<td>${v===-1||v===null?"–":fmt(v)}</td>`).join("")+"</tr>").join("")}
+$("tbl").onclick=e=>{if(e.target.dataset.i){const i=+e.target.dataset.i;sortD=sortC===i?-sortD:-1;sortC=i;table()}};$("ts").onchange=()=>{sortC=-1;table()};$("tq").oninput=table;
+const dl=(n,t,m)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:m}));a.download=n;a.click()};
+$("csv").onclick=()=>dl($("ts").value.replace(":","_")+".csv",[cur.cols,...cur.view].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n"),"text/csv");
+$("jsn").onclick=()=>dl($("ts").value.replace(":","_")+".json",JSON.stringify(cur.view.map(r=>Object.fromEntries(cur.cols.map((c,i)=>[c,r[i]])))),"application/json");
+$("ag").onclick=async()=>{const r=await fetch($("ae").value+"?t="+Date.now(),{cache:"no-store"}),t=await r.text();$("ao").textContent=`HTTP ${r.status} · ${t.length.toLocaleString()} bytes · cache-control: ${r.headers.get("cache-control")}\n\n`+t.slice(0,6000)+(t.length>6000?"\n…":"")};
+(async()=>{[H,G]=await Promise.all(["/api/h2h","/api/global"].map(u=>fetch(u+"?v=2").then(r=>r.json())));
+ $("d0").value=H.dayKeys.find(d=>d>="2025-11-04");$("d1").value=H.dayKeys[H.dayKeys.length-1];$("dayinfo").textContent=`Days processed in this build: ${H.days.length} of 364.`;
+ show((location.hash||"#overview").slice(1));kpis();h2h();dist();lead();initMap();await poll();table()})();
+</script></body></html>

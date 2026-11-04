@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 const PORT = process.env.PORT || 10000;
-const REFRESH_MS = Number(process.env.REFRESH_MINUTES || 10) * 60 * 1000;
+const REFRESH_MS = Number(process.env.REFRESH_SECONDS || 60) * 1000;
 // Public hub points (airports), 250 nm radius each.
 const HUBS = [
   ["New York", 40.64, -73.78], ["London", 51.47, -0.45], ["Los Angeles", 33.94, -118.41],
@@ -13,8 +13,11 @@ const HUBS = [
 const traced = JSON.parse(fs.readFileSync(path.join(__dirname, "data/traced.json"), "utf8"));
 const map = JSON.parse(fs.readFileSync(path.join(__dirname, "data/map.json"), "utf8"));
 const h2h = fs.readFileSync(path.join(__dirname, "data/h2h.json"), "utf8");
+const globalAgg = fs.readFileSync(path.join(__dirname, "data/global.json"), "utf8");
 const names = JSON.parse(fs.readFileSync(path.join(__dirname, "data/airlines.json"), "utf8"));
 let snapshot = { at: null, error: "warming up", airlines: [], total: 0 };
+let live = { at: null, fields: ["hex","callsign","airline","type","lat","lon","alt_ft","gs_kt","track"], ac: [] };
+const hist = []; // [iso, total aircraft] last 60 refreshes
 
 async function fetchHub([region, lat, lon]) {
   const r = await fetch(`https://api.adsb.lol/v2/lat/${lat}/lon/${lon}/dist/250`, {
@@ -49,18 +52,26 @@ async function refresh() {
       avgAlt: s.air ? Math.round(s.altSum / s.air) : null, avgGs: s.gsN ? Math.round(s.gsSum / s.gsN) : null,
       types: Object.entries(s.types).sort((a, b) => b[1] - a[1]).slice(0, 5),
     })).sort((a, b) => b.n - a.n);
-    if (seen.size) snapshot = { at: new Date().toISOString(), error: null, airlines, total: seen.size };
+    if (seen.size) {
+      const at = new Date().toISOString();
+      snapshot = { at, error: null, airlines, total: seen.size };
+      live = { at, fields: live.fields, ac: [...seen.values()].filter((a) => typeof a.lat === "number" && /^[A-Z]{3}\d/.test((a.flight || "").trim()))
+        .map((a) => [a.hex, a.flight.trim(), a.flight.trim().slice(0, 3), a.t || "", +a.lat.toFixed(3), +a.lon.toFixed(3), typeof a.alt_baro === "number" ? a.alt_baro : 0, Math.round(a.gs || 0), Math.round(a.track || 0)]) };
+      hist.push([at, seen.size, live.ac.length]); if (hist.length > 60) hist.shift();
+    }
   } catch (e) { snapshot.error = e.message; }
 }
 refresh();
 setInterval(refresh, REFRESH_MS);
 
-const send = (res, code, type, body) => { res.writeHead(code, { "Content-Type": type, "Cache-Control": "public, max-age=60" }); res.end(body); };
+const send = (res, code, type, body, cache) => { res.writeHead(code, { "Content-Type": type, "Cache-Control": cache || "no-store, no-cache, must-revalidate, max-age=0", "Access-Control-Allow-Origin": "*" }); res.end(body); };
 http.createServer((req, res) => {
   const u = req.url.split("?")[0];
   if (u === "/api/snapshot") return send(res, 200, "application/json", JSON.stringify(snapshot));
   if (u === "/api/traced") return send(res, 200, "application/json", JSON.stringify(traced));
-  if (u === "/api/h2h") return send(res, 200, "application/json", h2h);
+  if (u === "/api/h2h") return send(res, 200, "application/json", h2h, "public, max-age=300");
+  if (u === "/api/global") return send(res, 200, "application/json", globalAgg, "public, max-age=300");
+  if (u === "/api/live") return send(res, 200, "application/json", JSON.stringify({ ...live, history: hist, refreshSeconds: REFRESH_MS / 1000 }));
   if (u === "/api/map") return send(res, 200, "application/json", JSON.stringify(map));
   if (u === "/healthz") return send(res, 200, "text/plain", "ok");
   if (u === "/" || u === "/index.html") return send(res, 200, "text/html; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/index.html")));

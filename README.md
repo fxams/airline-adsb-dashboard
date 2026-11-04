@@ -9,6 +9,11 @@ A small zero-dependency Node.js app that compares airlines on **estimated** dist
 
 Run: `node server.js` (Node 18+). Deploy: `render.yaml` (Render free web service).
 
+## Dashboard (v2)
+Dark analytics UI (MapLibre + CARTO dark basemap, ECharts): live map polled every 30 s (server refresh 60 s, `no-store` headers, LIVE/STALE indicator), QTR vs UAE 365-day head-to-head from adsb.lol globe_history full-day dumps, distributions (box plots, scatter, heatmap, correlation), global 3-day leaderboard with coverage warning, sortable tables with CSV/JSON export, API explorer.
+
+API: `/api/live`, `/api/h2h`, `/api/global`, `/api/snapshot`, `/api/traced`, `/healthz`. All times UTC; figures are estimates.
+
 ## Caveats
 All figures are estimates from samples, US and Europe heavy. The efficiency index is not fuel burn, delay, punctuality or safety; ATC, weather and winds drive much of it, and small samples are low confidence. No delay figures are shown.
 
