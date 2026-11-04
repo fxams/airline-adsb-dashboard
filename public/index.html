@@ -14,7 +14,7 @@ main{padding:0 22px 40px}.tab{display:none}.tab.on{display:block}
 .g{display:grid;gap:14px}.g4{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.g2{grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}
 .card{background:var(--glass);border:1px solid var(--bd);border-radius:16px;padding:16px;backdrop-filter:blur(14px);box-shadow:0 8px 30px rgba(0,0,0,.35);margin-bottom:14px;min-width:0}
 .kpi .v{font-size:28px;font-weight:700}.kpi .l{color:var(--mu);font-size:12px}.kpi .sp{height:42px}
-.ch{height:340px}.chs{height:260px}#map{height:520px;border-radius:12px;overflow:hidden}
+.ch{height:340px}.chs{height:260px}#map{height:620px;border-radius:12px;overflow:hidden}.mw{position:relative}.lg{position:absolute;top:10px;left:10px;background:rgba(6,12,24,.82);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;font-size:11.5px;line-height:1.7;max-width:250px;backdrop-filter:blur(8px)}.lg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 4px 0 6px;vertical-align:middle}.ln{display:inline-block;width:22px;height:3px;vertical-align:middle;margin-right:6px}.ln.dash{height:0;border-top:2px dashed #fff}#sp{display:none;position:absolute;left:0;right:0;bottom:0;max-height:62%;overflow:auto;background:rgba(6,12,24,.94);border-top:1px solid var(--bd);padding:12px 16px;backdrop-filter:blur(10px)}#sp .x{position:absolute;right:12px;top:10px}.kv{display:flex;flex-wrap:wrap;gap:18px;margin:8px 0}.kv div{font-size:11px;color:var(--mu)}.kv b{display:block;font-size:16px;color:var(--tx)}.pill{background:var(--c1);color:#000;border-radius:6px;padding:1px 6px;font-size:11px}.pg{display:flex;align-items:center;gap:10px;margin-top:8px}.pg span{font-weight:700;font-size:18px}.pg small{display:block;font-size:10px;color:var(--mu);font-weight:400}.bar{flex:1;height:6px;background:rgba(255,255,255,.12);border-radius:3px;position:relative}.bar div{height:100%;background:linear-gradient(90deg,#ffe14d,#ffc400);border-radius:3px}.bar b{position:absolute;top:-11px;transform:translateX(-50%) rotate(90deg);color:#ffe14d}
 .mu{color:var(--mu);font-size:12px}.warn{border-color:rgba(255,176,32,.5)}.warn h2{color:var(--warn)}
 .f{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}select,input{background:#0b1222;color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:6px 8px}
 .btn{background:transparent;color:var(--c1);border:1px solid var(--c1);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px}
@@ -26,7 +26,19 @@ code{color:var(--c3)}a{color:var(--c1)}@media(max-width:560px){.g2{grid-template
 <nav id="nav"></nav><main>
 <section class="tab" id="t-overview">
  <div class="g g4" id="kpis"></div>
- <div class="card"><h2>Live traffic and QTR / UAE route network</h2><div class="f"><label>Markers <select id="mf"><option value="all">All airline callsigns</option><option value="QTR">QTR</option><option value="UAE">UAE</option></select></label><label><input type="checkbox" id="arcs" checked> Route arcs (365-day top routes)</label><span class="mu">Live positions from adsb.lol around 6 hubs, refreshed every 60 s. Arcs: cyan QTR, magenta UAE.</span></div><div id="map"></div></div>
+ <div class="card"><h2>Live traffic map</h2><div class="f">
+<label>Find <input id="qs" placeholder="callsign, reg or hex" size="16"></label><button class="btn" id="qsb">Go</button>
+<label>Airline <select id="mf"><option value="all">All airlines</option><option value="QTR">QTR</option><option value="UAE">UAE</option><option value="other">Other airlines</option></select></label>
+<label>Type <input id="tyf" placeholder="e.g. B77W" size="6"></label>
+<label>Colour <select id="cm"><option value="air">By airline</option><option value="alt">By altitude</option></select></label>
+<label><input type="checkbox" id="trl" checked> Trails</label><label><input type="checkbox" id="arcs"> 365-day route network</label>
+<label>Flown tracks <select id="tks"><option value="">Off</option></select></label></div>
+<div class="mw"><div id="map"></div>
+<div class="lg"><div><svg width="14" height="14" viewBox="0 0 48 48"><path fill="#ffc400" d="M24 2l3 6v11l18 10v4l-18-6v11l6 5v3l-9-3-9 3v-3l6-5V27L3 33v-4l18-10V8z"/></svg> Live aircraft, nose = heading</div><div id="lgc"></div><div><i style="background:#8a94a6"></i>on ground <i style="background:#fff"></i>selected</div>
+<div><span class="ln" style="background:linear-gradient(90deg,transparent,#ffc400)"></span> trail (recent positions)</div><div><span class="ln" style="background:#ffe14d"></span> selected: flown track</div><div><span class="ln dash"></span> remaining route (est.) / great circle</div>
+<div><span class="ln" style="background:linear-gradient(90deg,#00e5ff,#ff2fd6)"></span> real flown track (trace data)</div><div><span class="ln dash" style="border-color:#ff2fd6"></span> 365-day route (faint = low confidence)</div><div><i style="background:rgba(255,196,0,.3);border:1px solid #ffc400"></i>cluster (zoom in)</div><div class="mu">Positions move between refreshes by dead reckoning (estimate).</div></div>
+<div id="sp"><button class="btn x" id="spx">✕</button><div id="spb"></div><div id="prof" style="height:200px"></div><p class="mu" id="spn"></p></div></div>
+<p class="mu" id="tki"></p><p class="mu">Live positions from adsb.lol within 250 nm of six hubs, refreshed every 30 s (airline callsigns only). Data © adsb.lol contributors (ODbL). Times UTC.</p></div>
  <div class="g g2"><div class="card"><h2>Fleet coverage: distinct aircraft seen vs registered fleet</h2><div id="gauge" class="chs"></div><p class="mu">Fleet = airliner registrations in the tar1090 aircraft database (QTR A7-, UAE A6-E). Seen can exceed fleet when the database lags new deliveries.</p></div>
  <div class="card"><h2>Live aircraft tracked (last refreshes)</h2><div id="livehist" class="chs"></div></div></div>
 </section>
@@ -48,7 +60,7 @@ code{color:var(--c3)}a{color:var(--c1)}@media(max-width:560px){.g2{grid-template
  <h2>Leaderboard</h2><div id="lead" class="ch"></div></div>
 </section>
 <section class="tab" id="t-data">
- <div class="card"><div class="f"><label>Table <select id="ts"><option value="h:typ">QTR vs UAE by type</option><option value="h:route">QTR vs UAE top routes</option><option value="h:mon">QTR vs UAE monthly</option><option value="g:air">Global by airline (3 days)</option><option value="g:typ">Global by type</option><option value="g:route">Global by route</option><option value="g:at">Global airline × type</option><option value="g:ar">Global airline × route</option><option value="live">Live aircraft</option></select></label><label>Search <input id="tq" placeholder="filter rows"></label><button class="btn" id="csv">Export CSV</button><button class="btn" id="jsn">Export JSON</button></div><div class="tw"><table id="tbl"></table></div><p class="mu">Click a column header to sort.</p></div>
+ <div class="card"><div class="f"><label>Table <select id="ts"><option value="h:typ">QTR vs UAE by type</option><option value="h:route">QTR vs UAE all city pairs (audit)</option><option value="h:mon">QTR vs UAE monthly</option><option value="g:air">Global by airline (3 days)</option><option value="g:typ">Global by type</option><option value="g:route">Global by route</option><option value="g:at">Global airline × type</option><option value="g:ar">Global airline × route</option><option value="live">Live aircraft</option></select></label><label>Search <input id="tq" placeholder="filter rows"></label><button class="btn" id="csv">Export CSV</button><button class="btn" id="jsn">Export JSON</button></div><div class="tw"><table id="tbl"></table></div><p class="mu">Click a column header to sort.</p></div>
 </section>
 <section class="tab" id="t-api">
  <div class="card"><h2>API explorer</h2><div class="f"><select id="ae"><option>/api/live</option><option>/api/h2h</option><option>/api/global</option><option>/api/snapshot</option><option>/api/traced</option><option>/healthz</option></select><button class="btn" id="ag">GET</button></div><pre id="ao" class="tw" style="font-size:12px;white-space:pre-wrap"></pre></div>
@@ -61,6 +73,8 @@ code{color:var(--c3)}a{color:var(--c1)}@media(max-width:560px){.g2{grid-template
  <li>Mar to Jun 2026 dumps contain far fewer QTR/UAE flights than later months; whether that is ADS-B coverage or real operations is not verified here.</li>
  <li>Fleet counts come from the tar1090 aircraft database; they may include stored aircraft and exclude leased or foreign-registered ones.</li>
  <li>Other airlines: 3 sampled days, global; live view: 250 nm around six hub airports.</li>
+ <li>City pairs: flights are stitched across coverage gaps (same aircraft and callsign, up to 16 h). When only one end is seen (e.g. the far end over the ocean or Australia/Asia had no receivers), the other end is set to the hub (DOH/DXB) and flagged “one end inferred”. Every pair is listed, including single flights, with a low-confidence flag (under 5 flights or mostly inferred).</li>
+ <li>Flown tracks: real positions from one full UTC day of adsb.lol trace data, simplified with Douglas-Peucker (0.05°); breaks show no coverage. The white dashed line is the great circle for comparison.</li>
  <li>All figures are estimates. No delay, punctuality, fuel or safety figures are shown. Times are UTC.</li>
  <li>Data © adsb.lol contributors, <a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL 1.0</a>; airports from OurAirports; basemap © OpenStreetMap contributors, © CARTO.</li></ul></div>
 </section></main>
@@ -77,26 +91,11 @@ $("nav").onclick=e=>e.target.dataset.k&&show(e.target.dataset.k);
 // ---------- great circle ----------
 function gc(a,b,n=48){const r=Math.PI/180,[la1,lo1,la2,lo2]=[a[0]*r,a[1]*r,b[0]*r,b[1]*r],v=(la,lo)=>[Math.cos(la)*Math.cos(lo),Math.cos(la)*Math.sin(lo),Math.sin(la)],p=v(la1,lo1),q=v(la2,lo2),out=[];
  for(let i=0;i<=n;i++){const f=i/n,x=p.map((c,j)=>c*(1-f)+q[j]*f);let lon=Math.atan2(x[1],x[0])/r;if(out.length&&Math.abs(lon-out[out.length-1][0])>180)lon+=lon<0?360:-360;out.push([lon,Math.atan2(x[2],Math.hypot(x[0],x[1]))/r])}return out}
-function initMap(){map=new maplibregl.Map({container:"map",style:"https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",center:[45,30],zoom:1.6,attributionControl:{compact:true}});
- map.addControl(new maplibregl.NavigationControl());
- map.on("load",()=>{const f=H.map.filter(r=>H.ap[r[1]]&&H.ap[r[2]]).map(r=>({type:"Feature",properties:{a:r[0],n:r[3],r:r[1]+"-"+r[2]},geometry:{type:"LineString",coordinates:gc(H.ap[r[1]],H.ap[r[2]])}}));
-  map.addSource("arcs",{type:"geojson",data:{type:"FeatureCollection",features:f}});
-  map.addLayer({id:"arcs-glow",type:"line",source:"arcs",paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":["interpolate",["linear"],["get","n"],200,2,1600,7],"line-opacity":.15,"line-blur":3}});
-  map.addLayer({id:"arcs",type:"line",source:"arcs",paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":["interpolate",["linear"],["get","n"],200,.8,1600,2.6],"line-dasharray":[0,4,3]}});
-  map.addSource("live",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-  map.addLayer({id:"live",type:"circle",source:"live",paint:{"circle-radius":["case",["in",["get","a"],["literal",["QTR","UAE"]]],4.5,2.4],"circle-color":["match",["get","a"],"QTR",C1,"UAE",C2,"#7cff6b"],"circle-opacity":.9,"circle-stroke-width":.5,"circle-stroke-color":"#000"}});
-  const pop=new maplibregl.Popup({closeButton:false});map.on("mousemove","live",e=>{const p=e.features[0].properties;pop.setLngLat(e.lngLat).setHTML(`<b style="color:#000">${p.cs}</b><br><span style="color:#000">${p.t||"?"} · ${fmt(p.alt)} ft · ${p.gs} kt</span>`).addTo(map)});map.on("mouseleave","live",()=>pop.remove());
-  map.on("click","arcs",e=>new maplibregl.Popup().setLngLat(e.lngLat).setHTML(`<span style="color:#000">${e.features[0].properties.a} ${e.features[0].properties.r}: ${fmt(e.features[0].properties.n)} flights</span>`).addTo(map));
-  const seq=[[0,4,3],[0.5,4,2.5],[1,4,2],[1.5,4,1.5],[2,4,1],[2.5,4,0.5],[3,4,0],[0,0.5,3,3.5],[0,1,3,3],[0,1.5,3,2.5],[0,2,3,2],[0,2.5,3,1.5],[0,3,3,1],[0,3.5,3,0.5]];let s=0;
-  setInterval(()=>{if(map.getLayer("arcs")){s=(s+1)%seq.length;map.setPaintProperty("arcs","line-dasharray",seq[s])}},90);
-  drawLive()})}
-function drawLive(){if(!map||!map.getSource("live")||!L)return;const mf=$("mf").value;map.getSource("live").setData({type:"FeatureCollection",features:L.ac.filter(a=>mf==="all"||a[2]===mf).map(a=>({type:"Feature",properties:{cs:a[1],a:a[2],t:a[3],alt:a[6],gs:a[7]},geometry:{type:"Point",coordinates:[a[5],a[4]]}}))})}
-$("mf").onchange=drawLive;$("arcs").onchange=e=>["arcs","arcs-glow"].forEach(l=>map.setLayoutProperty(l,"visibility",e.target.checked?"visible":"none"));
 // ---------- live polling ----------
-async function poll(){try{const r=await fetch("/api/live?t="+Date.now(),{cache:"no-store"});L=await r.json();lastOk=Date.now();drawLive();
+async function poll(){try{const r=await fetch("/api/live?t="+Date.now(),{cache:"no-store"});L=await r.json();lastOk=Date.now();onPoll();
  $("cnt").textContent=`· ${fmt(L.ac.length)} live airline aircraft`;ch("livehist",{xAxis:ax({type:"category",data:L.history.map(h=>h[0].slice(11,16))}),yAxis:ax({type:"value"}),series:[{type:"line",smooth:true,areaStyle:{opacity:.15},data:L.history.map(h=>h[2]),color:"#7cff6b",name:"airline aircraft"}]});if($("ts").value==="live")table()}catch(e){}status()}
 function status(){const at=L&&L.at?new Date(L.at):null,age=at?(Date.now()-at)/1000:1e9,live=age<180&&Date.now()-lastOk<90000;$("dot").className="dot "+(live?"live":"stale");$("lst").textContent=at?`${live?"LIVE":"STALE"} · data ${at.toISOString().slice(0,19).replace("T"," ")} UTC · ${Math.round(age)} s ago`:"waiting for first refresh"}
-setInterval(poll,30000);setInterval(status,1000);
+setInterval(poll,15000);setInterval(status,1000);
 // ---------- H2H ----------
 const spark=(id,data,c)=>ch(id,{grid:{left:0,right:0,top:4,bottom:0},tooltip:{show:false},xAxis:{type:"category",show:false,data:data.map((_,i)=>i)},yAxis:{type:"value",show:false,scale:true},series:[{type:"line",data,smooth:true,symbol:"none",lineStyle:{color:c,width:2},areaStyle:{color:c,opacity:.12}}]});
 function kpis(){const m=a=>H.mon[a].filter(r=>r[0]>="2026-07"&&r[0]<"2026-11");const t={};H.tot.forEach(r=>t[r[0]]=r);
@@ -130,7 +129,7 @@ function lead(){const v=$("gv").value,c=+$("gm").value,q=$("ga").value.trim().to
 // ---------- tables ----------
 const GC=["Group","Flights","Aircraft","Total nm","Avg nm","Extra %","Avg kt","Avg alt ft","Cruise alt ft","Avg min","Total h","Cruise %","Level-offs","Index"],HC=["Airline","Group","Flights","Aircraft","Avg nm","Extra %","Avg kt","Avg alt ft","Cruise alt ft","Avg min","Cruise %","Level-offs","Index"];
 let cur={cols:[],rows:[]},sortC=-1,sortD=-1;
-function tdata(){const v=$("ts").value;if(v==="live")return{cols:L?L.fields:[],rows:L?L.ac:[]};const[s,k]=v.split(":");if(s==="g")return{cols:GC,rows:G.D[k]};return{cols:HC,rows:["QTR","UAE"].flatMap(a=>H[k][a].map(r=>[a,...r]))}}
+function tdata(){const v=$("ts").value;if(v==="live")return{cols:L?L.fields:[],rows:L?L.ac:[]};const[s,k]=v.split(":");if(s==="g")return{cols:GC,rows:G.D[k]};if(k==="route")return{cols:[...HC,"one_end_inferred","confidence"],rows:["QTR","UAE"].flatMap(a=>H.route[a].map(r=>{const i=(H.routeInf||{})[a+"|"+r[0]]||0;return[a,...r,i,(r[1]<5||i/r[1]>.5)?"low":"ok"]}))};return{cols:HC,rows:["QTR","UAE"].flatMap(a=>H[k][a].map(r=>[a,...r]))}}
 function table(){cur=tdata();const q=$("tq").value.toLowerCase();let r=cur.rows.filter(x=>!q||x.join(" ").toLowerCase().includes(q));if(sortC>=0)r=[...r].sort((a,b)=>(a[sortC]>b[sortC]?1:-1)*sortD);cur.view=r;
  $("tbl").innerHTML="<tr>"+cur.cols.map((c,i)=>`<th data-i="${i}">${c}${i===sortC?(sortD>0?" ▲":" ▼"):""}</th>`).join("")+"</tr>"+r.slice(0,1500).map(x=>"<tr>"+x.map(v=>`<td>${v===-1||v===null?"–":fmt(v)}</td>`).join("")+"</tr>").join("")}
 $("tbl").onclick=e=>{if(e.target.dataset.i){const i=+e.target.dataset.i;sortD=sortC===i?-sortD:-1;sortC=i;table()}};$("ts").onchange=()=>{sortC=-1;table()};$("tq").oninput=table;
@@ -141,4 +140,6 @@ $("ag").onclick=async()=>{const r=await fetch($("ae").value+"?t="+Date.now(),{ca
 (async()=>{[H,G]=await Promise.all(["/api/h2h","/api/global"].map(u=>fetch(u+"?v=2").then(r=>r.json())));
  $("d0").value=H.dayKeys.find(d=>d>="2025-11-04");$("d1").value=H.dayKeys[H.dayKeys.length-1];$("dayinfo").textContent=`Days processed in this build: ${H.days.length} of 364.`;
  show((location.hash||"#overview").slice(1));kpis();h2h();dist();lead();initMap();await poll();table()})();
-</script></body></html>
+</script><script src="/map.js"></script>
+<script>$("qsb").onclick=search;$("qs").onkeydown=e=>{$("qs").style.borderColor="";if(e.key==="Enter")search()};["mf","tyf"].forEach(i=>$(i).oninput=drawLive);$("cm").onchange=colorMode;$("trl").onchange=drawLive;$("tks").onchange=tkDraw;$("spx").onclick=unsel;$("arcs").onchange=e=>map.setLayoutProperty("arcs","visibility",e.target.checked?"visible":"none");</script>
+</body></html>
