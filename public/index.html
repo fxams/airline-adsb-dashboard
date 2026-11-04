@@ -19,6 +19,8 @@ th{cursor:pointer;color:var(--mut);font-weight:600}.tw{overflow-x:auto}
 <h1>Airline ADS-B Dashboard</h1>
 <p class="mut">All figures are <b>estimates</b> from free <a href="https://adsb.lol" style="color:inherit">adsb.lol</a> data (ODbL). Times in UTC. No delay or on-time figures are shown.</p>
 
+<section class="card"><h2>Qatar Airways (QTR, A7-) vs Emirates (UAE, A6-E): full daily dumps</h2><p class="mut">Interim: processing every UTC day 2025-11-04 to 2026-11-03 from adsb.lol globe_history (2026-05-06 has no dump). Estimates; long-haul distances are great-circle when stitched across coverage gaps.</p><div id="hk" class="kpis"></div><h3>Monthly</h3><div class="tw"><table id="hmon"></table></div><h3>By aircraft type</h3><div class="tw"><table id="htyp"></table></div><h3>Top routes</h3><div class="tw"><table id="hrt"></table></div></section>
+<section class="card warn"><h2>Coverage warning</h2><p>Other airlines come from 3 sampled UTC days (2026-11-01 to 03) and live snapshots; known fleet is n/a for them, so totals cover only aircraft seen.</p></section>
 <section class="card"><h2>Traced flights at a glance</h2><div id="kpi" class="kpis"></div></section>
 
 <section class="card"><h2>Compare by airline, aircraft type and route</h2>
@@ -94,4 +96,9 @@ async function main(){
     S.airlines.map((s,i)=>`<tr><td>${i+1}</td><td>${s.code} ${s.name}</td><td>${s.n}</td><td>${s.air}</td><td>${f(s.avgAlt)}</td><td>${f(s.avgGs)}</td><td>${s.types.map(t=>t[0]+" "+t[1]).join(", ")}</td></tr>`).join("");
 }
 main();
-</script></body></html>
+</script><script>(async()=>{const H=await (await fetch("/api/h2h")).json();const C=["Group","Flights","Aircraft","Avg nm","Extra %","Avg kt","Avg alt ft","Cruise alt ft","Avg min","Cruise %","Level-offs","Index"];
+const tb=(id,rows)=>{document.getElementById(id).innerHTML="<tr>"+C.map(c=>"<th>"+c+"</th>").join("")+"</tr>"+rows.map(r=>"<tr>"+r.map(v=>"<td>"+(v===-1?"–":v)+"</td>").join("")+"</tr>").join("")};
+document.getElementById("hk").innerHTML=["QTR","UAE"].map(a=>`<div><b>${H.seenAll[a]} / ${H.fleet[a]}</b><br>${a} aircraft seen / fleet</div>`).join("")+H.tot.map(r=>`<div><b>${r[1].toLocaleString()}</b><br>${r[0]} flights, avg ${r[3]} nm</div>`).join("");
+const L=(o,f)=>[].concat(...["QTR","UAE"].map(a=>o[a].filter(f||(()=>1)).map(r=>[a+" · "+r[0],...r.slice(1)])));
+tb("hmon",L(H.mon,r=>r[0]>="2026-07"&&r[0]<"2026-11"));tb("htyp",L(H.typ));tb("hrt",L(H.route));})();</script>
+</body></html>

@@ -12,6 +12,7 @@ const HUBS = [
 ];
 const traced = JSON.parse(fs.readFileSync(path.join(__dirname, "data/traced.json"), "utf8"));
 const map = JSON.parse(fs.readFileSync(path.join(__dirname, "data/map.json"), "utf8"));
+const h2h = fs.readFileSync(path.join(__dirname, "data/h2h.json"), "utf8");
 const names = JSON.parse(fs.readFileSync(path.join(__dirname, "data/airlines.json"), "utf8"));
 let snapshot = { at: null, error: "warming up", airlines: [], total: 0 };
 
@@ -59,6 +60,7 @@ http.createServer((req, res) => {
   const u = req.url.split("?")[0];
   if (u === "/api/snapshot") return send(res, 200, "application/json", JSON.stringify(snapshot));
   if (u === "/api/traced") return send(res, 200, "application/json", JSON.stringify(traced));
+  if (u === "/api/h2h") return send(res, 200, "application/json", h2h);
   if (u === "/api/map") return send(res, 200, "application/json", JSON.stringify(map));
   if (u === "/healthz") return send(res, 200, "text/plain", "ok");
   if (u === "/" || u === "/index.html") return send(res, 200, "text/html; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/index.html")));
