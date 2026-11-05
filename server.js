@@ -43,6 +43,7 @@ async function fetchType(t) {
   return (await r.json()).ac || [];
 }
 const lastT = new Map(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const T0 = Date.now();
 const cov = new Map(); // "lat2,lon2" 2-degree cells with at least one position, last seen ms
 let busy = false;
 async function refresh() {
@@ -59,7 +60,7 @@ async function refresh() {
     }
     const nowc = Date.now();
     for (const a of seen.values()) if (typeof a.lat === "number" && (a.seen_pos ?? 0) <= 60) cov.set(`${Math.floor(a.lat / 2) * 2},${Math.floor(a.lon / 2) * 2}`, nowc);
-    for (const [k, t] of cov) if (nowc - t > 6 * 3600e3) cov.delete(k);
+    for (const [k, t] of cov) if (nowc - t > 24 * 3600e3) cov.delete(k);
     const by = {};
     for (const a of seen.values()) {
       const cs = (a.flight || "").trim();
@@ -105,7 +106,7 @@ http.createServer(async (req, res) => {
   if (u === "/api/tracks") return send(res, 200, "application/json", tracks, "public, max-age=300");
   if (u === "/api/trails") { const o = {}; for (const [h, t] of trails) o[h] = t.slice(-12).map((p) => [p[1], p[2]]); return send(res, 200, "application/json", JSON.stringify(o)); }
   if (u === "/api/track") { const h = (q.get("hex") || "").toLowerCase(); return send(res, 200, "application/json", JSON.stringify({ hex: h, fields: ["t_ms", "lon", "lat", "alt_ft", "gs_kt", "vrate_fpm"], note: "Positions collected by this server every refresh since it last restarted (max ~3 h)", points: trails.get(h) || [] })); }
-  if (u === "/api/coverage") return send(res, 200, "application/json", JSON.stringify({ cell_deg: 2, window_h: 6, note: "2-degree cells where at least one airliner position was received in the last 6 h (since server start). Empty areas = no receivers or no traffic.", cells: [...cov.keys()].map((k) => k.split(",").map(Number)) }));
+  if (u === "/api/coverage") return send(res, 200, "application/json", JSON.stringify({ cell_deg: 2, window_h: 24, since_utc: new Date(T0).toISOString(), note: "2-degree cells where at least one airliner position was received in the last 24 h (accumulated since server start, UTC). Estimated from observed traffic, not an official receiver map. Areas outside = no receiver data in the window.", cells: [...cov.keys()].map((k) => k.split(",").map(Number)) }));
   if (u === "/api/route") {
     const cs = (q.get("cs") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
     if (!cs) return send(res, 400, "application/json", "{}");

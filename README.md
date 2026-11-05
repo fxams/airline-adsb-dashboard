@@ -28,7 +28,7 @@ Code: MIT.
 ## Live feed, routes and coverage (v3)
 - Live positions are fetched worldwide from adsb.lol `/v2/type/{type}` for ~50 common airliner types (serial, spaced, every 90 s). Aircraft without a type in the database are not included.
 - Clicking an aircraft looks up its route from [adsbdb.com](https://www.adsbdb.com) (`/api/route?cs=`; cached 24 h, misses 6 h, max 1 request/s) and cross-checks it with routes inferred from adsb.lol history. Remaining route is an estimated great circle.
-- `/api/coverage` returns 2-degree cells with receptions in the last 6 h; the map shades them. Unshaded areas have no ADS-B receivers feeding adsb.lol (most oceans, much of Africa, Siberia), so aircraft there are not visible.
+- `/api/coverage` returns 2-degree cells with receptions in the last 24 h (accumulated since server start, UTC). The map shades them faintly and draws their merged outline as a coverage boundary (toggle "Coverage boundary", default on, remembered in the browser). Outside the boundary there is no receiver data in the window; it is estimated from observed traffic, not an official receiver map.
 - Mobile layout: bottom-sheet flight panel, filter drawer, scrollable tabs and tables. Times in UTC.
 
 ## Financial-study metrics (v4)

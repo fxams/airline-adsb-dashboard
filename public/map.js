@@ -17,7 +17,7 @@ function initMap(){map=new maplibregl.Map({container:"map",style:"https://basema
  map.addControl(new maplibregl.NavigationControl());
  map.on("load",async()=>{map.addImage("plane",plane(),{sdf:true});
   const cf=H.map.filter(r=>H.ap[r[1]]&&H.ap[r[2]]).map(r=>({type:"Feature",properties:{a:r[0],n:r[3],inf:r[4]||0,low:(r[3]<5||(r[4]||0)/r[3]>.5)?1:0,r:r[1]+"-"+r[2]},geometry:{type:"LineString",coordinates:gc(H.ap[r[1]],H.ap[r[2]])}}));
-  map.addSource("cov",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addLayer({id:"cov",type:"fill",source:"cov",paint:{"fill-color":"#3aa0ff","fill-opacity":.09}});
+  map.addSource("cov",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addLayer({id:"cov",type:"fill",source:"cov",paint:{"fill-color":"#3aa0ff","fill-opacity":.06}});map.addSource("covb",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addLayer({id:"covb",type:"line",source:"covb",layout:{"line-join":"round",visibility:localStorage.cvb==="0"?"none":"visible"},paint:{"line-color":"#5cc8ff","line-width":["interpolate",["linear"],["zoom"],1,.8,6,1.6],"line-opacity":.85}});
   map.addSource("arcs",{type:"geojson",data:{type:"FeatureCollection",features:cf}});
   map.addLayer({id:"arcs",type:"line",source:"arcs",layout:{visibility:"none"},paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":["interpolate",["linear"],["get","n"],1,.3,1600,1.4],"line-opacity":["case",["==",["get","low"],1],.12,.35],"line-dasharray":[2,2]}});
   TK=await fetch("/api/tracks").then(r=>r.json()).catch(()=>({f:[]}));
@@ -80,4 +80,9 @@ function srcNote(db,hi){const h=hi?`${hi.o}→${hi.d} (${hi.n}/${hi.tot} past fl
  if(db)return "Route from adsbdb.com (no adsb.lol history for this callsign to cross-check).";
  return DB?`adsbdb has no route for this callsign; estimated from adsb.lol history ${h}.`:`Estimated from adsb.lol history ${h}; checking adsbdb…`}
 let COVT=0;async function covDraw(){if(!map||!map.getSource("cov")||Date.now()-COVT<300000)return;COVT=Date.now();const j=await fetch("/api/coverage").then(r=>r.json()).catch(()=>null);if(!j)return;
- map.getSource("cov").setData({type:"FeatureCollection",features:j.cells.map(([a,o])=>({type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[[[o,a],[o+2,a],[o+2,a+2],[o,a+2],[o,a]]]}}))});$("covn").textContent=`${j.cells.length} 2° cells with receptions in the last ${j.window_h} h`}
+ map.getSource("cov").setData({type:"FeatureCollection",features:j.cells.map(([a,o])=>({type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[[[o,a],[o+2,a],[o+2,a+2],[o,a+2],[o,a]]]}}))});map.getSource("covb").setData(covEdges(j.cells));$("covn").textContent=`${j.cells.length} 2° cells with receptions in the last ${j.window_h} h (accumulated since ${String(j.since_utc||"").slice(0,16).replace("T"," ")} UTC)`}
+// Outline of the union of 2° cells: keep only cell edges with no covered neighbour, then merge collinear runs.
+function covEdges(cells){const S=new Set(cells.map(c=>c[0]+","+c[1])),h=new Map(),v=new Map(),add=(m,k,x)=>{(m.get(k)||m.set(k,[]).get(k)).push(x)};
+ for(const[a,o]of cells){if(!S.has((a+2)+","+o))add(h,a+2,o);if(!S.has((a-2)+","+o))add(h,a,o);if(!S.has(a+","+(o+2)))add(v,o+2,a);if(!S.has(a+","+(o-2)))add(v,o,a)}
+ const L=[],run=(m,f)=>{for(const[k,xs]of m){xs.sort((p,q)=>p-q);let s=xs[0],e=s+2;for(const x of xs.slice(1)){if(x===e)e+=2;else{L.push(f(k,s,e));s=x;e=x+2}}L.push(f(k,s,e))}};
+ run(h,(a,s,e)=>[[s,a],[e,a]]);run(v,(o,s,e)=>[[o,s],[o,e]]);return{type:"FeatureCollection",features:[{type:"Feature",properties:{},geometry:{type:"MultiLineString",coordinates:L}}]}}
