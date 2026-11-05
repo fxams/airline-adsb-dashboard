@@ -51,7 +51,15 @@ async function ground(id) {
   const c = gcache.get(id); if (c && Date.now() - c.t < 30000) return c.v;
   const [la, lo, name] = APT[id];
   let ac = [], err = null;
-  try { const r = await fetch(`https://api.adsb.lol/v2/point/${la}/${lo}/8`, { headers: { "User-Agent": "airline-adsb-dashboard (github.com/fxams/airline-adsb-dashboard)" }, signal: AbortSignal.timeout(15000) }); if (!r.ok) throw new Error("HTTP " + r.status); ac = (await r.json()).ac || []; } catch (e) { err = String(e.message || e); if (c) return { ...c.v, stale: true, error: err }; }
+let src = "adsb.lol /v2/point";
+  for (let i = 0; i < 2 && !ac.length; i++) {
+    try { const r = await fetch(`https://api.adsb.lol/v2/point/${la}/${lo}/8`, { headers: { "User-Agent": "airline-adsb-dashboard (github.com/fxams/airline-adsb-dashboard)" }, signal: AbortSignal.timeout(15000) }); if (!r.ok) throw new Error("HTTP " + r.status); ac = (await r.json()).ac || []; err = null; break; } catch (e) { err = String(e.message || e); await sleep(1500); }
+  }
+  if (err) { // fallback: aircraft near the airport in the last global type-feed refresh (airliner types only)
+    src = "global type feed (fallback, airliner types only, up to ~90 s old)";
+    const d2 = (a) => ((a.lat - la) * 60) ** 2 + ((a.lon - lo) * 60 * Math.cos((la * Math.PI) / 180)) ** 2;
+    const m = new Map(); for (const { ac: l } of lastT.values()) for (const a of l) if (typeof a.lat === "number" && d2(a) < 64) m.set(a.hex, a); ac = [...m.values()];
+  }
   const rows = [];
   for (const a of ac) {
     if (typeof a.lat !== "number") continue;
@@ -60,7 +68,7 @@ async function ground(id) {
     const cs = (a.flight || "").trim(), st = gs < 1.5 ? "parked" : gs <= 35 ? "taxi" : "runway";
     rows.push([a.hex, cs, cs.slice(0, 3), a.t || "", +a.lat.toFixed(5), +a.lon.toFixed(5), Math.round(a.track ?? a.true_heading ?? 0), Math.round(gs), st, Math.round(a.seen_pos ?? a.seen ?? 0), onG ? 1 : 0]);
   }
-  const v = { airport: id, name, center: [lo, la], radius_nm: 8, time_utc: new Date().toISOString(), fields: ["hex", "callsign", "airline", "type", "lat", "lon", "track_deg", "gs_kt", "status", "seen_s", "ground_flag"], note: "Estimated from adsb.lol: on-ground flag, or under 300 ft and under 60 kt. parked = under 1.5 kt, taxi = up to 35 kt, runway = faster (take-off/landing roll). Many aircraft switch ADS-B off at the gate, so stands are incomplete; no stand assignment.", ac: rows, error: err };
+  const v = { airport: id, name, center: [lo, la], radius_nm: 8, time_utc: new Date().toISOString(), fields: ["hex", "callsign", "airline", "type", "lat", "lon", "track_deg", "gs_kt", "status", "seen_s", "ground_flag"], note: "Estimated from adsb.lol: on-ground flag, or under 300 ft and under 60 kt. parked = under 1.5 kt, taxi = up to 35 kt, runway = faster (take-off/landing roll). Many aircraft switch ADS-B off at the gate, so stands are incomplete; no stand assignment.", ac: rows, source: src, error: err };
   gcache.set(id, { t: Date.now(), v }); return v;
 }
 const T0 = Date.now();
