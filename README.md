@@ -30,3 +30,6 @@ Code: MIT.
 - Clicking an aircraft looks up its route from [adsbdb.com](https://www.adsbdb.com) (`/api/route?cs=`; cached 24 h, misses 6 h, max 1 request/s) and cross-checks it with routes inferred from adsb.lol history. Remaining route is an estimated great circle.
 - `/api/coverage` returns 2-degree cells with receptions in the last 6 h; the map shades them. Unshaded areas have no ADS-B receivers feeding adsb.lol (most oceans, much of Africa, Siberia), so aircraft there are not visible.
 - Mobile layout: bottom-sheet flight panel, filter drawer, scrollable tabs and tables. Times in UTC.
+
+## Financial-study metrics (v4)
+`/api/fin` (JSON) and `/api/fin.csv` give monthly per-airline estimates derived from the 365-day ADS-B aggregates: flights/day, great-circle km, ASK proxy (typical seats per type, not actual configuration), stage length, active tails vs fleet, observed airborne hours (lower bound), route count, new/dropped routes, top-10 share, hub share, HHI, and completeness (resolved %, inferred %). Shown in the "Financial study" tab with definitions and confidence. Estimates from open ADS-B data (adsb.lol, ODbL); not reported financials, not fuel burn, not on-time data, not investment advice. Months are UTC.

@@ -13,18 +13,18 @@ function drawLive(){if(!map||!map.getSource("live")||!L)return;const f=acF();map
  else map.getSource("trails").setData({type:"FeatureCollection",features:[]});if(SEL)selUpdate()}
 function onPoll(){if(!L)return;for(const a of L.ac){const t=TR[a[0]]||(TR[a[0]]=[]),p=t[t.length-1];if(!p||p[0]!==a[5]||p[1]!==a[4])t.push([a[5],a[4]]);if(t.length>14)t.shift()}covDraw();
  const al=[...new Set(L.ac.map(a=>a[2]))].sort(),mf=$("mf"),v=mf.value;if(mf.options.length<4+al.length-2){mf.innerHTML=`<option value="all">All airlines</option><option value="QTR">QTR</option><option value="UAE">UAE</option><option value="other">Other airlines</option>`+al.filter(x=>!["QTR","UAE"].includes(x)).map(x=>`<option>${x}</option>`).join("");mf.value=v}drawLive()}
-function initMap(){map=new maplibregl.Map({container:"map",style:"https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",center:[50,26],zoom:3,attributionControl:{compact:true}});
+function initMap(){map=new maplibregl.Map({container:"map",style:"https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",center:[35,28],zoom:innerWidth<700?1.1:2,attributionControl:{compact:true}});
  map.addControl(new maplibregl.NavigationControl());
  map.on("load",async()=>{map.addImage("plane",plane(),{sdf:true});
   const cf=H.map.filter(r=>H.ap[r[1]]&&H.ap[r[2]]).map(r=>({type:"Feature",properties:{a:r[0],n:r[3],inf:r[4]||0,low:(r[3]<5||(r[4]||0)/r[3]>.5)?1:0,r:r[1]+"-"+r[2]},geometry:{type:"LineString",coordinates:gc(H.ap[r[1]],H.ap[r[2]])}}));
   map.addSource("cov",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addLayer({id:"cov",type:"fill",source:"cov",paint:{"fill-color":"#3aa0ff","fill-opacity":.09}});
   map.addSource("arcs",{type:"geojson",data:{type:"FeatureCollection",features:cf}});
-  map.addLayer({id:"arcs",type:"line",source:"arcs",layout:{visibility:"none"},paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":["interpolate",["linear"],["get","n"],1,.5,1600,2.5],"line-opacity":["case",["==",["get","low"],1],.25,.55],"line-dasharray":[2,2]}});
+  map.addLayer({id:"arcs",type:"line",source:"arcs",layout:{visibility:"none"},paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":["interpolate",["linear"],["get","n"],1,.3,1600,1.4],"line-opacity":["case",["==",["get","low"],1],.12,.35],"line-dasharray":[2,2]}});
   TK=await fetch("/api/tracks").then(r=>r.json()).catch(()=>({f:[]}));
   const ts=$("tks");ts.innerHTML=`<option value="">Off</option><option value="QTR">All QTR (${TK.day})</option><option value="UAE">All UAE (${TK.day})</option>`+TK.f.map((f,i)=>[f.a+" "+f.o+"-"+f.d,i]).sort().map(([l,i])=>`<option value="${i}">${l}</option>`).join("");
   map.addSource("tk",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addSource("tkgc",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
   map.addLayer({id:"tkgc",type:"line",source:"tkgc",paint:{"line-color":"#ffffff","line-opacity":.45,"line-width":1,"line-dasharray":[3,3]}});
-  map.addLayer({id:"tk",type:"line",source:"tk",paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":1.8,"line-opacity":.85}});
+  map.addLayer({id:"tk",type:"line",source:"tk",paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":1.1,"line-opacity":.6}});
   map.addSource("trails",{type:"geojson",lineMetrics:true,data:{type:"FeatureCollection",features:[]}});
   map.addLayer({id:"trails",type:"line",source:"trails",paint:{"line-width":1.6,"line-gradient":["interpolate",["linear"],["line-progress"],0,"rgba(255,196,0,0)",1,"rgba(255,196,0,.75)"]}});
   map.addSource("sel",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
@@ -54,7 +54,7 @@ function tkDraw(){const v=$("tks").value;let f=v===""?[]:(v==="QTR"||v==="UAE")?
 function odOf(cs){const r=CSR&&CSR.cs[cs];if(!r)return null;const[o,d]=r[0].split("-"),A=CSR.ap;return A[o]&&A[d]?{o,d,O:A[o],D:A[d],n:r[1],tot:r[2]}:null}
 async function select(h){SEL=h;DB=null;const ac0=L&&L.ac.find(x=>x[0]===h);if(ac0)fetch('/api/route?cs='+encodeURIComponent(ac0[1])).then(r=>r.json()).then(j=>{if(SEL===h){DB=j;selUpdate()}}).catch(()=>{});$("sp").style.display="block";const r=await fetch("/api/track?hex="+h+"&t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>({points:[]}));SEL_T=r.points;selUpdate(true)}
 let SEL_T=[],DB=null;
-function selUpdate(first){const a=L&&L.ac.find(x=>x[0]===SEL);if(!a){$("spb").innerHTML="Aircraft no longer in the live feed.";return}
+function selUpdate(first){const a=L&&L.ac.find(x=>x[0]===SEL);if(!a){unsel();return}
  const pos=[a[5],a[4]],hi=odOf(a[1]),db=DB&&DB.found?{o:DB.origin.iata||DB.origin.icao,d:DB.destination.iata||DB.destination.icao,O:[DB.origin.lat,DB.origin.lon,DB.origin.city],D:[DB.destination.lat,DB.destination.lon,DB.destination.city]}:null,od=db||hi,F=[],P=SEL_T.length?SEL_T:[[Date.now(),a[5],a[4],a[6],a[7],a[12]]];
  F.push({type:"Feature",properties:{k:"flown"},geometry:{type:"LineString",coordinates:[...P.map(p=>[p[1],p[2]]),pos]}});
  let pr="";if(od){F.push({type:"Feature",properties:{k:"rem"},geometry:{type:"LineString",coordinates:gc([a[4],a[5]],od.D)}}),F.push({type:"Feature",properties:{k:"ap",n:od.o},geometry:{type:"Point",coordinates:[od.O[1],od.O[0]]}},{type:"Feature",properties:{k:"ap",n:od.d},geometry:{type:"Point",coordinates:[od.D[1],od.D[0]]}});
@@ -66,8 +66,8 @@ function selUpdate(first){const a=L&&L.ac.find(x=>x[0]===SEL);if(!a){$("spb").in
  map.getSource("sel").setData({type:"FeatureCollection",features:F});
  $("spb").innerHTML=`<div class="sh"><b style="font-size:20px">${a[1]}</b> <span class="pill">${a[2]}</span> ${a[3]||"?"} · ${a[9]||"reg ?"} · hex ${a[0]}</div>
  <div class="kv"><div>Altitude<b>${a[10]?"on ground":fmt(a[6])+" ft"}</b></div><div>Ground speed<b>${a[7]} kt</b></div><div>Vertical rate<b>${a[12]>0?"+":""}${fmt(a[12]||0)} fpm</b></div><div>Track<b>${a[8]}°</b></div><div>Position age<b>${a[11]} s</b></div></div>${pr}`;
- ch("prof",{grid:{left:50,right:50,top:28,bottom:28},legend:{data:["Altitude ft","Ground speed kt","Vertical rate fpm"],textStyle:{color:"#cfe3ff"}},xAxis:ax({type:"time"}),yAxis:[ax({type:"value",name:"ft"}),ax({type:"value",name:"kt / fpm÷10",splitLine:{show:false}})],
-  series:[{name:"Altitude ft",type:"line",showSymbol:false,areaStyle:{opacity:.15},color:"#ffe14d",data:P.map(p=>[p[0],p[3]]),markPoint:{symbol:"pin",symbolSize:34,data:[{coord:[P[P.length-1][0],P[P.length-1][3]],value:"now"}]}},
+ $("prof").style.display=P.length<2?"none":"";if(P.length>=2)ch("prof",{grid:{left:44,right:36,top:12,bottom:46},legend:{bottom:0,itemWidth:12,itemHeight:6,textStyle:{color:"#cfe3ff",fontSize:10},data:["Altitude ft","Ground speed kt","Vertical rate fpm"]},xAxis:ax({type:"time",axisLabel:{fontSize:9,hideOverlap:true}}),yAxis:[ax({type:"value",axisLabel:{fontSize:9}}),ax({type:"value",axisLabel:{fontSize:9},splitLine:{show:false}})],
+  series:[{name:"Altitude ft",type:"line",showSymbol:false,areaStyle:{opacity:.15},color:"#ffe14d",data:P.map(p=>[p[0],p[3]]),markPoint:{symbol:"circle",symbolSize:7,label:{show:false},data:[{coord:[P[P.length-1][0],P[P.length-1][3]]}]}},
   {name:"Ground speed kt",type:"line",yAxisIndex:1,showSymbol:false,color:C1,data:P.map(p=>[p[0],p[4]])},{name:"Vertical rate fpm",type:"line",yAxisIndex:1,showSymbol:false,color:C2,data:P.map(p=>[p[0],(p[5]||0)/10])}]});
  $("spn").textContent=`Profile: ${P.length} positions recorded by this server (UTC, since it began tracking this aircraft; max ~3 h).`;
  if(first)map.easeTo({center:pos,zoom:Math.max(map.getZoom(),4)})}

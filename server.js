@@ -11,6 +11,8 @@ const TYPES = (process.env.TYPES || "A20N,A21N,A319,A320,A321,A318,BCS1,BCS3,B73
 const traced = JSON.parse(fs.readFileSync(path.join(__dirname, "data/traced.json"), "utf8"));
 const map = JSON.parse(fs.readFileSync(path.join(__dirname, "data/map.json"), "utf8"));
 const h2h = fs.readFileSync(path.join(__dirname, "data/h2h.json"), "utf8");
+const fin = fs.readFileSync(path.join(__dirname, "data/fin.json"), "utf8");
+const finCsv = (() => { const j = JSON.parse(fin); const k = Object.keys(j.m.QTR[0]); return "# Estimates/proxies derived from open ADS-B data (adsb.lol, ODbL). Not reported financials. Not investment advice. Months UTC.\nairline," + k.join(",") + "\n" + Object.entries(j.m).flatMap(([a, r]) => r.map((x) => a + "," + k.map((c) => x[c] ?? "").join(","))).join("\n") + "\n"; })();
 const globalAgg = fs.readFileSync(path.join(__dirname, "data/global.json"), "utf8");
 const names = JSON.parse(fs.readFileSync(path.join(__dirname, "data/airlines.json"), "utf8"));
 let snapshot = { at: null, error: "warming up", airlines: [], total: 0 };
@@ -111,6 +113,8 @@ http.createServer(async (req, res) => {
   }
   if (u === "/api/csroute") return send(res, 200, "application/json", csroute, "public, max-age=300");
   if (u === "/api/traced") return send(res, 200, "application/json", JSON.stringify(traced));
+  if (u === "/api/fin") return send(res, 200, "application/json", fin, "public, max-age=300");
+  if (u === "/api/fin.csv") { res.setHeader("Content-Disposition", "attachment; filename=qtr_uae_monthly_metrics.csv"); return send(res, 200, "text/csv", finCsv, "public, max-age=300"); }
   if (u === "/api/h2h") return send(res, 200, "application/json", h2h, "public, max-age=300");
   if (u === "/api/global") return send(res, 200, "application/json", globalAgg, "public, max-age=300");
   if (u === "/api/live") return send(res, 200, "application/json", JSON.stringify({ ...live, history: hist, refreshSeconds: REFRESH_MS / 1000 }));
