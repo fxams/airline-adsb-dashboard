@@ -43,7 +43,7 @@ function initMap(){map=new maplibregl.Map({container:"map",style:"https://basema
   map.on("click","arcs",e=>{const p=e.features[0].properties;new maplibregl.Popup().setLngLat(e.lngLat).setHTML(`<span style="color:#000">${p.a} ${p.r}: ${fmt(p.n)} flights${p.inf?` (${p.inf} with one end inferred)`:""}${p.low?" · low confidence":""}</span>`).addTo(map)});
   ["live","cl","arcs"].forEach(l=>{map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",l,()=>map.getCanvas().style.cursor="")});
   CSR=await fetch("/api/csroute").then(r=>r.json()).catch(()=>null);
-  const tick=()=>{if(Date.now()-lastFrame>1000){lastFrame=Date.now();drawLive()}requestAnimationFrame(tick)};tick();onPoll();covDraw()})}
+  const tick=()=>{if(Date.now()-lastFrame>1000){lastFrame=Date.now();drawLive()}requestAnimationFrame(tick)};tick();onPoll();covDraw();setApt(localStorage.apt||"G")})}
 function colorMode(){if(!map.getLayer("live"))return;const m=$("cm").value;
  map.setPaintProperty("live","icon-color",["case",["==",["get","s"],1],"#ffffff",["==",["get","g"],1],GND,m==="alt"?ALTC:["match",["get","a"],"QTR",C1,"UAE",C2,AMB]]);
  $("lgc").innerHTML=m==="alt"?`<b>Altitude</b> <i style="background:#ff5a36"></i>&lt;10k <i style="background:#ffb000"></i>10–20k <i style="background:#c6ff3a"></i>20–30k <i style="background:#00e5ff"></i>30–40k <i style="background:#b06bff"></i>40k+ ft`:`<i style="background:${C1}"></i>QTR <i style="background:${C2}"></i>UAE <i style="background:${AMB}"></i>other airlines`}
@@ -86,3 +86,20 @@ function covEdges(cells){const S=new Set(cells.map(c=>c[0]+","+c[1])),h=new Map(
  for(const[a,o]of cells){if(!S.has((a+2)+","+o))add(h,a+2,o);if(!S.has((a-2)+","+o))add(h,a,o);if(!S.has(a+","+(o+2)))add(v,o+2,a);if(!S.has(a+","+(o-2)))add(v,o,a)}
  const L=[],run=(m,f)=>{for(const[k,xs]of m){xs.sort((p,q)=>p-q);let s=xs[0],e=s+2;for(const x of xs.slice(1)){if(x===e)e+=2;else{L.push(f(k,s,e));s=x;e=x+2}}L.push(f(k,s,e))}};
  run(h,(a,s,e)=>[[s,a],[e,a]]);run(v,(o,s,e)=>[[o,s],[o,e]]);return{type:"FeatureCollection",features:[{type:"Feature",properties:{},geometry:{type:"MultiLineString",coordinates:L}}]}}
+
+// Airport ground view (DOH/DXB): satellite basemap at airport zoom + ground aircraft from /api/ground.
+const APTC={DOH:[51.6081,25.2731],DXB:[55.3644,25.2528]};let APT="G",GT=null;
+function gIcon(){const c=document.createElement("canvas");c.width=c.height=32;const x=c.getContext("2d");x.fillStyle="#fff";x.strokeStyle="#000";x.lineWidth=2;x.beginPath();x.moveTo(16,2);x.lineTo(28,28);x.lineTo(16,22);x.lineTo(4,28);x.closePath();x.stroke();x.fill();return x.getImageData(0,0,32,32)}
+function gSetup(){if(map.getSource("sat"))return;const b=map.getStyle().layers.find(l=>l.type==="symbol"||l.id==="cov");
+ map.addSource("sat",{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,maxzoom:19,attribution:"Imagery © Esri, Maxar, Earthstar Geographics"});
+ map.addLayer({id:"sat",type:"raster",source:"sat",minzoom:10,layout:{visibility:"none"},paint:{"raster-opacity":.75,"raster-brightness-max":.7,"raster-saturation":-.3}},b&&b.id);
+ map.addImage("gac",gIcon(),{sdf:true});map.addSource("gnd",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+ map.addLayer({id:"gnd",type:"symbol",source:"gnd",layout:{"icon-image":"gac","icon-size":.6,"icon-rotate":["get","tr"],"icon-rotation-alignment":"map","icon-allow-overlap":true,"text-field":["get","cs"],"text-size":11,"text-offset":[0,1.3],"text-allow-overlap":false,"text-font":["Open Sans Regular"],visibility:"none"},paint:{"icon-color":["match",["get","st"],"parked","#9aa6b8","taxi","#ffc400","#ff4d6d"],"icon-halo-color":"#000","icon-halo-width":1,"text-color":"#fff","text-halo-color":"#000","text-halo-width":1.2}})}
+function setApt(a){APT=a;localStorage.apt=a;document.querySelectorAll("#aps button").forEach(b=>b.classList.toggle("on",b.dataset.a===a));if(!map)return;gSetup();const g=a!=="G";
+ ["sat","gnd"].forEach(l=>map.setLayoutProperty(l,"visibility",g?"visible":"none"));$("gp").style.display=g?"block":"none";clearInterval(GT);
+ if(g){map.flyTo({center:APTC[a],zoom:innerWidth<700?12.6:13.4,speed:2});gLoad();GT=setInterval(gLoad,30000)}else map.flyTo({center:[35,28],zoom:innerWidth<700?1.1:2,speed:2})}
+async function gLoad(){const a=APT;if(a==="G")return;const j=await fetch("/api/ground?apt="+a).then(r=>r.json()).catch(()=>null);if(!j||a!==APT)return;
+ const all=$("gall").checked,r=j.ac.filter(x=>all||x[2]==="QTR"||x[2]==="UAE"),o={parked:0,taxi:0,runway:0};r.forEach(x=>o[x[8]]++);
+ map.getSource("gnd").setData({type:"FeatureCollection",features:r.map(x=>({type:"Feature",properties:{cs:x[1]||x[0],tr:x[6],st:x[8]},geometry:{type:"Point",coordinates:[x[5],x[4]]}}))});
+ $("gpt").textContent=`${a} (${j.name}): ${r.length} aircraft on the airport${all?"":" (QTR/UAE)"}, ${o.parked} parked, ${o.taxi} taxi, ${o.runway} runway · ${j.time_utc.slice(11,19)} UTC${j.stale?" (stale: feed error)":""}`;
+ $("gpl").innerHTML="<tr><th>Callsign</th><th>Type</th><th>Status</th><th>kt</th><th>Last seen</th></tr>"+(r.length?r.sort((p,q)=>p[1]<q[1]?-1:1).map(x=>`<tr><td>${x[1]||x[0]}</td><td>${x[3]}</td><td>${x[8]}</td><td>${x[7]}</td><td>${x[9]} s ago</td></tr>`).join(""):'<tr><td colspan="5" class="mu">No ground aircraft reported right now (often: no local receiver picks up surface traffic, or ADS-B is off at the gate).</td></tr>')}

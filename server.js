@@ -43,6 +43,26 @@ async function fetchType(t) {
   return (await r.json()).ac || [];
 }
 const lastT = new Map(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Ground view: aircraft on/near the airport surface from adsb.lol /v2/point (fetched only when requested, cached 30 s).
+const APT = { DOH: [25.2731, 51.6081, "OTHH Hamad International"], DXB: [25.2528, 55.3644, "OMDB Dubai International"] };
+const gcache = new Map();
+async function ground(id) {
+  const c = gcache.get(id); if (c && Date.now() - c.t < 30000) return c.v;
+  const [la, lo, name] = APT[id];
+  let ac = [], err = null;
+  try { const r = await fetch(`https://api.adsb.lol/v2/point/${la}/${lo}/8`, { headers: { "User-Agent": "airline-adsb-dashboard (github.com/fxams/airline-adsb-dashboard)" }, signal: AbortSignal.timeout(15000) }); if (!r.ok) throw new Error("HTTP " + r.status); ac = (await r.json()).ac || []; } catch (e) { err = String(e.message || e); if (c) return { ...c.v, stale: true, error: err }; }
+  const rows = [];
+  for (const a of ac) {
+    if (typeof a.lat !== "number") continue;
+    const onG = a.alt_baro === "ground", gs = a.gs ?? 0, alt = typeof a.alt_baro === "number" ? a.alt_baro : 0;
+    if (!onG && !(alt < 300 && gs < 60)) continue;
+    const cs = (a.flight || "").trim(), st = gs < 1.5 ? "parked" : gs <= 35 ? "taxi" : "runway";
+    rows.push([a.hex, cs, cs.slice(0, 3), a.t || "", +a.lat.toFixed(5), +a.lon.toFixed(5), Math.round(a.track ?? a.true_heading ?? 0), Math.round(gs), st, Math.round(a.seen_pos ?? a.seen ?? 0), onG ? 1 : 0]);
+  }
+  const v = { airport: id, name, center: [lo, la], radius_nm: 8, time_utc: new Date().toISOString(), fields: ["hex", "callsign", "airline", "type", "lat", "lon", "track_deg", "gs_kt", "status", "seen_s", "ground_flag"], note: "Estimated from adsb.lol: on-ground flag, or under 300 ft and under 60 kt. parked = under 1.5 kt, taxi = up to 35 kt, runway = faster (take-off/landing roll). Many aircraft switch ADS-B off at the gate, so stands are incomplete; no stand assignment.", ac: rows, error: err };
+  gcache.set(id, { t: Date.now(), v }); return v;
+}
 const T0 = Date.now();
 const cov = new Map(); // "lat2,lon2" 2-degree cells with at least one position, last seen ms
 let busy = false;
@@ -102,6 +122,7 @@ const send = (res, code, type, body, cache) => {
 };
 http.createServer(async (req, res) => {
   const u = req.url.split("?")[0]; const q = new URL(req.url, "http://x").searchParams;
+  if (u === "/api/ground") { const id = (q.get("apt") || "").toUpperCase(); if (!APT[id]) return send(res, 400, "application/json", JSON.stringify({ error: "apt must be DOH or DXB" })); return ground(id).then((v) => send(res, 200, "application/json", JSON.stringify(v), "public, max-age=30")); }
   if (u === "/api/snapshot") return send(res, 200, "application/json", JSON.stringify(snapshot));
   if (u === "/api/tracks") return send(res, 200, "application/json", tracks, "public, max-age=300");
   if (u === "/api/trails") { const o = {}; for (const [h, t] of trails) o[h] = t.slice(-12).map((p) => [p[1], p[2]]); return send(res, 200, "application/json", JSON.stringify(o)); }
