@@ -191,7 +191,7 @@ await desk.evaluate(() => { document.getElementById("wxctl").open = true; });
 await desk.click("#wxhaz");
 await desk.waitForFunction(() => WX.haz && WX.haz.features && WX.haz.features.features.length > 0, { timeout: 30000 });
 const hazUi = await desk.evaluate(() => {
-  const st = document.getElementById("wxst").textContent;
+  const st = document.getElementById("wxst").textContent + " " + ((document.getElementById("wxfull") && document.getElementById("wxfull").textContent) || "");
   const src = (id) => { const s = map.getSource(id); const d = (s && s._data) || (s && s.serialize && s.serialize().data) || { features: [] }; return d; };
   const n = src("wxhaz").features.length;
   const labs = src("wxhaz-pts").features;
@@ -203,9 +203,9 @@ const hazUi = await desk.evaluate(() => {
 ok(hazUi.vis === "visible" && hazUi.labVis === "visible", "hazard layers visible");
 ok(hazUi.n > 0 && hazUi.nLab > 0, "hazard polygons and origLabel points");
 ok(!!hazUi.lab0, "origLabel on point " + hazUi.lab0);
-ok(/current advisories/i.test(hazUi.st), "status current advisories: " + hazUi.st);
+ok(/current advisories|\d+ adv\./i.test(hazUi.st), "status current advisories: " + hazUi.st);
 ok(hazUi.persist === "1", "hazard toggle persisted");
-ok(!/no hazards/i.test(hazUi.st) || /current advisories/i.test(hazUi.st), "status not a false all-clear");
+ok(!/no hazards/i.test(hazUi.st) || /current advisories|\d+ adv\./i.test(hazUi.st), "status not a false all-clear");
 evidence.deskHaz = hazUi;
 await desk.evaluate(() => map.flyTo({ center: [55, 25], zoom: 4, duration: 0 }));
 await new Promise((r) => setTimeout(r, 800));
@@ -321,28 +321,38 @@ ok(search.ok, "search still finds callsign");
 
 const mob = await open(390, 844);
 const ui390 = await mob.evaluate(() => {
-  const lg = document.querySelector(".lg");
+  const wxbtn = document.getElementById("wxbtn");
+  const infobtn = document.getElementById("infobtn");
+  if (typeof toggleInfo === "function") toggleInfo();
+  const lg = document.querySelector(".infosheet .lg, .lg");
   const cs = lg ? getComputedStyle(lg) : null;
-  const wx = document.getElementById("wxctl");
-  const wxcs = wx ? getComputedStyle(wx) : null;
-  return { legendDisplay: cs && cs.display, wxBottom: wxcs && wxcs.bottom, wxTop: wxcs && wxcs.top, fsb: !!document.getElementById("fsb"), mfsb: !!document.getElementById("mfsb") };
+  const sheet = document.getElementById("infosheet");
+  return {
+    wxText: (wxbtn && wxbtn.textContent || "").replace(/\s+/g, " ").trim(),
+    wxH: wxbtn && wxbtn.getBoundingClientRect().height,
+    info: !!(infobtn && infobtn.getBoundingClientRect().height > 20),
+    legendInInfo: !!(sheet && !sheet.hidden && cs && cs.display !== "none"),
+    fsb: !!document.getElementById("fsb"),
+    mfsb: !!document.getElementById("mfsb")
+  };
 });
-ok(ui390.legendDisplay !== "none", "mobile legend stays " + ui390.legendDisplay);
-await mob.evaluate(() => { document.getElementById("wxctl").open = true; });
-await mob.click("#wxhaz");
+ok(/Weather/.test(ui390.wxText) && ui390.wxH >= 44, "mobile Weather control with text");
+ok(ui390.info && ui390.legendInInfo, "mobile legend lives in Info sheet");
+ok(!ui390.fsb && ui390.mfsb, "mobile has map fullscreen only");
+await mob.evaluate(() => { if (typeof closeSheets === "function") closeSheets(); document.getElementById("wxctl").open = true; setWx("haz", true); });
 await mob.waitForFunction(() => WX.haz && WX.haz.features && WX.haz.features.features.length > 0, { timeout: 30000 });
 await mob.evaluate(() => map.flyTo({ center: [55, 25], zoom: 3.5, duration: 0 }));
 await new Promise((r) => setTimeout(r, 800));
 await shot(mob, "wx-hazards-390");
-await mob.click("#wxmet");
+await mob.evaluate(() => setWx("met", true));
 await mob.waitForFunction(() => WX.st && WX.st.metar && WX.st.metar.length > 0, { timeout: 30000 });
 await shot(mob, "wx-metar-390");
-await mob.click("#wxwnd");
+await mob.evaluate(() => setWx("wnd", true));
 await mob.waitForFunction(() => WX.wnd && (WX.wnd.available === true || WX.wnd.available === false), { timeout: 90000 });
 await mob.evaluate(() => map.flyTo({ center: [45, 25], zoom: 3, duration: 0 }));
 await new Promise((r) => setTimeout(r, 800));
 await shot(mob, "wx-winds-390");
-const mobSt = await mob.evaluate(() => document.getElementById("wxst").textContent);
+const mobSt = await mob.evaluate(() => (document.getElementById("wxst").textContent || "") + " " + (document.getElementById("wxfull") && document.getElementById("wxfull").textContent || ""));
 ok(/advisory|METAR|GFS|unavailable/i.test(mobSt), "mobile status populated");
 evidence.mob = { ui390, st: mobSt };
 

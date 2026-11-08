@@ -55,7 +55,7 @@ function applyTrackVis(){
 function setHideTracks(on){
   localStorage.hidet=on?"1":"0";
   const el=$("hidet");if(el)el.checked=!!on;
-  const b=$("htb");if(b){b.classList.toggle("on",!!on);b.setAttribute("aria-pressed",on?"true":"false");b.textContent=on?"Show tracks":"Hide tracks"}
+  const b=$("htb");if(b){b.classList.toggle("on",!!on);b.setAttribute("aria-pressed",on?"true":"false");const t=b.querySelector("[data-role=label]");if(t)t.textContent=on?"Show tracks":"Hide tracks";else b.textContent=on?"Show tracks":"Hide tracks"}
   applyTrackVis();
 }
 function regLabelsOn(){return localStorage.reglab!=="0"}
@@ -67,7 +67,7 @@ function applyRegLab(){
 function setRegLabels(on){
   localStorage.reglab=on?"1":"0";
   const el=$("reglab");if(el)el.checked=!!on;
-  const b=$("rlb");if(b){b.classList.toggle("on",!!on);b.setAttribute("aria-pressed",on?"true":"false");b.textContent=on?"Reg labels on":"Reg labels"}
+  const b=$("rlb");if(b){b.classList.toggle("on",!!on);b.setAttribute("aria-pressed",on?"true":"false");const t=b.querySelector("[data-role=label]");if(t)t.textContent=on?"Reg on":"Reg";else b.textContent=on?"Reg labels on":"Reg labels"}
   applyRegLab();
 }
 const AMB="#ffc400",GND="#8a94a6",ALTC=["interpolate",["linear"],["get","alt"],0,"#9aa4b2",1000,"#ff5a36",10000,"#ffb000",20000,"#c6ff3a",30000,"#00e5ff",40000,"#b06bff"];
@@ -147,7 +147,8 @@ function cell(l,v,k){return `<div class="sc${k?" "+k:""}"><span>${l}</span><b>${
 function na(l){return cell(l,"Unavailable","na")}
 function hm(h){h=Math.max(0,h||0);return Math.floor(h)+"h "+Math.round((h%1)*60)+"m"}
 function gRow(h){return GND_AC.find(x=>x[0]===h)}
-function padMap(){if(!map||typeof map.loaded!=="function"||!map.loaded())return;const on=$("sp").classList.contains("on")&&!$("sp").classList.contains("min"),w=innerWidth>700;map.setPadding({top:0,left:0,bottom:on&&!w?Math.min(280,innerHeight*.42):0,right:on&&w?376:0})}
+function isPhone(){return innerWidth<=700||(innerHeight<=540&&innerWidth<=980)}
+function padMap(){if(!map||typeof map.loaded!=="function"||!map.loaded())return;const on=$("sp").classList.contains("on")&&!$("sp").classList.contains("min"),w=!isPhone();map.setPadding({top:w?0:52,left:0,bottom:on&&!w?Math.min(280,innerHeight*.42):(w?0:64),right:on&&w?376:0})}
 function openSp(){const el=$("sp");const host=$("mw")||document.body;if(el.parentNode!==host)host.appendChild(el);el.classList.add("on");el.classList.remove("min");el.style.display="flex";el.dataset.hex=SEL||"";const m=$("map");if(m&&m.scrollIntoView)m.scrollIntoView({block:"nearest",inline:"nearest"});padMap();if(map&&map.resize)map.resize()}
 function closeSp(){const el=$("sp");el.classList.remove("on","min");el.style.display="none";el.dataset.hex="";padMap();if(map&&map.resize)map.resize()}
 function selAc(){const a=L&&L.ac.find(x=>x[0]===SEL);if(a)return{hex:a[0],cs:a[1],al:a[2],typ:a[3],lat:a[4],lon:a[5],alt:a[6],gs:a[7],trk:a[8],reg:a[9],gnd:!!a[10],age:a[11],vs:a[12],held:false,st:a[10]?"ground":"airborne",src:"live"};
@@ -401,8 +402,8 @@ function wxSetup(){
   map.addLayer({id:"wxwnd-lab",type:"symbol",source:"wxwnd",minzoom:4.5,layout:{visibility:"none","text-field":["to-string",["get","kt"]],"text-size":9,"text-offset":[0,1.1],"text-font":["Open Sans Regular"],"text-optional":true},paint:{"text-color":"#e6f1ff","text-halo-color":"#05070d","text-halo-width":1}});
   if(!map.hasImage("airport"))map.addImage("airport",airportMark(),{sdf:true});
   map.addSource("wxmet",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-  map.addLayer({id:"wxmet",type:"symbol",source:"wxmet",minzoom:2.2,layout:{visibility:wxOn("met")?"visible":"none","icon-image":"airport","icon-size":["interpolate",["linear"],["zoom"],2,.34,8,.68],"icon-anchor":"center","icon-allow-overlap":true,"icon-ignore-placement":true},paint:{"icon-color":["match",["get","fltCat"],"VFR","#7cff6b","MVFR","#3aa0ff","IFR","#ff5a36","LIFR","#ff2fd6","#c9d6ea"],"icon-halo-color":"#05070d","icon-halo-width":1.3}});
-  map.addLayer({id:"wxmet-lab",type:"symbol",source:"wxmet",minzoom:3.6,layout:{visibility:wxOn("met")?"visible":"none","text-field":["get","lab"],"text-size":["interpolate",["linear"],["zoom"],3.6,9,8,11.5],"text-font":["Open Sans Regular"],"text-optional":true,"text-allow-overlap":false,"text-ignore-placement":false,"text-padding":3,"text-line-height":1.05,"text-max-width":18,"text-variable-anchor":["left","right","bottom","top"],"text-radial-offset":1.2,"text-justify":"auto"},paint:{"text-color":["case",["==",["get","stale"],1],"#ffb020","#e6f1ff"],"text-halo-color":"#05070d","text-halo-width":1.5}});
+  map.addLayer({id:"wxmet",type:"symbol",source:"wxmet",minzoom:0,layout:{visibility:wxOn("met")?"visible":"none","icon-image":"airport","icon-size":["interpolate",["linear"],["zoom"],0,.46,2,.55,5,.68,8,.82],"icon-anchor":"center","icon-allow-overlap":true,"icon-ignore-placement":true,"icon-padding":0},paint:{"icon-color":["match",["get","fltCat"],"VFR","#7cff6b","MVFR","#3aa0ff","IFR","#ff5a36","LIFR","#ff2fd6","#e8f0ff"],"icon-halo-color":"#05070d","icon-halo-width":1.5}});
+  map.addLayer({id:"wxmet-lab",type:"symbol",source:"wxmet",minzoom:2.4,layout:{visibility:wxOn("met")?"visible":"none","text-field":["step",["zoom"],["get","labShort"],4.4,["get","lab"]],"text-size":["interpolate",["linear"],["zoom"],2.4,10,4.4,11,7,13],"text-font":["Open Sans Regular"],"text-optional":true,"text-allow-overlap":false,"text-ignore-placement":false,"text-padding":2,"text-line-height":1.05,"text-max-width":16,"text-variable-anchor":["left","right","bottom","top"],"text-radial-offset":1.15,"text-justify":"auto"},paint:{"text-color":["case",["==",["get","stale"],1],"#ffb020","#e6f1ff"],"text-halo-color":"#05070d","text-halo-width":1.6}});
   const pop=html=>new maplibregl.Popup({maxWidth:"320px"}).setHTML(`<div style="color:#000;font:12px/1.4 sans-serif">${html}</div>`);
   map.on("click","wxhaz-fill",e=>{const p=e.features[0].properties;pop(wxHazHtml(p)).setLngLat(e.lngLat).addTo(map)});
   map.on("click","wxhaz-line",e=>{const p=e.features[0].properties;pop(wxHazHtml(p)).setLngLat(e.lngLat).addTo(map)});
@@ -439,6 +440,7 @@ function wxMetFeat(m){
     icao:m.icao||"", name:m.name||"", fltCat:m.fltCat||"", raw:m.raw||"", obsTime:m.obsTime||"",
     tempC:m.tempC==null?"":String(m.tempC), windText:wind,
     pressPa:m.pressPa==null?"":String(m.pressPa), pressRef:m.pressRef||"", pressVia:m.pressVia||"",
+    labShort:[m.icao,temp+" · "+wind].join("\n"),
     lab:[m.icao,temp+" · "+wind,pa,stale?clock+" · "+ageBit+" · stale":clock+" · "+ageBit].join("\n"),
     stale:stale?1:0, ageMin:age==null?"":String(age)
   };
@@ -453,26 +455,31 @@ function wxMetHtml(p){
   const stale=+p.stale===1?" · stale (not a live minute reading)":" · not a live minute reading";
   return `<b>METAR · measured observation</b><br>${esc(p.icao)} ${esc(p.name||"")}<br>${temp} · ${wind}<br>${pa}${ref}<br>${p.obsTime?esc(String(p.obsTime).replace("T"," ").slice(0,16))+" UTC":"obs time n/a"} · ${age}${stale}${p.fltCat?" · "+esc(p.fltCat):""}<br><code>${esc(p.raw||"")}</code>${taf?`<br><b>TAF · terminal forecast</b><br>Issued ${esc(String(taf.issueTime||"").replace("T"," ").slice(0,16))} UTC<br>Valid ${esc(String(taf.validFrom||"").slice(0,16))} → ${esc(String(taf.validTo||"").slice(0,16))}<br><code>${esc(taf.raw||"")}</code>`:"<br>TAF unavailable for this station in the current cache."}<br><i>Not for operational flight planning. NOAA/NWS AWC. Times UTC.</i>`}
 function wxStatus(msg,err){
-  const el=$("wxst");if(!el)return;
-  const bits=[];
+  const el=$("wxst"), full=$("wxfull"), btn=$("wxbtn");
+  const bits=[], chip=[];
+  const isErr=!!(err||(wxOn("haz")&&WX.haz&&WX.haz.error)||(wxOn("met")&&WX.st&&WX.st.error)||(wxOn("wnd")&&WX.wnd&&!WX.wnd.available));
   if(msg)bits.push(msg);
   if(wxOn("haz")&&WX.haz){
-    if(WX.haz.error)bits.push(WX.haz.error);
-    else bits.push(`${WX.haz.counts&&WX.haz.counts.current||0} current advisories`+(WX.haz.expiredOmitted?` · ${WX.haz.expiredOmitted} expired omitted`:"" )+(WX.haz.stale?" · stale cache":""));
+    if(WX.haz.error){bits.push(WX.haz.error);chip.push("hazards error")}
+    else {bits.push(`${WX.haz.counts&&WX.haz.counts.current||0} current advisories`+(WX.haz.expiredOmitted?` · ${WX.haz.expiredOmitted} expired omitted`:"" )+(WX.haz.stale?" · stale cache":""));chip.push((WX.haz.counts&&WX.haz.counts.current||0)+" adv."+(WX.haz.stale?" stale":""))}
   }
   if(wxOn("met")&&WX.st){
-    if(WX.st.error)bits.push(WX.st.error);
-    else bits.push(`${(WX.st.metar||[]).length} METARs / ${(WX.st.taf||[]).length} TAFs`);
+    if(WX.st.error){bits.push(WX.st.error);chip.push("METAR error")}
+    else {bits.push(`${(WX.st.metar||[]).length} METARs / ${(WX.st.taf||[]).length} TAFs`);chip.push((WX.st.metar||[]).length+" METAR")}
   }
   if(wxOn("wnd")){
     const w=WX.wnd;
-    if(!w) bits.push("Loading GFS winds…");
-    else if(w.available) bits.push(`GFS winds ${w.cycle_utc?w.cycle_utc.replace("T"," ").slice(0,16)+" UTC cycle":""} · forecast, not observed`);
-    else bits.push("Forecast winds aloft unavailable: "+(w.reason||"no GFS grid").split(". ")[0]+".");
+    if(!w) {bits.push("Loading GFS winds…");chip.push("GFS…")}
+    else if(w.available) {bits.push(`GFS winds ${w.cycle_utc?w.cycle_utc.replace("T"," ").slice(0,16)+" UTC cycle":""} · forecast, not observed`);chip.push("GFS winds")}
+    else {bits.push("Forecast winds aloft unavailable: "+(w.reason||"no GFS grid").split(". ")[0]+".");chip.push("GFS unavailable")}
   }
-  if(!bits.length){el.hidden=true;el.textContent="";return}
-  el.hidden=false;el.classList.toggle("err",!!(err||(wxOn("haz")&&WX.haz&&WX.haz.error)||(wxOn("met")&&WX.st&&WX.st.error)||(wxOn("wnd")&&WX.wnd&&!WX.wnd.available)));
-  el.textContent=bits.join(" · ")+" Not for operational flight planning. NOAA/NWS AWC. Times UTC.";
+  if(btn){btn.classList.toggle("on",wxOn("haz")||wxOn("met")||wxOn("wnd"));btn.classList.toggle("err",isErr);btn.setAttribute("aria-pressed",(wxOn("haz")||wxOn("met")||wxOn("wnd"))?"true":"false")}
+  if(full) full.textContent=bits.length?bits.join(" · ")+" Not for operational flight planning. NOAA/NWS AWC. Times UTC. Upstream errors are not “no hazards”.":"Weather overlays off. Enable Airport METAR/TAF for runway icons with measured temp, wind and QNH in Pa. Not for operational flight planning. NOAA/NWS AWC. Times UTC.";
+  if(!el)return;
+  if(!chip.length){el.hidden=true;el.textContent="";el.classList.remove("err");return}
+  el.hidden=false;el.classList.toggle("err",isErr);
+  el.textContent=chip.join(" · ");
+  el.title=bits.join(" · ");
 }
 async function wxLoad(which){
   if(which==="haz"||which==="all"){
