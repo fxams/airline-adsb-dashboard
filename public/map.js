@@ -31,7 +31,7 @@ function isGapPt(p0,p1){
 }
 function gndLike(p){return p[6]===1 || ((p[3]||0)===0 && (p[4]||0)<40)}
 function airLike(p){return p[6]!==1 && ((p[3]||0)>=400 || ((p[3]||0)>50 && (p[4]||0)>80))}
-function utcClock(ms){const d=new Date(ms);return isNaN(+d)?null:d.toISOString().slice(0,16).replace("T"," ")+" UTC"}
+function utcClock(ms){const d=new Date(ms);if(isNaN(+d))return null;const i=d.toISOString();return `${i.slice(0,10)}<br>${i.slice(11,16)} UTC`}
 function posFresh(a){if(!a||a.held||a.gnd||a.src!=="live")return false; if((a.age||0)>60)return false; if(L&&L.at&&Date.now()-Date.parse(L.at)>120000)return false; return a.gs>120}
 function observedEvents(P,a){
   const ev={takeoff:null,landing:null,since:P[0]?P[0][0]:null};
