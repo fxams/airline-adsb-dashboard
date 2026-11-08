@@ -89,6 +89,7 @@ function initMap(){map=new maplibregl.Map({container:"map",style:"https://basema
  map.on("load",async()=>{map.addImage("plane",plane(),{sdf:true});
   const cf=H.map.filter(r=>H.ap[r[1]]&&H.ap[r[2]]).map(r=>({type:"Feature",properties:{a:r[0],n:r[3],inf:r[4]||0,low:(r[3]<5||(r[4]||0)/r[3]>.5)?1:0,r:r[1]+"-"+r[2]},geometry:{type:"LineString",coordinates:gc(H.ap[r[1]],H.ap[r[2]])}}));
   map.addSource("cov",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addLayer({id:"cov",type:"fill",source:"cov",paint:{"fill-color":"#3aa0ff","fill-opacity":.06}});map.addSource("covb",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addLayer({id:"covb",type:"line",source:"covb",layout:{"line-join":"round",visibility:localStorage.cvb==="0"?"none":"visible"},paint:{"line-color":"#5cc8ff","line-width":["interpolate",["linear"],["zoom"],1,.8,6,1.6],"line-opacity":.85}});
+  wxSetup();
   map.addSource("arcs",{type:"geojson",data:{type:"FeatureCollection",features:cf}});
   map.addLayer({id:"arcs",type:"line",source:"arcs",layout:{visibility:"none"},paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":["interpolate",["linear"],["get","n"],1,.3,1600,1.4],"line-opacity":["case",["==",["get","low"],1],.12,.35],"line-dasharray":[2,2]}});
   TK=await fetch("/api/tracks").then(r=>r.json()).catch(()=>({f:[]}));
@@ -118,7 +119,7 @@ function initMap(){map=new maplibregl.Map({container:"map",style:"https://basema
   map.on("click","arcs",e=>{const p=e.features[0].properties;new maplibregl.Popup().setLngLat(e.lngLat).setHTML(`<span style="color:#000">${p.a} ${p.r}: ${fmt(p.n)} flights${p.inf?` (${p.inf} with one end inferred)`:""}${p.low?" · low confidence":""}</span>`).addTo(map)});
   ["live","arcs"].forEach(l=>{map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",l,()=>map.getCanvas().style.cursor="")});
   CSR=await fetch("/api/csroute").then(r=>r.json()).catch(()=>null);
-  const tick=()=>{if(Date.now()-lastFrame>1000){lastFrame=Date.now();drawLive()}requestAnimationFrame(tick)};tick();onPoll();covDraw();setApt(localStorage.apt||"G");applyTrackVis();applyRegLab()})}
+  const tick=()=>{if(Date.now()-lastFrame>1000){lastFrame=Date.now();drawLive()}requestAnimationFrame(tick)};tick();onPoll();covDraw();setApt(localStorage.apt||"G");applyTrackVis();applyRegLab();syncWx()})}
 function colorMode(){if(!map.getLayer("live"))return;const m=$("cm").value;
  map.setPaintProperty("live","icon-color",["case",["==",["get","s"],1],"#ffffff",["==",["get","g"],1],GND,m==="alt"?ALTC:["match",["get","a"],"QTR",C1,"UAE",C2,AMB]]);
  $("lgc").innerHTML=m==="alt"?`<b>Altitude</b> <i style="background:#ff5a36"></i>&lt;10k <i style="background:#ffb000"></i>10–20k <i style="background:#c6ff3a"></i>20–30k <i style="background:#00e5ff"></i>30–40k <i style="background:#b06bff"></i>40k+ ft`:`<i style="background:${C1}"></i>QTR <i style="background:${C2}"></i>UAE <i style="background:${AMB}"></i>other airlines`}
@@ -146,9 +147,9 @@ function apBox(ap,side){if(!ap)return `<div class="ode ${side}"><div class="iata
 function routeEnds(cs){const db=DB&&DB.found?{o:{iata:DB.origin.iata||"",icao:DB.origin.icao||"",name:DB.origin.name||"",city:DB.origin.city||"",lat:DB.origin.lat,lon:DB.origin.lon},d:{iata:DB.destination.iata||"",icao:DB.destination.icao||"",name:DB.destination.name||"",city:DB.destination.city||"",lat:DB.destination.lat,lon:DB.destination.lon},oi:DB.origin.iata||DB.origin.icao,di:DB.destination.iata||DB.destination.icao}:null;
  const hi0=odOf(cs),hi=hi0?{o:{iata:hi0.o,icao:"",name:"",city:hi0.O[2]||"",lat:hi0.O[0],lon:hi0.O[1]},d:{iata:hi0.d,icao:"",name:"",city:hi0.D[2]||"",lat:hi0.D[0],lon:hi0.D[1]},oi:hi0.o,di:hi0.d,n:hi0.n,tot:hi0.tot}:null;
  return{db,hi,od:db||hi}}
-async function select(h){SEL=h;DB=null;SEL_T=[];openSp();gPaint();const ac0=selAc();const cs=ac0&&ac0.cs;
- if(cs)fetch("/api/route?cs="+encodeURIComponent(cs)).then(r=>r.json()).then(j=>{if(SEL===h){DB=j;selUpdate()}}).catch(()=>{if(SEL===h){DB={found:false};selUpdate()}});
- const r=await fetch("/api/track?hex="+h+"&t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>({points:[]}));if(SEL!==h)return;SEL_T=r.points||[];selUpdate(true)}
+async function select(h){SEL=h;DB=null;SEL_T=[];openSp();gPaint();wxPanel();const ac0=selAc();const cs=ac0&&ac0.cs;
+ if(cs)fetch("/api/route?cs="+encodeURIComponent(cs)).then(r=>r.json()).then(j=>{if(SEL===h){DB=j;selUpdate();wxPanel()}}).catch(()=>{if(SEL===h){DB={found:false};selUpdate();wxPanel()}});
+ const r=await fetch("/api/track?hex="+h+"&t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>({points:[]}));if(SEL!==h)return;SEL_T=r.points||[];selUpdate(true);wxPanel()}
 function selUpdate(first){const a=selAc();if(!a){unsel();return}
  const snap=[a.lon,a.lat], shown=dispLonLat(a.lat,a.lon,a.gs,a.trk,a.gnd||a.held), {db,hi,od}=routeEnds(a.cs), F=[];
  let P=SEL_T.length?SEL_T.slice():[];
@@ -216,7 +217,7 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
   {name:"Ground speed kt",type:"line",yAxisIndex:1,showSymbol:false,color:C1,data:P.map(p=>[p[0],p[4]])},{name:"Vertical rate fpm",type:"line",yAxisIndex:1,showSymbol:false,color:C2,data:P.map(p=>[p[0],(p[5]||0)/10])}]});
  $("spn").textContent=P.length>=2?`Vertical profile: ${P.length} positions recorded by this server (UTC, since it began tracking this hex; max ~3 h). Not a full flight history. Dashed yellow = dead-reckoning join to the displayed marker; grey dashes = coverage gap, not flown track.`:"Vertical profile unavailable: this server has not yet stored two positions for this hex.";
  if(first)map.easeTo({center:shown,zoom:Math.max(map.getZoom(),4),padding:innerWidth>700?{right:376,top:0,left:0,bottom:0}:{top:0,left:0,right:0,bottom:120}})}
-function unsel(){SEL=null;SEL_T=[];DB=null;SEL_DRAW="";closeSp();if(map&&map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:[]});gPaint()}
+function unsel(){SEL=null;SEL_T=[];DB=null;SEL_DRAW="";closeSp();if(map&&map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:[]});gPaint();const w=$("spwx");if(w)w.innerHTML=""}
 const IATA={QR:"QTR",EK:"UAE",EY:"ETD",BA:"BAW",AA:"AAL",DL:"DAL",UA:"UAL",LH:"DLH",AF:"AFR",KL:"KLM",VS:"VIR",SQ:"SIA",CX:"CPA",QF:"QFA",TK:"THY",SV:"SVA",MS:"MSR",AC:"ACA",NH:"ANA",JL:"JAL",KE:"KAL",CZ:"CSN",MU:"CES",CA:"CCA",NZ:"ANZ",AY:"FIN",SK:"SAS",LX:"SWR",OS:"AUA",IB:"IBE",AZ:"AZA",TP:"TAP",EI:"EIN",FR:"RYR",WN:"SWA",B6:"JBU",AS:"ASA",NK:"NKS",F9:"FFT",HA:"HAL",AM:"AMX",LA:"LAN",AV:"AVA",CM:"CMP",AR:"ARG",G3:"GLO",AD:"AZU",AI:"AIC",MH:"MAS",GA:"GIA",PR:"PAL",VA:"VOZ",AK:"AXM",JQ:"JST",SA:"SAA",ET:"ETH",KQ:"KQA",AT:"RAM",GF:"GFA",WY:"OMA",RJ:"RJA",ME:"MEA",KU:"KAC",PK:"PIA",UL:"ALK",TG:"THA",VN:"HVN",OZ:"AAR",BR:"EVA",CI:"CAL",HU:"CHH",LY:"ELY",DY:"NAX",W6:"WZZ",VY:"VLG",A3:"AEE",LO:"LOT",RO:"ROT",BT:"BTI",FI:"ICE",PC:"PGT",SU:"AFL",S7:"SBI",U6:"SVR",WS:"WJA",TS:"TSC",FJ:"FJI",HR:"CTN",OU:"CTN",OK:"CSA",SN:"BEL",U2:"EZY"};
 function normQ(s){return String(s||"").toUpperCase().replace(/[\s\-]/g,"")}
 function icaoAlias(q){const m=String(q).match(/^([A-Z]{2})([0-9A-Z]{1,6})$/);return m&&IATA[m[1]]?IATA[m[1]]+m[2]:null}
@@ -324,3 +325,269 @@ async function gLoad(){const a=APT;if(a==="G")return;const j=await fetch("/api/g
  $("gpl").innerHTML="<tr><th>Callsign</th><th>Type</th><th>Status</th><th>kt</th><th>Last seen</th></tr>"+(r.length?r.sort((p,q)=>(p[11]==="held")-(q[11]==="held")||(p[1]<q[1]?-1:1)).map(row).join(""):'<tr><td colspan="5" class="mu">No live or held ground aircraft right now.</td></tr>')}
 function gPaint(r){if(!map||!map.getSource("gnd"))return;const rows=r||GND_AC.filter(x=>$("gall").checked||x[2]==="QTR"||x[2]==="UAE");
  map.getSource("gnd").setData({type:"FeatureCollection",features:rows.map(x=>{const rg=(x[14]||REG_BY_HEX[x[0]]||"").trim();return{type:"Feature",properties:{h:x[0],cs:x[1]||x[0],tr:x[6],st:x[8],mode:x[11]||"live",s:x[0]===SEL?1:0,...(rg?{reg:rg}:{})},geometry:{type:"Point",coordinates:[x[5],x[4]]}}})});applyRegLab()}
+
+let WX={haz:null,st:null,wnd:null,load:{}};
+const WX_COL=["match",["get","hz"],"TS","#ff7a45","CONVECTIVE","#ff7a45","TURB","#ff2fd6","TURB-LO","#d67aff","ICE","#5ce1ff","TC","#b06bff","VA","#ffe14d","IFR","#8aa0bf","MTW","#c6ff3a","#ffb020"];
+function wxOn(k){return localStorage["wx"+k]==="1"}
+function setWx(k,on){
+  localStorage["wx"+k]=on?"1":"0";
+  const id={haz:"wxhaz",met:"wxmet",wnd:"wxwnd"}[k];
+  if($(id))$(id).checked=!!on;
+  applyWxVis();
+  if(on)wxLoad(k==="met"?"st":k);
+  else wxStatus();
+  if(SEL)wxPanel();
+}
+function applyWxVis(){
+  if(!map)return;
+  const vis=on=>on?"visible":"none";
+  if(map.getLayer("wxhaz-fill"))map.setLayoutProperty("wxhaz-fill","visibility",vis(wxOn("haz")));
+  if(map.getLayer("wxhaz-line"))map.setLayoutProperty("wxhaz-line","visibility",vis(wxOn("haz")));
+  if(map.getLayer("wxmet"))map.setLayoutProperty("wxmet","visibility",vis(wxOn("met")));
+  if(map.getLayer("wxmet-lab"))map.setLayoutProperty("wxmet-lab","visibility",vis(wxOn("met")));
+  if(map.getLayer("wxwnd"))map.setLayoutProperty("wxwnd","visibility",vis(wxOn("wnd")&&WX.wnd&&WX.wnd.available));
+  if(map.getLayer("wxwnd-lab"))map.setLayoutProperty("wxwnd-lab","visibility",vis(wxOn("wnd")&&WX.wnd&&WX.wnd.available));
+  if(map.getLayer("wxhaz-lab"))map.setLayoutProperty("wxhaz-lab","visibility",vis(wxOn("haz")));
+}
+function wxRingC(r){
+  if(!r||r.length<1)return null;
+  let n=r.length;
+  if(n>1&&r[0][0]===r[n-1][0]&&r[0][1]===r[n-1][1])n--;
+  if(n<1)return null;
+  let x=0,y=0;
+  for(let i=0;i<n;i++){x+=r[i][0];y+=r[i][1]}
+  return [x/n,y/n];
+}
+function wxLabPts(fc){
+  const out=[];
+  for(const f of (fc&&fc.features)||[]){
+    const g=f.geometry; if(!g) continue;
+    let c=null;
+    if(g.type==="Polygon") c=wxRingC(g.coordinates[0]);
+    else if(g.type==="MultiPolygon") c=wxRingC((g.coordinates[0]||[])[0]);
+    else if(g.type==="LineString") c=g.coordinates[Math.floor(g.coordinates.length/2)];
+    else if(g.type==="MultiLineString"){const r=g.coordinates[0]||[]; c=r[Math.floor(r.length/2)]}
+    if(c) out.push({type:"Feature",properties:f.properties,geometry:{type:"Point",coordinates:c}});
+  }
+  return {type:"FeatureCollection",features:out};
+}
+function wxSetHaz(fc){
+  const data=fc&&fc.type==="FeatureCollection"?fc:{type:"FeatureCollection",features:[]};
+  if(map&&map.getSource("wxhaz"))map.getSource("wxhaz").setData(data);
+  if(map&&map.getSource("wxhaz-pts"))map.getSource("wxhaz-pts").setData(wxLabPts(data));
+}
+function wxSetup(){
+  if(!map||map.getSource("wxhaz"))return;
+  map.addSource("wxhaz",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+  map.addSource("wxhaz-pts",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+  map.addLayer({id:"wxhaz-fill",type:"fill",source:"wxhaz",filter:["any",["==",["geometry-type"],"Polygon"],["==",["geometry-type"],"MultiPolygon"]],layout:{visibility:wxOn("haz")?"visible":"none"},paint:{"fill-color":WX_COL,"fill-opacity":["match",["get","product"],"gairmet",.1,.2]}});
+  map.addLayer({id:"wxhaz-line",type:"line",source:"wxhaz",layout:{visibility:wxOn("haz")?"visible":"none"},paint:{"line-color":WX_COL,"line-width":["match",["get","product"],"gairmet",1,1.6],"line-opacity":.85}});
+  map.addLayer({id:"wxhaz-lab",type:"symbol",source:"wxhaz-pts",minzoom:3.4,layout:{visibility:wxOn("haz")?"visible":"none","text-field":["coalesce",["get","origLabel"],["get","seriesId"],["get","hazard"]],"text-size":10,"text-font":["Open Sans Regular"],"text-optional":true,"symbol-placement":"point","text-allow-overlap":false},paint:{"text-color":WX_COL,"text-halo-color":"#05070d","text-halo-width":1.2}});
+  map.addSource("wxwnd",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+  if(!map.hasImage("warrow")){const s=32,c=document.createElement("canvas");c.width=c.height=s;const x=c.getContext("2d");x.translate(16,16);x.rotate(0);x.fillStyle="#fff";x.beginPath();x.moveTo(0,-12);x.lineTo(5,10);x.lineTo(0,6);x.lineTo(-5,10);x.closePath();x.fill();map.addImage("warrow",x.getImageData(0,0,s,s),{sdf:true})}
+  map.addLayer({id:"wxwnd",type:"symbol",source:"wxwnd",minzoom:2.4,layout:{visibility:"none","icon-image":"warrow","icon-size":["interpolate",["linear"],["zoom"],2,.35,6,.7],"icon-rotate":["get","dir"],"icon-rotation-alignment":"map","icon-allow-overlap":true,"icon-ignore-placement":true},paint:{"icon-color":["interpolate",["linear"],["get","kt"],10,"#8aa0bf",40,"#7cff6b",80,"#ffb020",120,"#ff5a36"],"icon-halo-color":"#05070d","icon-halo-width":.4}});
+  map.addLayer({id:"wxwnd-lab",type:"symbol",source:"wxwnd",minzoom:4.5,layout:{visibility:"none","text-field":["to-string",["get","kt"]],"text-size":9,"text-offset":[0,1.1],"text-font":["Open Sans Regular"],"text-optional":true},paint:{"text-color":"#e6f1ff","text-halo-color":"#05070d","text-halo-width":1}});
+  map.addSource("wxmet",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+  map.addLayer({id:"wxmet",type:"circle",source:"wxmet",minzoom:2.2,layout:{visibility:wxOn("met")?"visible":"none"},paint:{"circle-radius":["interpolate",["linear"],["zoom"],2,3,6,6],"circle-color":["match",["get","fltCat"],"VFR","#7cff6b","MVFR","#3aa0ff","IFR","#ff5a36","LIFR","#ff2fd6","#8aa0bf"],"circle-stroke-width":1,"circle-stroke-color":"#05070d"}});
+  map.addLayer({id:"wxmet-lab",type:"symbol",source:"wxmet",minzoom:4.2,layout:{visibility:wxOn("met")?"visible":"none","text-field":["get","icao"],"text-size":10,"text-offset":[0,1.1],"text-font":["Open Sans Regular"],"text-optional":true},paint:{"text-color":"#e6f1ff","text-halo-color":"#05070d","text-halo-width":1.2}});
+  const pop=html=>new maplibregl.Popup({maxWidth:"320px"}).setHTML(`<div style="color:#000;font:12px/1.4 sans-serif">${html}</div>`);
+  map.on("click","wxhaz-fill",e=>{const p=e.features[0].properties;pop(wxHazHtml(p)).setLngLat(e.lngLat).addTo(map)});
+  map.on("click","wxhaz-line",e=>{const p=e.features[0].properties;pop(wxHazHtml(p)).setLngLat(e.lngLat).addTo(map)});
+  map.on("click","wxmet",e=>{const p=e.features[0].properties;pop(wxMetHtml(p)).setLngLat(e.lngLat).addTo(map)});
+  map.on("click","wxwnd",e=>{const p=e.features[0].properties;pop(wxWndHtml(p)).setLngLat(e.lngLat).addTo(map)});
+  ["wxhaz-fill","wxhaz-line","wxmet","wxwnd"].forEach(l=>{map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",l,()=>map.getCanvas().style.cursor="")});
+}
+function wxHazHtml(p){
+  const kind=p.product==="isigmet"?"International SIGMET":p.product==="airsigmet"?"US SIGMET":p.product==="gairmet"?"US G-AIRMET (CONUS-only advisory, not a SIGMET)":esc(p.product||"Advisory");
+  return `<b>${esc(p.origLabel||p.seriesId||p.hazard||"Advisory")}</b><br><i>Advisory · not a measured observation · not live turbulence</i><br>${esc(kind)}<br>${p.rawHeader?esc(p.rawHeader)+"<br>":""}${p.firName||p.fir?esc(p.firName||p.fir)+"<br>":""}${p.issueTime?`Issued ${utcShort(p.issueTime)}<br>`:""}Valid ${utcShort(p.validFrom)} → ${utcShort(p.validTo)}${p.top!=null?`<br>Top ${esc(p.top)} ft`:""}<br><span style="white-space:pre-wrap">${esc(p.raw||"")}</span><br><i>Not for operational flight planning. NOAA/NWS AWC / origin agency. Times UTC.</i>`}
+function wxWndHtml(p){
+  return `<b>GFS forecast winds aloft</b> (model forecast, not an observation)<br>${esc(p.hpa)} hPa · valid ${utcShort(p.valid)} · cycle ${utcShort(p.cycle)} · F${esc(p.fh)}<br>${esc(p.kt)} kt from ${esc(p.from)}°${p.tC!=null?` · ${esc(p.tC)} °C`:""}<br><i>NOAA GFS 1.0° subset via NOMADS grib filter. Not WAFS. Not for operational flight planning. Times UTC.</i>`}
+function wxMetHtml(p){
+  const taf=WX.st&&WX.st.taf&&WX.st.taf.find(t=>t.icao===p.icao);
+  return `<b>METAR · measured observation</b><br>${esc(p.icao)} ${esc(p.name||"")}<br>${p.obsTime?esc(String(p.obsTime).replace("T"," ").slice(0,16))+" UTC":""}${p.fltCat?" · "+esc(p.fltCat):""}<br><code>${esc(p.raw||"")}</code>${taf?`<br><b>TAF · terminal forecast</b><br>Issued ${esc(String(taf.issueTime||"").replace("T"," ").slice(0,16))} UTC<br>Valid ${esc(String(taf.validFrom||"").slice(0,16))} → ${esc(String(taf.validTo||"").slice(0,16))}<br><code>${esc(taf.raw||"")}</code>`:"<br>TAF unavailable for this station in the current cache."}<br><i>Not for operational flight planning. NOAA/NWS AWC.</i>`}
+function wxStatus(msg,err){
+  const el=$("wxst");if(!el)return;
+  const bits=[];
+  if(msg)bits.push(msg);
+  if(wxOn("haz")&&WX.haz){
+    if(WX.haz.error)bits.push(WX.haz.error);
+    else bits.push(`${WX.haz.counts&&WX.haz.counts.current||0} current advisories`+(WX.haz.expiredOmitted?` · ${WX.haz.expiredOmitted} expired omitted`:"" )+(WX.haz.stale?" · stale cache":""));
+  }
+  if(wxOn("met")&&WX.st){
+    if(WX.st.error)bits.push(WX.st.error);
+    else bits.push(`${(WX.st.metar||[]).length} METARs / ${(WX.st.taf||[]).length} TAFs`);
+  }
+  if(wxOn("wnd")){
+    const w=WX.wnd;
+    if(!w) bits.push("Loading GFS winds…");
+    else if(w.available) bits.push(`GFS winds ${w.cycle_utc?w.cycle_utc.replace("T"," ").slice(0,16)+" UTC cycle":""} · forecast, not observed`);
+    else bits.push("Forecast winds aloft unavailable: "+(w.reason||"no GFS grid").split(". ")[0]+".");
+  }
+  if(!bits.length){el.hidden=true;el.textContent="";return}
+  el.hidden=false;el.classList.toggle("err",!!(err||(wxOn("haz")&&WX.haz&&WX.haz.error)||(wxOn("met")&&WX.st&&WX.st.error)||(wxOn("wnd")&&WX.wnd&&!WX.wnd.available)));
+  el.textContent=bits.join(" · ")+" Not for operational flight planning. NOAA/NWS AWC. Times UTC.";
+}
+async function wxLoad(which){
+  if(which==="haz"||which==="all"){
+    if(WX.load.haz)return WX.load.haz;
+    WX.load.haz=fetch("/api/wx/hazards").then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status))).then(j=>{WX.haz=j;WX.load.haz=null;wxSetHaz(j.features);wxStatus();if(SEL)wxPanel();return j}).catch(e=>{WX.load.haz=null;WX.haz={error:"Hazard overlay unavailable: "+e.message,features:{type:"FeatureCollection",features:[]},counts:{current:0,expired:0}};wxSetHaz(WX.haz.features);wxStatus(WX.haz.error,true);if(SEL)wxPanel();});
+    await WX.load.haz;
+  }
+  if(which==="st"||which==="all"){
+    const extra=wxExtraIcao(), key=extra.slice().sort().join(",");
+    if(WX.st&&WX.st._key===key&&!WX.load.st){wxDrawMetar();return}
+    const q=extra.length?"?ids="+encodeURIComponent(extra.join(",")):"";
+    if(WX.load.st)return WX.load.st;
+    WX.load.st=fetch("/api/wx/stations"+q).then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status))).then(j=>{j._key=key;WX.st=j;WX.load.st=null;wxDrawMetar();wxStatus();if(SEL)wxPanel();return j}).catch(e=>{WX.load.st=null;WX.st={error:"METAR/TAF unavailable: "+e.message,metar:[],taf:[],_key:key};wxDrawMetar();wxStatus(WX.st.error,true);if(SEL)wxPanel();});
+    await WX.load.st;
+  }
+  if(which==="wnd"||which==="all"){
+    if(WX.load.wnd)return WX.load.wnd;
+    WX.load.wnd=fetch("/api/wx/winds").then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status))).then(j=>{WX.wnd=j;WX.load.wnd=null;wxFillWindSelects();wxDrawWind();applyWxVis();wxStatus();if(SEL)wxPanel();return j}).catch(e=>{WX.wnd={available:false,status:"unavailable",reason:e.message};WX.load.wnd=null;wxFillWindSelects();wxDrawWind();applyWxVis();wxStatus();if(SEL)wxPanel();});
+    await WX.load.wnd;
+  }
+}
+function wxFillWindSelects(){
+  const lev=$("wxlev"), hr=$("wxhr"), w=WX.wnd;
+  if(!lev||!hr)return;
+  if(!w||!w.available){lev.disabled=true;hr.disabled=true;lev.innerHTML=`<option value="">unavailable</option>`;hr.innerHTML=`<option value="">unavailable</option>`;return}
+  lev.disabled=false;hr.disabled=false;
+  const curL=lev.value, curH=hr.value;
+  lev.innerHTML=(w.levels||[]).map(l=>`<option value="${l}">${l} hPa</option>`).join("");
+  hr.innerHTML=(w.times||[]).map(t=>`<option value="${t.fh}">F${t.fh} · ${String(t.valid_utc||"").replace("T"," ").slice(0,16)} UTC</option>`).join("");
+  if([...lev.options].some(o=>o.value===curL))lev.value=curL; else if([...lev.options].some(o=>o.value==="300"))lev.value="300";
+  if([...hr.options].some(o=>o.value===curH))hr.value=curH;
+}
+function wxDrawWind(){
+  if(!map||!map.getSource("wxwnd"))return;
+  const w=WX.wnd;
+  if(!wxOn("wnd")||!w||!w.available){map.getSource("wxwnd").setData({type:"FeatureCollection",features:[]});applyWxVis();return}
+  const lev=$("wxlev")&&$("wxlev").value|| (w.levels||[])[0];
+  const fh=$("wxhr")&&$("wxhr").value|| (w.times&&w.times[0]&&w.times[0].fh);
+  const rec=w.fields&&w.fields[fh+":"+lev];
+  if(!rec){map.getSource("wxwnd").setData({type:"FeatureCollection",features:[]});return}
+  const feats=[];
+  const nlon=(w.lons||[]).length;
+  for(let j=0;j<(w.lats||[]).length;j++) for(let i=0;i<nlon;i++){
+    const k=j*nlon+i, u=rec.u[k], v=rec.v[k];
+    if(u==null||v==null)continue;
+    const spd=Math.sqrt(u*u+v*v), kt=Math.round(spd*1.94384);
+    let to=Math.atan2(u,v)*180/Math.PI; if(to<0)to+=360;
+    const from=(to+180)%360;
+    feats.push({type:"Feature",properties:{kt,dir:Math.round(to),from:Math.round(from),hpa:lev,fh,valid:rec.valid_utc,cycle:rec.cycle_utc,tC:rec.tC?rec.tC[k]:null},geometry:{type:"Point",coordinates:[w.lons[i],w.lats[j]]}});
+  }
+  map.getSource("wxwnd").setData({type:"FeatureCollection",features:feats});
+  applyWxVis();
+}
+function wxDrawMetar(){
+  if(!map||!map.getSource("wxmet"))return;
+  const rows=(WX.st&&WX.st.metar)||[];
+  map.getSource("wxmet").setData({type:"FeatureCollection",features:rows.filter(m=>typeof m.lat==="number"&&typeof m.lon==="number").map(m=>({type:"Feature",properties:{icao:m.icao,name:m.name||"",fltCat:m.fltCat||"",raw:m.raw||"",obsTime:m.obsTime||""},geometry:{type:"Point",coordinates:[m.lon,m.lat]}}))});
+}
+function wxExtraIcao(){
+  const a=SEL&&selAc(), {od}=a?routeEnds(a.cs||""):{};
+  const iata={DOH:"OTHH",DXB:"OMDB",AUH:"OMAA",LHR:"EGLL",JFK:"KJFK",CDG:"LFPG",FRA:"EDDF",SIN:"WSSS",BKK:"VTBS",HKG:"VHHH",BOM:"VABB",DEL:"VIDP",SYD:"YSSY",MEL:"YMML",NRT:"RJAA",HND:"RJTT"};
+  const ids=[];
+  if(od){if(od.o&&od.o.icao)ids.push(od.o.icao);if(od.d&&od.d.icao)ids.push(od.d.icao);if(od.oi&&iata[od.oi])ids.push(iata[od.oi]);if(od.di&&iata[od.di])ids.push(iata[od.di])}
+  return [...new Set(ids.filter(Boolean))];
+}
+function pip(lon,lat,geom){
+  if(!geom)return false;
+  const ring=(coords)=>{let ins=false;const r=coords[0]||[];for(let i=0,j=r.length-1;i<r.length;j=i++){const xi=r[i][0],yi=r[i][1],xj=r[j][0],yj=r[j][1];if(((yi>lat)!==(yj>lat))&&lon<(xj-xi)*(lat-yi)/((yj-yi)||1e-12)+xi)ins=!ins}return ins};
+  if(geom.type==="Polygon")return ring(geom.coordinates);
+  if(geom.type==="MultiPolygon")return geom.coordinates.some(ring);
+  return false;
+}
+function wxHits(lon,lat,line){
+  const feats=(WX.haz&&WX.haz.features&&WX.haz.features.features)||[];
+  const at=[], along=[];
+  for(const f of feats){
+    if(pip(lon,lat,f.geometry)) at.push(f);
+    if(line&&line.length){for(const c of line){if(pip(c[0],c[1],f.geometry)){along.push(f);break}}}
+  }
+  return {at, along};
+}
+function utcShort(t){return t?String(t).replace("T"," ").slice(0,16)+" UTC":"time unavailable"}
+function wxPanel(){
+  const el=$("spwx");if(!el)return;
+  if(!SEL){el.innerHTML="";return}
+  const a=selAc();if(!a){el.innerHTML="";return}
+  const [lon,lat]=dispLonLat(a.lat,a.lon,a.gs,a.trk,a.gnd||a.held);
+  const {od}=routeEnds(a.cs);
+  let rem=null;
+  if(od&&typeof od.d.lat==="number") rem=typeof gc==="function"?gc([lat,lon],[od.d.lat,od.d.lon]):null;
+  const needHaz=true, needSt=true;
+  if(needHaz&&!WX.haz&&!WX.load.haz)wxLoad("haz");
+  if(needSt&&!WX.st&&!WX.load.st)wxLoad("st");
+  if(wxOn("wnd")&&!WX.wnd&&!WX.load.wnd)wxLoad("wnd");
+  const h=WX.haz, st=WX.st, wnd=WX.wnd;
+  let body="";
+  body+=`<div class="spsec"><h3>En-route weather ${tg("na","Not operational")}</h3>`;
+  if(!h) body+=`<p class="mu">Loading hazard advisories…</p>`;
+  else if(h.error&&!(h.features&&h.features.features&&h.features.features.length)) body+=`<p class="mu warn">${esc(h.error)} This is an upstream/cache error, not a finding of no hazards.</p>`;
+  else {
+    const hit=wxHits(lon,lat,rem);
+    const near=hit.at.slice(0,4);
+    const route=hit.along.filter(f=>!hit.at.includes(f)).slice(0,4);
+    if(h.stale) body+=`<p class="mu">Hazard cache is stale. ${esc(h.error||"")}</p>`;
+    if(near.length) body+=`<p><b>Advisories at displayed position</b> (SIGMET/G-AIRMET polygons, not live turbulence)</p>`+near.map(f=>wxAdvLine(f)).join("");
+    else body+=`<p class="mu">No current SIGMET/G-AIRMET polygon in this overlay contains the displayed position. That is not a clearance and is not “no weather”.</p>`;
+    if(route.length) body+=`<p><b>Provisional remaining-route intersections</b> (estimated great-circle to destination, <em>not</em> a filed plan)</p>`+route.map(f=>wxAdvLine(f)).join("");
+    else if(rem) body+=`<p class="mu">No current advisory polygon in this overlay intersects the estimated remaining great-circle. Intersections are provisional because the remaining route is not a filed flight plan.</p>`;
+    else body+=`<p class="mu">Remaining-route intersection unavailable: destination is unknown, so there is no estimated great-circle.</p>`;
+    if(h.counts) body+=`<p class="mu">${h.counts.current} current advisories in overlay · ${h.expiredOmitted||0} expired omitted · ${h.at?("fetched "+h.at.replace("T"," ").slice(0,16)+" UTC"):""}</p>`;
+  }
+  body+=wxStationBlock(st,od,lat,lon,a);
+  body+=wxWindBlock(wnd,a,lat,lon);
+  body+=`<p class="mu">Not for operational flight planning. NOAA/NWS Aviation Weather Center; origin meteorological authorities. Hide tracks does not change weather layers. Times UTC.</p></div>`;
+  el.innerHTML=body;
+}
+function wxAdvLine(f){
+  const p=f.properties||{};
+  const prod=p.product==="isigmet"?"International SIGMET":p.product==="airsigmet"?"US SIGMET":p.product==="gairmet"?"US G-AIRMET":"Advisory";
+  return `<div class="chip"><span>${esc(prod)} · advisory</span>${esc(p.origLabel||((p.hazard||"")+(p.qualifier?" "+p.qualifier:"")))}<div class="mu">${esc(p.rawHeader||p.firName||p.coverage||"")}${p.issueTime?`<br>Issued ${utcShort(p.issueTime)}`:""}<br>Valid ${utcShort(p.validFrom)} → ${utcShort(p.validTo)}</div></div>`;
+}
+function wxWindBlock(w,a,lat,lon){
+  if(!w) return `<p class="mu">Forecast winds aloft: enable the toggle to load NOAA GFS (1° subset). Not loaded yet.</p>`;
+  if(!w.available) return `<div class="scg">${na("Forecast winds aloft")}</div><p class="mu">${esc(w.reason||"Unavailable.")} This is not a finding of calm winds.</p>`;
+  const alt=a&&!a.gnd&&!a.held?a.alt:null;
+  const hpaWant=alt==null?300:alt>35000?200:alt>25000?300:alt>14000?500:850;
+  const levs=w.levels||[];
+  const hpa=levs.reduce((b,x)=>Math.abs(x-hpaWant)<Math.abs(b-hpaWant)?x:b, levs[0]||300);
+  const fh=(w.times&&w.times[0]&&w.times[0].fh)||6;
+  const rec=w.fields&&w.fields[fh+":"+hpa];
+  if(!rec||!w.lats||!w.lons) return `<div class="scg">${na("Forecast winds aloft")}</div><p class="mu">GFS field ${hpa} hPa F${fh} is not in the decoded subset.</p>`;
+  let bi=0,bj=0,bd=1e9;
+  for(let j=0;j<w.lats.length;j++) for(let i=0;i<w.lons.length;i++){const d=(w.lats[j]-lat)**2+(w.lons[i]-lon)**2;if(d<bd){bd=d;bi=i;bj=j}}
+  const k=bj*w.lons.length+bi, u=rec.u[k], v=rec.v[k];
+  if(u==null||v==null) return `<div class="scg">${na("Forecast winds aloft")}</div><p class="mu">No GFS sample at this location (outside the 1° subset box).</p>`;
+  const spd=Math.sqrt(u*u+v*v), kt=Math.round(spd*1.94384);
+  let to=Math.atan2(u,v)*180/Math.PI; if(to<0)to+=360;
+  const tC=rec.tC&&rec.tC[k];
+  return `<div class="scg">${cell("GFS winds aloft (forecast)",`${hpa} hPa · ${kt} kt from ${Math.round((to+180)%360)}°${tC!=null?" · "+tC+" °C":""}<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">Nearest ${w.step_deg}° sample to displayed position · valid ${utcShort(rec.valid_utc)} · cycle ${utcShort(rec.cycle_utc)} F${fh}${alt==null?"":" · level from displayed altitude, not a sounding"}</div>`)}</div><p class="mu">NOAA GFS 1.0° via NOMADS grib filter (simple packing). Forecast, not a measured wind. Not WAFS and not live turbulence.</p>`;
+}
+function wxStationBlock(st,od,lat,lon,a){
+  if(!st) return `<p class="mu">Loading METAR/TAF…</p>`;
+  if(st.error&&!(st.metar&&st.metar.length)) return `<p class="mu">${esc(st.error)} Observation/forecast error, not “no weather”.</p>`;
+  const want=[];
+  const iata={DOH:"OTHH",DXB:"OMDB",AUH:"OMAA",LHR:"EGLL",JFK:"KJFK",CDG:"LFPG",FRA:"EDDF",SIN:"WSSS"};
+  if(od){const o=od.o&&(od.o.icao||iata[od.oi]), d=od.d&&(od.d.icao||iata[od.di]); if(o)want.push(["Origin",o]); if(d)want.push(["Destination",d])}
+  if(a&&(a.gnd||a.held)&&a.apt==="DOH")want.push(["Airport","OTHH"]);
+  if(a&&(a.gnd||a.held)&&a.apt==="DXB")want.push(["Airport","OMDB"]);
+  const rows=st.metar||[];
+  let nearest=null, nd=1e9;
+  for(const m of rows){if(typeof m.lat!=="number")continue;const d=hv(lat,lon,m.lat,m.lon);if(d<nd){nd=d;nearest=m}}
+  if(nearest&&nd<250&&!want.some(w=>w[1]===nearest.icao)) want.push([`Nearest in cache (${Math.round(nd)} nm)`, nearest.icao]);
+  if(!want.length&&nearest) want.push(["Nearest in cache", nearest.icao]);
+  if(!want.length) return `<p class="mu">No METAR in the cached hub set for this position.</p>`;
+  return want.map(([lab,id])=>{
+    const m=rows.find(x=>x.icao===id), t=(st.taf||[]).find(x=>x.icao===id);
+    const obs=m?cell(lab+" METAR (measured)",`${esc(id)} · ${esc(m.fltCat||"cat n/a")}<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">${esc(m.raw||"")}<br>${utcShort(m.obsTime)}</div>`):na(lab+" METAR (measured)");
+    const fc=t?cell(lab+" TAF (forecast)",`${esc(id)}<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">${esc(t.raw||"")}<br>Valid ${utcShort(t.validFrom)} → ${utcShort(t.validTo)}</div>`):na(lab+" TAF (forecast)");
+    return `<div class="scg">${obs}${fc}</div>`;
+  }).join("");
+}
+function syncWx(){
+  ["haz","met","wnd"].forEach(k=>{const id={haz:"wxhaz",met:"wxmet",wnd:"wxwnd"}[k];if($(id))$(id).checked=wxOn(k);if(wxOn(k))wxLoad(k==="met"?"st":k)});
+  applyWxVis();wxStatus();
+}
