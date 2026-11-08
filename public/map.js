@@ -64,33 +64,78 @@ function tkDraw(){const v=$("tks").value;let f=v===""?[]:(v==="QTR"||v==="UAE")?
  const g=f.length===1&&H.ap[f[0].o]&&H.ap[f[0].d]?[{type:"Feature",properties:{},geometry:{type:"LineString",coordinates:gc(H.ap[f[0].o],H.ap[f[0].d])}}]:[];map.getSource("tkgc").setData({type:"FeatureCollection",features:g});
  $("tki").textContent=f.length===1?`${f[0].cs} ${f[0].reg} ${f[0].t} · ${f[0].o}→${f[0].d}${f[0].inf?" (one end inferred)":""} · ${new Date(f[0].t0*1000).toISOString().slice(0,16).replace("T"," ")} UTC · gaps = no receiver coverage`:f.length?`${f.length} flights on ${TK.day}`:"";applyTrackVis()}
 function odOf(cs){const r=CSR&&CSR.cs[cs];if(!r)return null;const[o,d]=r[0].split("-"),A=CSR.ap;return A[o]&&A[d]?{o,d,O:A[o],D:A[d],n:r[1],tot:r[2]}:null}
-async function select(h){SEL=h;DB=null;const ac0=L&&L.ac.find(x=>x[0]===h);if(ac0)fetch('/api/route?cs='+encodeURIComponent(ac0[1])).then(r=>r.json()).then(j=>{if(SEL===h){DB=j;selUpdate()}}).catch(()=>{});$("sp").style.display="block";const r=await fetch("/api/track?hex="+h+"&t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>({points:[]}));SEL_T=r.points;selUpdate(true)}
-let SEL_T=[],DB=null;
-function selUpdate(first){const a=L&&L.ac.find(x=>x[0]===SEL);if(!a){unsel();return}
- const pos=[a[5],a[4]],hi=odOf(a[1]),db=DB&&DB.found?{o:DB.origin.iata||DB.origin.icao,d:DB.destination.iata||DB.destination.icao,O:[DB.origin.lat,DB.origin.lon,DB.origin.city],D:[DB.destination.lat,DB.destination.lon,DB.destination.city]}:null,od=db||hi,F=[],P=SEL_T.length?SEL_T:[[Date.now(),a[5],a[4],a[6],a[7],a[12]]];
- F.push({type:"Feature",properties:{k:"flown"},geometry:{type:"LineString",coordinates:[...P.map(p=>[p[1],p[2]]),pos]}});
- let pr="";if(od){F.push({type:"Feature",properties:{k:"rem"},geometry:{type:"LineString",coordinates:gc([a[4],a[5]],od.D)}}),F.push({type:"Feature",properties:{k:"ap",n:od.o},geometry:{type:"Point",coordinates:[od.O[1],od.O[0]]}},{type:"Feature",properties:{k:"ap",n:od.d},geometry:{type:"Point",coordinates:[od.D[1],od.D[0]]}});
-  const fl=hv(od.O[0],od.O[1],a[4],a[5]),rm=hv(a[4],a[5],od.D[0],od.D[1]),pc=Math.max(0,Math.min(100,100*fl/(fl+rm))),gs=a[7]>120?a[7]:450,el=fl/gs,eta=new Date(Date.now()+rm/gs*3600e3);
-  pr=`<div class="pg"><span>${od.o}<small>${od.O[2]||""}</small></span><div class="bar"><div style="width:${pc}%"></div><b style="left:${pc}%">✈</b></div><span>${od.d}<small>${od.D[2]||""}</small></span></div>
-  <div class="kv"><div>Flown*<b>${fmt(Math.round(fl))} nm</b></div><div>Remaining*<b>${fmt(Math.round(rm))} nm</b></div><div>Elapsed*<b>${Math.floor(el)}h ${Math.round(el%1*60)}m</b></div><div>Time left*<b>${Math.floor(rm/gs)}h ${Math.round(rm/gs%1*60)}m</b></div><div>ETA* UTC<b>${a[10]?"—":eta.toISOString().slice(11,16)}</b></div></div>
-  <p class="mu">${srcNote(db,hi)} Remaining route drawn as an estimated great circle (dashed). *Estimates: distances are great-circle; ETA = remaining ÷ current ground speed.</p>`}
- else pr=`<p class="mu">${DB?'Origin/destination unknown: adsbdb has no route for this callsign and there is no route history for it (history covers QTR/UAE only). ADS-B does not broadcast origin/destination.':'Looking up route in adsbdb…'}</p>`;
- map.getSource("sel").setData({type:"FeatureCollection",features:F});applyTrackVis();
- $("spb").innerHTML=`<div class="sh"><b style="font-size:20px">${a[1]}</b> <span class="pill">${a[2]}</span> ${a[3]||"?"} · ${a[9]||"reg ?"} · hex ${a[0]}</div>
- <div class="kv"><div>Altitude<b>${a[10]?"on ground":fmt(a[6])+" ft"}</b></div><div>Ground speed<b>${a[7]} kt</b></div><div>Vertical rate<b>${a[12]>0?"+":""}${fmt(a[12]||0)} fpm</b></div><div>Track<b>${a[8]}°</b></div><div>Position age<b>${a[11]} s</b></div></div>${pr}`;
- $("prof").style.display=P.length<2?"none":"";if(P.length>=2)ch("prof",{grid:{left:44,right:36,top:12,bottom:46},legend:{bottom:0,itemWidth:12,itemHeight:6,textStyle:{color:"#cfe3ff",fontSize:10},data:["Altitude ft","Ground speed kt","Vertical rate fpm"]},xAxis:ax({type:"time",axisLabel:{fontSize:9,hideOverlap:true}}),yAxis:[ax({type:"value",axisLabel:{fontSize:9}}),ax({type:"value",axisLabel:{fontSize:9},splitLine:{show:false}})],
+let SEL_T=[],DB=null,GND_AC=[],SEL_DRAW="";
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}
+function tg(k,t){return `<span class="tg ${k}">${t}</span>`}
+function cell(l,v,k){return `<div class="sc${k?" "+k:""}"><span>${l}</span><b>${v}</b></div>`}
+function na(l){return cell(l,"Unavailable","na")}
+function hm(h){h=Math.max(0,h||0);return Math.floor(h)+"h "+Math.round((h%1)*60)+"m"}
+function gRow(h){return GND_AC.find(x=>x[0]===h)}
+function padMap(){if(!map||typeof map.loaded!=="function"||!map.loaded())return;const on=$("sp").classList.contains("on")&&!$("sp").classList.contains("min"),w=innerWidth>700;map.setPadding({top:0,left:0,bottom:on&&!w?Math.min(280,innerHeight*.42):0,right:on&&w?376:0})}
+function openSp(){const el=$("sp");if(el.parentNode!==document.body)document.body.appendChild(el);el.classList.add("on");el.classList.remove("min");el.style.display="flex";el.dataset.hex=SEL||"";const m=$("map");if(m&&m.scrollIntoView)m.scrollIntoView({block:"nearest",inline:"nearest"});padMap();if(map&&map.resize)map.resize()}
+function closeSp(){const el=$("sp");el.classList.remove("on","min");el.style.display="none";el.dataset.hex="";padMap();if(map&&map.resize)map.resize()}
+function selAc(){const a=L&&L.ac.find(x=>x[0]===SEL);if(a)return{hex:a[0],cs:a[1],al:a[2],typ:a[3],lat:a[4],lon:a[5],alt:a[6],gs:a[7],trk:a[8],reg:a[9],gnd:!!a[10],age:a[11],vs:a[12],held:false,st:a[10]?"ground":"airborne",src:"live"};
+ const g=gRow(SEL);if(!g)return null;const held=g[11]==="held";
+ return{hex:g[0],cs:g[1]||g[0],al:g[2],typ:g[3],lat:g[4],lon:g[5],alt:0,gs:g[7],trk:g[6],reg:"",gnd:true,age:held?(g[12]||0)*60:g[9],held,heldMin:g[12],heldUtc:g[13]||"",st:g[8]||"ground",src:"ground"}}
+function alName(code,dbName){return (L&&L.nm&&code&&L.nm[code])||dbName||""}
+function apBox(ap,side){if(!ap)return `<div class="ode ${side}"><div class="iata">—</div><div class="city">Unavailable</div></div>`;
+ const code=ap.iata||ap.icao||"—";return `<div class="ode ${side}"><div class="iata">${esc(code)}</div><div class="city">${esc(ap.city||"")}</div><div class="an">${esc(ap.name||(ap.iata||ap.icao?"":"Unavailable"))}</div></div>`}
+function routeEnds(cs){const db=DB&&DB.found?{o:{iata:DB.origin.iata||"",icao:DB.origin.icao||"",name:DB.origin.name||"",city:DB.origin.city||"",lat:DB.origin.lat,lon:DB.origin.lon},d:{iata:DB.destination.iata||"",icao:DB.destination.icao||"",name:DB.destination.name||"",city:DB.destination.city||"",lat:DB.destination.lat,lon:DB.destination.lon},oi:DB.origin.iata||DB.origin.icao,di:DB.destination.iata||DB.destination.icao}:null;
+ const hi0=odOf(cs),hi=hi0?{o:{iata:hi0.o,icao:"",name:"",city:hi0.O[2]||"",lat:hi0.O[0],lon:hi0.O[1]},d:{iata:hi0.d,icao:"",name:"",city:hi0.D[2]||"",lat:hi0.D[0],lon:hi0.D[1]},oi:hi0.o,di:hi0.d,n:hi0.n,tot:hi0.tot}:null;
+ return{db,hi,od:db||hi}}
+async function select(h){SEL=h;DB=null;SEL_T=[];openSp();gPaint();const ac0=selAc();const cs=ac0&&ac0.cs;
+ if(cs)fetch("/api/route?cs="+encodeURIComponent(cs)).then(r=>r.json()).then(j=>{if(SEL===h){DB=j;selUpdate()}}).catch(()=>{if(SEL===h){DB={found:false};selUpdate()}});
+ const r=await fetch("/api/track?hex="+h+"&t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>({points:[]}));if(SEL!==h)return;SEL_T=r.points||[];selUpdate(true)}
+function selUpdate(first){const a=selAc();if(!a){unsel();return}
+ const pos=[a.lon,a.lat],{db,hi,od}=routeEnds(a.cs),F=[],P=SEL_T.length?SEL_T:[[Date.now(),a.lon,a.lat,a.alt,a.gs,a.vs||0]];
+ const sk=[a.hex,a.lat,a.lon,a.alt,a.gs,a.trk,a.vs,a.age,a.held,!!(DB&&DB.found),P.length,a.src].join("|");
+ if(!first&&sk===SEL_DRAW&&$("sp").classList.contains("on"))return;SEL_DRAW=sk;
+ if(P.length)F.push({type:"Feature",properties:{k:"flown"},geometry:{type:"LineString",coordinates:[...P.map(p=>[p[1],p[2]]),pos]}});
+ let routeHtml="";
+ if(od&&typeof od.o.lat==="number"&&typeof od.d.lat==="number"){
+  F.push({type:"Feature",properties:{k:"rem"},geometry:{type:"LineString",coordinates:gc([a.lat,a.lon],[od.d.lat,od.d.lon])}});
+  F.push({type:"Feature",properties:{k:"ap",n:od.oi},geometry:{type:"Point",coordinates:[od.o.lon,od.o.lat]}},{type:"Feature",properties:{k:"ap",n:od.di},geometry:{type:"Point",coordinates:[od.d.lon,od.d.lat]}});
+  const fl=hv(od.o.lat,od.o.lon,a.lat,a.lon),rm=hv(a.lat,a.lon,od.d.lat,od.d.lon),pc=Math.max(0,Math.min(100,100*fl/(fl+rm||1)));
+  const canEta=!a.gnd&&!a.held&&a.gs>120,left=canEta?rm/a.gs:null;
+  routeHtml=`<div class="spsec"><h3>Route ${tg("est","Estimated")}</h3>
+   <div class="od">${apBox(od.o,"from")}<div class="odarr">→</div>${apBox(od.d,"to")}</div>
+   <div class="pg"><span>${esc(od.oi)}<small>origin</small></span><div class="bar"><div style="width:${pc}%"></div><b style="left:${pc}%">✈</b></div><span>${esc(od.di)}<small>destination</small></span></div>
+   <div class="scg">${cell("Progress (GC est.)",Math.round(pc)+"%")}${cell("Flown (GC est.)",fmt(Math.round(fl))+" nm")}${cell("Remaining (GC est.)",fmt(Math.round(rm))+" nm")}${canEta?cell("Remaining time (est.)",hm(left)):na("Remaining time")}</div>
+   <p class="mu">${srcNote(db,hi)} Distances are great-circle from the last snapshot position, not the flown path. Remaining time uses observed ground speed only when above 120 kt. Not a schedule.</p></div>`}
+ else routeHtml=`<div class="spsec"><h3>Route ${DB?tg("na","Unavailable"):tg("est","Looking up")}</h3>
+  <div class="od">${apBox(null,"from")}<div class="odarr">→</div>${apBox(null,"to")}</div>
+  <p class="mu">${DB?"Origin and destination unavailable: adsbdb has no route for this callsign and there is no route history for it (history covers QTR/UAE only). ADS-B does not broadcast origin/destination.":"Looking up route in adsbdb…"}</p></div>`;
+ if(map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:F});applyTrackVis();gPaint();
+ const name=alName(a.al,DB&&DB.airline),fresh=a.held?`Held last ground position, ${a.heldMin>=60?(a.heldMin/60).toFixed(1)+" h":a.heldMin+" min"} ago (ADS-B off / dropped)`:a.gnd?`Observed · on ground · ${a.age} s ago`:`Observed · ${a.age} s ago`;
+ $("spcs").textContent=a.cs||"—";$("spal").textContent=name?name+(a.al?" · "+a.al:""):(a.al||"Airline unavailable");
+ $("spsum").textContent=`${a.cs} · ${a.gnd||a.held?"ground":fmt(a.alt)+" ft"} · ${a.held?"held":a.gs+" kt"} · ${fresh}`;
+ $("sp").dataset.hex=a.hex||"";
+ const chips=[a.reg?`<div class="chip"><span>Registration</span>${esc(a.reg)}</div>`:"",a.typ?`<div class="chip"><span>Aircraft type</span>${esc(a.typ)}</div>`:"",a.hex?`<div class="chip"><span>Hex</span>${esc(String(a.hex).toUpperCase())}</div>`:""].filter(Boolean).join("");
+ const alt=a.held||a.gnd?"On ground":fmt(a.alt)+" ft";
+ const vs=a.held||a.src==="ground"?null:a.vs;
+ $("spb").innerHTML=`<div class="chips">${chips}</div>
+  <div class="spsec"><h3>Position ${a.held?tg("est","Held"):tg("obs","Observed")}</h3>
+   <div class="scg">${cell("Altitude",alt)}${a.held?na("Ground speed"):cell("Ground speed",a.gs+" kt")}${cell("Heading / track",a.trk+"°")}${vs==null?na("Vertical rate"):cell("Vertical rate",(vs>0?"+":"")+fmt(vs)+" fpm")}${cell("Freshness",esc(fresh))}${cell("Snapshot",a.lat.toFixed(a.src==="ground"?5:3)+" / "+a.lon.toFixed(a.src==="ground"?5:3))}</div>
+   <p class="mu">${a.held?"Last ground position kept after the aircraft dropped out of the ADS-B feed. Not a live update.":"Values are the last adsb.lol snapshot for this hex (not interpolated). Heading is ADS-B track. Times UTC."}</p></div>
+  ${routeHtml}
+  <div class="spsec"><h3>Times ${tg("na","Unavailable")}</h3>
+   <div class="scg">${na("Scheduled departure")}${na("Actual departure")}${na("Scheduled arrival")}${na("Actual arrival")}</div>
+   <p class="mu">No airline schedule or airport actual-time feed is connected. Great-circle remaining time is not a scheduled or actual time.</p></div>
+  <div class="spsec"><h3>Observed track ${P.length>=2?tg("obs","Observed"):tg("na","Unavailable")}</h3></div>`;
+ $("prof").style.display=P.length<2?"none":"";
+ if(P.length>=2)ch("prof",{grid:{left:44,right:36,top:12,bottom:46},legend:{bottom:0,itemWidth:12,itemHeight:6,textStyle:{color:"#cfe3ff",fontSize:10},data:["Altitude ft","Ground speed kt","Vertical rate fpm"]},xAxis:ax({type:"time",axisLabel:{fontSize:9,hideOverlap:true}}),yAxis:[ax({type:"value",axisLabel:{fontSize:9}}),ax({type:"value",axisLabel:{fontSize:9},splitLine:{show:false}})],
   series:[{name:"Altitude ft",type:"line",showSymbol:false,areaStyle:{opacity:.15},color:"#ffe14d",data:P.map(p=>[p[0],p[3]]),markPoint:{symbol:"circle",symbolSize:7,label:{show:false},data:[{coord:[P[P.length-1][0],P[P.length-1][3]]}]}},
   {name:"Ground speed kt",type:"line",yAxisIndex:1,showSymbol:false,color:C1,data:P.map(p=>[p[0],p[4]])},{name:"Vertical rate fpm",type:"line",yAxisIndex:1,showSymbol:false,color:C2,data:P.map(p=>[p[0],(p[5]||0)/10])}]});
- $("spn").textContent=`Profile: ${P.length} positions recorded by this server (UTC, since it began tracking this aircraft; max ~3 h).`;
- if(first)map.easeTo({center:pos,zoom:Math.max(map.getZoom(),4)})}
-function unsel(){SEL=null;$("sp").style.display="none";map.getSource("sel").setData({type:"FeatureCollection",features:[]})}
+ $("spn").textContent=P.length>=2?`Vertical profile: ${P.length} positions recorded by this server (UTC, since it began tracking this hex; max ~3 h). Not a full flight history.`:"Vertical profile unavailable: this server has not yet stored two positions for this hex.";
+ if(first)map.easeTo({center:pos,zoom:Math.max(map.getZoom(),4),padding:innerWidth>700?{right:376,top:0,left:0,bottom:0}:{top:0,left:0,right:0,bottom:120}})}
+function unsel(){SEL=null;SEL_T=[];DB=null;SEL_DRAW="";closeSp();if(map&&map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:[]});gPaint()}
 function search(){const q=$("qs").value.trim().toUpperCase();if(!q||!L)return;const a=L.ac.find(x=>x[1]===q||(x[9]||"").toUpperCase()===q||x[0].toUpperCase()===q)||L.ac.find(x=>x[1].startsWith(q)||(x[9]||"").toUpperCase().replace("-","").startsWith(q.replace("-","")));
  if(a){$("mf").value="all";$("tyf").value="";select(a[0])}else $("qs").style.borderColor="#ff4d4d"}
 
-function srcNote(db,hi){const h=hi?`${hi.o}→${hi.d} (${hi.n}/${hi.tot} past flights)`:null;
- if(db&&hi)return (db.o===hi.o&&db.d===hi.d)?`Route from adsbdb.com, matches adsb.lol history ${h}.`:`Route from adsbdb.com (${db.o}→${db.d}); <b style="color:#ffb000">disagrees</b> with adsb.lol history ${h}. adsbdb routes are crowd-sourced and can be stale.`;
- if(db)return "Route from adsbdb.com (no adsb.lol history for this callsign to cross-check).";
- return DB?`adsbdb has no route for this callsign; estimated from adsb.lol history ${h}.`:`Estimated from adsb.lol history ${h}; checking adsbdb…`}
+function srcNote(db,hi){const h=hi?`${hi.oi}→${hi.di} (${hi.n}/${hi.tot} past flights)`:null;
+ if(db&&hi)return (db.oi===hi.oi&&db.di===hi.di)?`Route from adsbdb.com, matches adsb.lol history ${h}. Crowd-sourced; may be stale. Not observed on this flight.`:`Route from adsbdb.com (${db.oi}→${db.di}); <b style="color:#ffb020">disagrees</b> with adsb.lol history ${h}. adsbdb routes are crowd-sourced and can be stale. Not observed on this flight.`;
+ if(db)return "Route from adsbdb.com (no adsb.lol history for this callsign to cross-check). Crowd-sourced; may be stale. Not observed on this flight.";
+ return DB?`adsbdb has no route for this callsign; estimated from adsb.lol history ${h}. Not observed on this flight.`:`Estimated from adsb.lol history ${h}; checking adsbdb…`}
 let COVT=0;async function covDraw(){if(!map||!map.getSource("cov")||Date.now()-COVT<300000)return;COVT=Date.now();const j=await fetch("/api/coverage").then(r=>r.json()).catch(()=>null);if(!j)return;
  map.getSource("cov").setData({type:"FeatureCollection",features:j.cells.map(([a,o])=>({type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[[[o,a],[o+2,a],[o+2,a+2],[o,a+2],[o,a]]]}}))});map.getSource("covb").setData(covEdges(j.cells));$("covn").textContent=`${j.cells.length} 2° cells with receptions in the last ${j.window_h} h (accumulated since ${String(j.since_utc||"").slice(0,16).replace("T"," ")} UTC)`}
 // Outline of the union of 2° cells: keep only cell edges with no covered neighbour, then merge collinear runs.
@@ -106,13 +151,17 @@ function gSetup(){if(map.getSource("sat"))return;const b=map.getStyle().layers.f
  map.addSource("sat",{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,maxzoom:19,attribution:"Imagery © Esri, Maxar, Earthstar Geographics"});
  map.addLayer({id:"sat",type:"raster",source:"sat",minzoom:10,layout:{visibility:"none"},paint:{"raster-opacity":.75,"raster-brightness-max":.7,"raster-saturation":-.3}},b&&b.id);
  map.addImage("gac",gIcon(),{sdf:true});map.addSource("gnd",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
- map.addLayer({id:"gnd",type:"symbol",source:"gnd",layout:{"icon-image":"gac","icon-size":.6,"icon-rotate":["get","tr"],"icon-rotation-alignment":"map","icon-allow-overlap":true,"text-field":["get","cs"],"text-size":11,"text-offset":[0,1.3],"text-allow-overlap":false,"text-font":["Open Sans Regular"],visibility:"none"},paint:{"icon-color":["match",["get","st"],"parked","#9aa6b8","taxi","#ffc400","#ff4d6d"],"icon-opacity":["match",["get","mode"],"held",.4,1],"icon-halo-color":"#000","icon-halo-width":1,"text-color":["match",["get","mode"],"held","#9aa6b8","#fff"],"text-opacity":["match",["get","mode"],"held",.7,1],"text-halo-color":"#000","text-halo-width":1.2}})}
+ map.addLayer({id:"gnd",type:"symbol",source:"gnd",layout:{"icon-image":"gac","icon-size":.6,"icon-rotate":["get","tr"],"icon-rotation-alignment":"map","icon-allow-overlap":true,"text-field":["get","cs"],"text-size":11,"text-offset":[0,1.3],"text-allow-overlap":false,"text-font":["Open Sans Regular"],visibility:"none"},paint:{"icon-color":["case",["==",["get","s"],1],"#ffffff",["match",["get","st"],"parked","#9aa6b8","taxi","#ffc400","#ff4d6d"]],"icon-opacity":["match",["get","mode"],"held",.4,1],"icon-halo-color":"#000","icon-halo-width":["case",["==",["get","s"],1],2.6,1],"text-color":["match",["get","mode"],"held","#9aa6b8","#fff"],"text-opacity":["match",["get","mode"],"held",.7,1],"text-halo-color":"#000","text-halo-width":1.2}});
+ map.on("click","gnd",e=>{const h=e.features[0].properties.h;if(h)select(h)});
+ map.on("mouseenter","gnd",()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave","gnd",()=>map.getCanvas().style.cursor="")}
 function setApt(a){APT=a;localStorage.apt=a;document.querySelectorAll("#aps button").forEach(b=>b.classList.toggle("on",b.dataset.a===a));if(!map)return;gSetup();const g=a!=="G";
  ["sat","gnd"].forEach(l=>map.setLayoutProperty(l,"visibility",g?"visible":"none"));$("gp").style.display=g?"block":"none";clearInterval(GT);
  if(g){map.flyTo({center:APTC[a],zoom:innerWidth<700?12.6:13.4,speed:2});gLoad();GT=setInterval(gLoad,30000)}else map.flyTo({center:[35,28],zoom:innerWidth<700?1.1:2,speed:2});applyTrackVis()}
 async function gLoad(){const a=APT;if(a==="G")return;const j=await fetch("/api/ground?apt="+a).then(r=>r.json()).catch(()=>null);if(!j||a!==APT)return;
  const all=$("gall").checked,r=j.ac.filter(x=>all||x[2]==="QTR"||x[2]==="UAE"),live=r.filter(x=>x[11]!=="held"),held=r.filter(x=>x[11]==="held");
- map.getSource("gnd").setData({type:"FeatureCollection",features:r.map(x=>({type:"Feature",properties:{cs:x[1]||x[0],tr:x[6],st:x[8],mode:x[11]||"live"},geometry:{type:"Point",coordinates:[x[5],x[4]]}}))});
+ GND_AC=j.ac;gPaint(r);
  $("gpt").textContent=`${a} (${j.name}): ${live.length} live · ${held.length} held last ground position${all?"":" (QTR/UAE)"} · ${j.time_utc.slice(11,19)} UTC${j.error?" · feed: "+j.source:""}`;
  const row=x=>{const held=x[11]==="held",ago=held?`held ${x[12]>=60?(x[12]/60).toFixed(1)+" h":x[12]+" min"} ago`:`${x[9]} s ago`;return`<tr class="${held?"held":""}"><td>${x[1]||x[0]}</td><td>${x[3]}</td><td>${x[8]}${held?" · held":""}</td><td>${held?"–":x[7]}</td><td>${ago}</td></tr>`};
  $("gpl").innerHTML="<tr><th>Callsign</th><th>Type</th><th>Status</th><th>kt</th><th>Last seen</th></tr>"+(r.length?r.sort((p,q)=>(p[11]==="held")-(q[11]==="held")||(p[1]<q[1]?-1:1)).map(row).join(""):'<tr><td colspan="5" class="mu">No live or held ground aircraft right now.</td></tr>')}
+function gPaint(r){if(!map||!map.getSource("gnd"))return;const rows=r||GND_AC.filter(x=>$("gall").checked||x[2]==="QTR"||x[2]==="UAE");
+ map.getSource("gnd").setData({type:"FeatureCollection",features:rows.map(x=>({type:"Feature",properties:{h:x[0],cs:x[1]||x[0],tr:x[6],st:x[8],mode:x[11]||"live",s:x[0]===SEL?1:0},geometry:{type:"Point",coordinates:[x[5],x[4]]}}))})}

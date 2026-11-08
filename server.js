@@ -16,7 +16,7 @@ const finCsv = (() => { const j = JSON.parse(fin); const k = Object.keys(j.m.QTR
 const globalAgg = fs.readFileSync(path.join(__dirname, "data/global.json"), "utf8");
 const names = JSON.parse(fs.readFileSync(path.join(__dirname, "data/airlines.json"), "utf8"));
 let snapshot = { at: null, error: "warming up", airlines: [], total: 0 };
-let live = { at: null, fields: ["hex","callsign","airline","type","lat","lon","alt_ft","gs_kt","track","reg","on_ground","pos_age_s","vrate_fpm"], ac: [] };
+let live = { at: null, fields: ["hex","callsign","airline","type","lat","lon","alt_ft","gs_kt","track","reg","on_ground","pos_age_s","vrate_fpm"], ac: [], nm: {} };
 const trails = new Map(); 
 const tracks = fs.readFileSync(path.join(__dirname, "data/tracks.json"), "utf8");
 const csroute = fs.readFileSync(path.join(__dirname, "data/csroute.json"), "utf8");
@@ -140,8 +140,11 @@ async function refresh() {
       const at = new Date().toISOString();
       snapshot = { at, error: null, airlines, total: seen.size };
       gholdClearSeen([...seen.keys()]);
-      live = { at, fields: live.fields, ac: [...seen.values()].filter((a) => typeof a.lat === "number" && typeof a.lon === "number" && (a.seen_pos ?? 0) <= 60 && /^[A-Z]{3}\d/.test((a.flight || "").trim()))
-        .map((a) => [a.hex, a.flight.trim(), a.flight.trim().slice(0, 3), a.t || "", +a.lat.toFixed(3), +a.lon.toFixed(3), typeof a.alt_baro === "number" ? a.alt_baro : 0, Math.round(a.gs || 0), Math.round(a.track ?? a.true_heading ?? a.mag_heading ?? 0), a.r || "", a.alt_baro === "ground" ? 1 : 0, Math.round(a.seen_pos ?? 0), Math.round(a.baro_rate ?? a.geom_rate ?? 0)]) };
+      const ac = [...seen.values()].filter((a) => typeof a.lat === "number" && typeof a.lon === "number" && (a.seen_pos ?? 0) <= 60 && /^[A-Z]{3}\d/.test((a.flight || "").trim()))
+        .map((a) => [a.hex, a.flight.trim(), a.flight.trim().slice(0, 3), a.t || "", +a.lat.toFixed(3), +a.lon.toFixed(3), typeof a.alt_baro === "number" ? a.alt_baro : 0, Math.round(a.gs || 0), Math.round(a.track ?? a.true_heading ?? a.mag_heading ?? 0), a.r || "", a.alt_baro === "ground" ? 1 : 0, Math.round(a.seen_pos ?? 0), Math.round(a.baro_rate ?? a.geom_rate ?? 0)]);
+      const nm = {};
+      for (const r of ac) { const c = r[2]; if (c && names[c] && !nm[c]) nm[c] = names[c]; }
+      live = { at, fields: live.fields, ac, nm };
       const now = Date.now();
       for (const r of live.ac) { const t = trails.get(r[0]) || []; const p = t[t.length - 1]; if (!p || p[1] !== r[5] || p[2] !== r[4]) t.push([now, r[5], r[4], r[6], r[7], r[12]]); if (t.length > 360) t.shift(); trails.set(r[0], t); }
       for (const [h, t] of trails) if (now - t[t.length - 1][0] > 20 * 60000) trails.delete(h);
