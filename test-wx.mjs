@@ -24,6 +24,23 @@ function ok(cond, msg) { if (!cond) fail.push(msg); }
   ok(Math.abs(wx.coord32(b, 0, 90) - 60) < 1e-9, "coord32 +60");
   const issued = wx.bulletinIssue("WCJP31 RJTD 081309\nRJJJ SIGMET", "2026-11-08T13:09:00.000Z");
   ok(issued === "2026-11-08T13:09:00.000Z", "bulletinIssue from WMO header " + issued);
+
+  const hpa = wx.pressureFromMetar(1013.25, "");
+  ok(hpa.pa === 101325 && hpa.via === "hPa" && /QNH/.test(hpa.ref), "hPa ×100 → Pa " + JSON.stringify(hpa));
+  const inhg = wx.pressureFromMetar(29.92, "");
+  ok(inhg.pa === Math.round(29.92 * 3386.389) && inhg.via === "inHg" && /altimeter/.test(inhg.ref), "inHg → Pa " + JSON.stringify(inhg));
+  const qnh = wx.pressureFromMetar(null, "OTHH 081200Z 26012KT CAVOK Q1013");
+  ok(qnh.pa === 101300 && qnh.via === "hPa", "raw QNH Q1013");
+  const axx = wx.pressureFromMetar(null, "KJFK 081251Z 18008KT A2992");
+  ok(axx.pa === Math.round(29.92 * 3386.389) && axx.via === "inHg", "raw A2992 inHg");
+  const miss = wx.pressureFromMetar(null, "OTHH 081200Z 26012KT CAVOK");
+  ok(miss.pa == null && miss.ref == null, "missing pressure is not invented");
+  ok(wx.windFromMetar(0, 0, null, "").text === "calm", "calm");
+  ok(wx.windFromMetar("VRB", 3, null, "").text === "VRB 3kt", "variable");
+  ok(wx.windFromMetar(260, 12, 22, "").text === "260°T 12kt G22kt", "gusts");
+  ok(wx.windFromMetar(null, null, null, "").text === "wind n/a", "missing wind");
+  const row = wx.metarRow({ icaoId: "OTHH", temp: 28, wdir: 260, wspd: 12, wgst: 22, altim: 1013, rawOb: "OTHH 081200Z 26012G22KT Q1013", reportTime: "2026-11-08T12:00:00Z", lat: 25, lon: 51 });
+  ok(row.pressPa === 101300 && row.windText.includes("260°T") && row.tempC === 28, "metarRow fields");
 }
 
 const tiny = "/tmp/wx/tiny.grib2";
@@ -70,7 +87,10 @@ ok((st.j.metar || []).length > 10, "hub METARs");
 ok((st.j.taf || []).length > 10, "hub TAFs");
 ok(st.j.metar.every((m) => m.kind === "observation" && m.obsTime && m.icao), "METAR kind/time/icao");
 ok(st.j.taf.every((t) => t.kind === "forecast" && t.validFrom && t.icao), "TAF kind/time/icao");
-evidence.st = { metar: st.j.metar.length, taf: st.j.taf.length, sample: { icao: st.j.metar[0].icao, obsTime: st.j.metar[0].obsTime, fltCat: st.j.metar[0].fltCat } };
+ok(st.j.metar.every((m) => m.pressPa == null || (Number.isInteger(m.pressPa) && m.pressRef)), "Pa integer with original QNH/altimeter ref, or omitted");
+ok(st.j.metar.every((m) => m.pressPa !== 101325 || m.pressRef), "never a bare default 1013 hPa");
+ok(st.j.metar.every((m) => m.windText), "every METAR has honest windText");
+evidence.st = { metar: st.j.metar.length, taf: st.j.taf.length, sample: { icao: st.j.metar[0].icao, obsTime: st.j.metar[0].obsTime, fltCat: st.j.metar[0].fltCat, pressPa: st.j.metar[0].pressPa, pressRef: st.j.metar[0].pressRef, windText: st.j.metar[0].windText, tempC: st.j.metar[0].tempC } };
 
 const wnd = await api("/api/wx/winds");
 ok(wnd.status === 200, "winds HTTP");
@@ -153,6 +173,7 @@ const ui1280 = await desk.evaluate(() => {
     legendDisplay: cs && cs.display,
     search: !!document.getElementById("qs"),
     fsb: !!document.getElementById("fsb"),
+    mfsb: !!document.getElementById("mfsb"),
     rlb: !!document.getElementById("rlb"),
     htb: !!document.getElementById("htb"),
     wxLayers: ["wxhaz-fill", "wxhaz-line", "wxhaz-lab", "wxmet", "wxwnd"].filter((id) => map.getLayer(id)),
@@ -162,7 +183,7 @@ const ui1280 = await desk.evaluate(() => {
 });
 ok(ui1280.wxctl, "desktop weather control");
 ok(ui1280.legendDisplay === "none", "desktop legend hidden got " + ui1280.legendDisplay);
-ok(ui1280.search && ui1280.fsb && ui1280.rlb, "search/fullscreen/reg from UI PR still present");
+ok(ui1280.search && ui1280.mfsb && !ui1280.fsb && ui1280.rlb, "search/map-fullscreen/reg; no dashboard fullscreen button");
 ok(ui1280.wxLayers.includes("wxhaz-fill") && ui1280.wxLayers.includes("wxhaz-lab"), "wx layers registered");
 ok(!/unavailable on this host/i.test(ui1280.footnote || ""), "footnote no longer says winds unavailable");
 
@@ -198,9 +219,13 @@ const metUi = await desk.evaluate(() => {
   const vis = map.getLayoutProperty("wxmet", "visibility");
   const st = document.getElementById("wxst").textContent;
   const p = src("wxmet").features.find((f) => f.properties.icao === "OMDB") || src("wxmet").features[0];
-  return { n, vis, st, persist: localStorage.wxmet, sample: p && p.properties, err: document.getElementById("wxst").classList.contains("err") };
+  const type = map.getLayer("wxmet") && map.getLayer("wxmet").type;
+  return { n, vis, st, persist: localStorage.wxmet, sample: p && p.properties, err: document.getElementById("wxst").classList.contains("err"), type };
 });
-ok(metUi.vis === "visible" && metUi.n > 10, "METAR circles");
+ok(metUi.vis === "visible" && metUi.n > 10, "METAR airport features");
+ok(metUi.type === "symbol", "airport layer is symbol icon not circle");
+ok(metUi.sample && /Pa|QNH n\/a/.test(metUi.sample.lab || ""), "METAR label has Pa or honest QNH n/a");
+ok(metUi.sample && (metUi.sample.windText || "").length > 0, "METAR wind text on feature");
 ok(/METAR/i.test(metUi.st), "status mentions METAR");
 ok(!metUi.err, "status not error when overlays ok");
 evidence.deskMet = metUi;
@@ -300,7 +325,7 @@ const ui390 = await mob.evaluate(() => {
   const cs = lg ? getComputedStyle(lg) : null;
   const wx = document.getElementById("wxctl");
   const wxcs = wx ? getComputedStyle(wx) : null;
-  return { legendDisplay: cs && cs.display, wxBottom: wxcs && wxcs.bottom, wxTop: wxcs && wxcs.top, fsb: !!document.getElementById("fsb") };
+  return { legendDisplay: cs && cs.display, wxBottom: wxcs && wxcs.bottom, wxTop: wxcs && wxcs.top, fsb: !!document.getElementById("fsb"), mfsb: !!document.getElementById("mfsb") };
 });
 ok(ui390.legendDisplay !== "none", "mobile legend stays " + ui390.legendDisplay);
 await mob.evaluate(() => { document.getElementById("wxctl").open = true; });

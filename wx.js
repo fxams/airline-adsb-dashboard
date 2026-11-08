@@ -148,15 +148,73 @@ async function hazards() {
   return v;
 }
 
+function pressureFromMetar(altim, raw) {
+  const n = Number(altim);
+  if (Number.isFinite(n) && n > 800 && n < 1100) {
+    return { pa: Math.round(n * 100), via: "hPa", ref: "QNH " + n + " hPa" };
+  }
+  if (Number.isFinite(n) && n >= 26 && n <= 33) {
+    const pa = Math.round(n * 3386.389);
+    return { pa, via: "inHg", ref: "altimeter " + n.toFixed(2) + " inHg" };
+  }
+  const q = String(raw || "").match(/\bQ(\d{4})\b/);
+  if (q) {
+    const hpa = +q[1];
+    return { pa: hpa * 100, via: "hPa", ref: "QNH " + hpa + " hPa" };
+  }
+  const a = String(raw || "").match(/\bA(\d{4})\b/);
+  if (a) {
+    const inhg = +a[1] / 100;
+    return { pa: Math.round(inhg * 3386.389), via: "inHg", ref: "altimeter " + inhg.toFixed(2) + " inHg" };
+  }
+  return { pa: null, via: null, ref: null };
+}
+
+function windFromMetar(wdir, wspd, wgst, raw) {
+  let dir = wdir, spd = wspd, gst = wgst;
+  if ((dir == null || spd == null) && raw) {
+    const w = String(raw).match(/\b(VRB|\d{3})(\d{2,3})(G(\d{2,3}))?KT\b/);
+    if (w) {
+      if (dir == null) dir = w[1] === "VRB" ? "VRB" : +w[1];
+      if (spd == null) spd = +w[2];
+      if (gst == null && w[4]) gst = +w[4];
+    }
+  }
+  const s = spd == null || spd === "" ? NaN : Number(spd);
+  const g = gst == null || gst === "" ? NaN : Number(gst);
+  const hasG = Number.isFinite(g) && Number.isFinite(s) && g > s;
+  if (!Number.isFinite(s) && (dir == null || dir === "")) {
+    return { text: "wind n/a", calm: false, vrb: false, dir: null, kt: null, gst: null };
+  }
+  if (Number.isFinite(s) && s === 0) {
+    return { text: "calm", calm: true, vrb: false, dir: 0, kt: 0, gst: null };
+  }
+  if (dir === "VRB" || dir === "variable") {
+    return { text: "VRB " + s + "kt" + (hasG ? " G" + g + "kt" : ""), calm: false, vrb: true, dir: "VRB", kt: s, gst: hasG ? g : null };
+  }
+  const d = dir == null || dir === "" ? NaN : Number(dir);
+  if (!Number.isFinite(d)) {
+    return { text: Number.isFinite(s) ? "dir n/a " + s + "kt" : "wind n/a", calm: false, vrb: false, dir: null, kt: Number.isFinite(s) ? s : null, gst: hasG ? g : null };
+  }
+  const deg = String(Math.round(d)).padStart(3, "0");
+  return { text: deg + "°T " + s + "kt" + (hasG ? " G" + g + "kt" : ""), calm: false, vrb: false, dir: d, kt: s, gst: hasG ? g : null };
+}
+
 function metarRow(m) {
+  const raw = m.rawOb || "";
+  const press = pressureFromMetar(m.altim, raw);
+  const wind = windFromMetar(m.wdir, m.wspd, m.wgst, raw);
+  const tempC = m.temp ?? null;
   return {
     kind: "observation",
     icao: m.icaoId, name: m.name || "", lat: m.lat, lon: m.lon,
     obsTime: m.reportTime || iso(ms(m.obsTime)), receiptTime: m.receiptTime || null,
-    fltCat: m.fltCat || null, tempC: m.temp ?? null, dewpC: m.dewp ?? null,
-    wdir: m.wdir ?? null, wspdKt: m.wspd ?? null, visib: m.visib ?? null,
-    cover: m.cover || null, altim: m.altim ?? null, raw: m.rawOb || "",
-    source: "NOAA/NWS Aviation Weather Center · METAR (measured observation)"
+    fltCat: m.fltCat || null, tempC, dewpC: m.dewp ?? null,
+    wdir: m.wdir ?? null, wspdKt: m.wspd ?? null, wgstKt: m.wgst ?? null,
+    visib: m.visib ?? null, cover: m.cover || null, altim: m.altim ?? null,
+    pressPa: press.pa, pressVia: press.via, pressRef: press.ref,
+    windText: wind.text, windCalm: wind.calm, windVrb: wind.vrb,
+    raw, source: "NOAA/NWS Aviation Weather Center · METAR (measured observation)"
   };
 }
 function tafRow(t) {
@@ -434,4 +492,4 @@ async function winds() {
   return windsBlocked("GFS winds unavailable after trying NOMADS GRIB2 1.0° subsets (simple packing). Last error: " + lastErr + " OpenDAP is retired (SCN 25-81); this path uses the grib filter instead. No substitute winds are invented.", { error: lastErr });
 }
 
-module.exports = { hazards, stations, winds, NOTE, HUB_ICAO, coord32, decodeGrib2Simple, bulletinIssue };
+module.exports = { hazards, stations, winds, NOTE, HUB_ICAO, coord32, decodeGrib2Simple, bulletinIssue, pressureFromMetar, windFromMetar, metarRow };
