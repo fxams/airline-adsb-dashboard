@@ -31,7 +31,20 @@ async function adsbdb(cs) {
     const r = await fetch(`https://api.adsbdb.com/v0/callsign/${cs}`, { headers: { "User-Agent": "airline-adsb-dashboard" }, signal: AbortSignal.timeout(8000) });
     const f = r.ok ? ((await r.json()).response || {}).flightroute : null;
     const ap = (x) => x && { iata: x.iata_code, icao: x.icao_code, name: x.name, city: x.municipality, lat: x.latitude, lon: x.longitude };
-    if (f && f.origin && f.destination) v = { callsign: cs, found: true, source: "adsbdb.com", airline: f.airline && f.airline.name, origin: ap(f.origin), destination: ap(f.destination) };
+    if (f && f.origin && f.destination) v = {
+      callsign: cs,
+      found: true,
+      source: "adsbdb.com",
+      callsign_icao: f.callsign_icao || null,
+      callsign_iata: f.callsign_iata || null,
+      airline: f.airline && f.airline.name,
+      airline_icao: (f.airline && f.airline.icao) || null,
+      airline_iata: (f.airline && f.airline.iata) || null,
+      origin: ap(f.origin),
+      destination: ap(f.destination),
+      flight_number: null,
+      note: "adsbdb lookup is by ADS-B callsign. callsign_iata is the IATA spelling of that same callsign (airline IATA prefix + remainder), including alphanumeric suffixes. It is not a marketed/ticketed passenger flight number. Routes are crowd-sourced and can be stale or reused; codeshares are not resolved."
+    };
   } catch (e) { v.error = "lookup failed"; return v; }
   rc.set(cs, { t: Date.now(), v }); if (rc.size > 20000) rc.clear();
   return v;
@@ -85,9 +98,10 @@ async function ground(id) {
     const onG = a.alt_baro === "ground", gs = a.gs ?? 0, alt = typeof a.alt_baro === "number" ? a.alt_baro : 0;
     if (!onG && !(alt < 300 && gs < 60)) continue;
     const cs = (a.flight || "").trim(), st = gs < 1.5 ? "parked" : gs <= 35 ? "taxi" : "runway";
-    const row = [a.hex, cs, cs.slice(0, 3), a.t || "", +a.lat.toFixed(5), +a.lon.toFixed(5), Math.round(a.track ?? a.true_heading ?? 0), Math.round(gs), st, Math.round(a.seen_pos ?? a.seen ?? 0), onG ? 1 : 0, "live"];
+    const reg = (a.r || "").trim();
+    const row = [a.hex, cs, cs.slice(0, 3), a.t || "", +a.lat.toFixed(5), +a.lon.toFixed(5), Math.round(a.track ?? a.true_heading ?? 0), Math.round(gs), st, Math.round(a.seen_pos ?? a.seen ?? 0), onG ? 1 : 0, "live", null, null, reg, id];
     liveRows.push(row); liveHexHere.add(a.hex);
-    ghold.set(a.hex, { hex: a.hex, apt: id, cs, al: cs.slice(0, 3), t: a.t || "", lat: row[4], lon: row[5], tr: row[6], gs: row[7], st, seen_utc: nowIso, held_utc: nowIso });
+    ghold.set(a.hex, { hex: a.hex, apt: id, cs, al: cs.slice(0, 3), t: a.t || "", lat: row[4], lon: row[5], tr: row[6], gs: row[7], st, seen_utc: nowIso, held_utc: nowIso, reg });
     gholdDirty = true;
   }
   // Keep last ground position for aircraft that dropped out of the ground feed at this airport (usually ADS-B off at the gate), until the same hex reappears in the live feed or 24 h pass.
@@ -95,10 +109,10 @@ async function ground(id) {
   for (const r of ghold.values()) {
     if (r.apt !== id || liveHexHere.has(r.hex) || liveHex.has(r.hex)) continue;
     const ageMin = Math.max(0, Math.round((Date.now() - Date.parse(r.held_utc || r.seen_utc)) / 60000));
-    heldRows.push([r.hex, r.cs, r.al, r.t, r.lat, r.lon, r.tr, r.gs, r.st, ageMin * 60, 1, "held", ageMin, r.held_utc || r.seen_utc]);
+    heldRows.push([r.hex, r.cs, r.al, r.t, r.lat, r.lon, r.tr, r.gs, r.st, ageMin * 60, 1, "held", ageMin, r.held_utc || r.seen_utc, r.reg || "", r.apt]);
   }
   gholdSave();
-  const v = { airport: id, name, center: [lo, la], radius_nm: 8, time_utc: nowIso, fields: ["hex", "callsign", "airline", "type", "lat", "lon", "track_deg", "gs_kt", "status", "seen_s", "ground_flag", "mode", "held_min", "held_utc"], note: "Live = currently in the ground feed (on-ground flag, or under 300 ft and under 60 kt, within 8 nm). Held = last known ground position kept after the aircraft dropped out of the feed (common when ADS-B is switched off at the gate); removed when the same hex reappears anywhere in the live feed, or after 24 h with no reappearance. Status parked/taxi/runway is estimated from ground speed. No gate or stand assignment. Hold store persists across restarts in data/ground-hold.json.", live: liveRows.length, held: heldRows.length, ac: liveRows.concat(heldRows), source: src, error: err };
+  const v = { airport: id, name, center: [lo, la], radius_nm: 8, time_utc: nowIso, fields: ["hex", "callsign", "airline", "type", "lat", "lon", "track_deg", "gs_kt", "status", "seen_s", "ground_flag", "mode", "held_min", "held_utc", "reg", "apt"], note: "Live = currently in the ground feed (on-ground flag, or under 300 ft and under 60 kt, within 8 nm). Held = last known ground position kept after the aircraft dropped out of the feed (common when ADS-B is switched off at the gate); removed when the same hex reappears anywhere in the live feed, or after 24 h with no reappearance. Status parked/taxi/runway is estimated from ground speed. No gate or stand assignment. Hold store persists across restarts in data/ground-hold.json.", live: liveRows.length, held: heldRows.length, ac: liveRows.concat(heldRows), source: src, error: err };
   gcache.set(id, { t: Date.now(), v }); return v;
 }
 const T0 = Date.now();
