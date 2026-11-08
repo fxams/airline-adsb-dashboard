@@ -1,5 +1,19 @@
 // Live map: FR24-style aircraft layer, trails, selection panel, real flown tracks. Data: adsb.lol (ODbL).
 let SEL=null,TR={},CSR=null,TK=null,prof=null,lastFrame=0;
+const TRACK_LAYERS=["trails","tk","tkgc","sel-flown","sel-rem"];
+function hideTracksOn(){return localStorage.hidet==="1"}
+function applyTrackVis(){
+  if(!map)return;
+  const hide=hideTracksOn(),vis=on=>on?"visible":"none";
+  for(const id of TRACK_LAYERS)if(map.getLayer(id))map.setLayoutProperty(id,"visibility",vis(!hide));
+  if(map.getLayer("arcs"))map.setLayoutProperty("arcs","visibility",vis(!hide&&$("arcs")&&$("arcs").checked));
+}
+function setHideTracks(on){
+  localStorage.hidet=on?"1":"0";
+  const el=$("hidet");if(el)el.checked=!!on;
+  const b=$("htb");if(b){b.classList.toggle("on",!!on);b.setAttribute("aria-pressed",on?"true":"false");b.textContent=on?"Show tracks":"Hide tracks"}
+  applyTrackVis();
+}
 const AMB="#ffc400",GND="#8a94a6",ALTC=["interpolate",["linear"],["get","alt"],0,"#9aa4b2",1000,"#ff5a36",10000,"#ffb000",20000,"#c6ff3a",30000,"#00e5ff",40000,"#b06bff"];
 const R2=Math.PI/180,hv=(a,b,c,d)=>{const x=Math.sin((c-a)*R2/2)**2+Math.cos(a*R2)*Math.cos(c*R2)*Math.sin((d-b)*R2/2)**2;return 2*3440.065*Math.asin(Math.sqrt(Math.min(1,x)))};
 function plane(){const s=48,c=document.createElement("canvas");c.width=c.height=s;const x=c.getContext("2d");x.fillStyle="#fff";x.beginPath();
@@ -10,7 +24,7 @@ function acF(){const mf=$("mf").value,ty=$("tyf").value.trim().toUpperCase(),now
   return{type:"Feature",properties:{h:a[0],cs:a[1],a:a[2],t:a[3],alt:a[6],gs:a[7],trk:a[8],g:a[10],hl:["QTR","UAE"].includes(a[2])?1:0,s:a[0]===SEL?1:0},geometry:{type:"Point",coordinates:[lon,lat]}}})}
 function drawLive(){if(!map||!map.getSource("live")||!L)return;const f=acF();map.getSource("live").setData({type:"FeatureCollection",features:f});
  if($("trl").checked){const tf=[];for(const x of f){const t=TR[x.properties.h];if(t&&t.length>1)tf.push({type:"Feature",properties:{a:x.properties.a},geometry:{type:"LineString",coordinates:[...t.slice(-12),x.geometry.coordinates]}})}map.getSource("trails").setData({type:"FeatureCollection",features:tf})}
- else map.getSource("trails").setData({type:"FeatureCollection",features:[]});if(SEL)selUpdate()}
+ else map.getSource("trails").setData({type:"FeatureCollection",features:[]});applyTrackVis();if(SEL)selUpdate()}
 function onPoll(){if(!L)return;for(const a of L.ac){const t=TR[a[0]]||(TR[a[0]]=[]),p=t[t.length-1];if(!p||p[0]!==a[5]||p[1]!==a[4])t.push([a[5],a[4]]);if(t.length>14)t.shift()}covDraw();
  const al=[...new Set(L.ac.map(a=>a[2]))].sort(),mf=$("mf"),v=mf.value;if(mf.options.length<4+al.length-2){mf.innerHTML=`<option value="all">All airlines</option><option value="QTR">QTR</option><option value="UAE">UAE</option><option value="other">Other airlines</option>`+al.filter(x=>!["QTR","UAE"].includes(x)).map(x=>`<option>${x}</option>`).join("");mf.value=v}drawLive()}
 function initMap(){map=new maplibregl.Map({container:"map",style:"https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",center:[35,28],zoom:innerWidth<700?1.1:2,attributionControl:{compact:true}});
@@ -23,34 +37,32 @@ function initMap(){map=new maplibregl.Map({container:"map",style:"https://basema
   TK=await fetch("/api/tracks").then(r=>r.json()).catch(()=>({f:[]}));
   const ts=$("tks");ts.innerHTML=`<option value="">Off</option><option value="QTR">All QTR (${TK.day})</option><option value="UAE">All UAE (${TK.day})</option>`+TK.f.map((f,i)=>[f.a+" "+f.o+"-"+f.d,i]).sort().map(([l,i])=>`<option value="${i}">${l}</option>`).join("");
   map.addSource("tk",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addSource("tkgc",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-  map.addLayer({id:"tkgc",type:"line",source:"tkgc",paint:{"line-color":"#ffffff","line-opacity":.45,"line-width":1,"line-dasharray":[3,3]}});
-  map.addLayer({id:"tk",type:"line",source:"tk",paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":1.1,"line-opacity":.6}});
+  const tv=hideTracksOn()?"none":"visible";
+  map.addLayer({id:"tkgc",type:"line",source:"tkgc",layout:{visibility:tv},paint:{"line-color":"#ffffff","line-opacity":.45,"line-width":1,"line-dasharray":[3,3]}});
+  map.addLayer({id:"tk",type:"line",source:"tk",layout:{visibility:tv},paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":1.1,"line-opacity":.6}});
   map.addSource("trails",{type:"geojson",lineMetrics:true,data:{type:"FeatureCollection",features:[]}});
-  map.addLayer({id:"trails",type:"line",source:"trails",paint:{"line-width":1.6,"line-gradient":["interpolate",["linear"],["line-progress"],0,"rgba(255,196,0,0)",1,"rgba(255,196,0,.75)"]}});
+  map.addLayer({id:"trails",type:"line",source:"trails",layout:{visibility:tv},paint:{"line-width":1.6,"line-gradient":["interpolate",["linear"],["line-progress"],0,"rgba(255,196,0,0)",1,"rgba(255,196,0,.75)"]}});
   map.addSource("sel",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-  map.addLayer({id:"sel-rem",type:"line",source:"sel",filter:["==",["get","k"],"rem"],paint:{"line-color":"#ffffff","line-width":1.6,"line-dasharray":[2,2],"line-opacity":.8}});
-  map.addLayer({id:"sel-flown",type:"line",source:"sel",filter:["==",["get","k"],"flown"],paint:{"line-color":"#ffe14d","line-width":3}});
+  map.addLayer({id:"sel-rem",type:"line",source:"sel",filter:["==",["get","k"],"rem"],layout:{visibility:tv},paint:{"line-color":"#ffffff","line-width":1.6,"line-dasharray":[2,2],"line-opacity":.8}});
+  map.addLayer({id:"sel-flown",type:"line",source:"sel",filter:["==",["get","k"],"flown"],layout:{visibility:tv},paint:{"line-color":"#ffe14d","line-width":3}});
   map.addLayer({id:"sel-ap",type:"circle",source:"sel",filter:["==",["get","k"],"ap"],paint:{"circle-radius":5,"circle-color":"#0b1222","circle-stroke-color":"#fff","circle-stroke-width":2}});
   map.addLayer({id:"sel-apl",type:"symbol",source:"sel",filter:["==",["get","k"],"ap"],layout:{"text-field":["get","n"],"text-size":12,"text-offset":[0,1.2],"text-font":["Open Sans Regular"]},paint:{"text-color":"#fff","text-halo-color":"#000","text-halo-width":1}});
-  map.addSource("live",{type:"geojson",data:{type:"FeatureCollection",features:[]},cluster:true,clusterMaxZoom:3,clusterRadius:40});
-  map.addLayer({id:"cl",type:"circle",source:"live",filter:["has","point_count"],paint:{"circle-color":"rgba(255,196,0,.25)","circle-stroke-color":AMB,"circle-stroke-width":1,"circle-radius":["interpolate",["linear"],["get","point_count"],2,10,300,26]}});
-  map.addLayer({id:"cln",type:"symbol",source:"live",filter:["has","point_count"],layout:{"text-field":["get","point_count_abbreviated"],"text-size":11,"text-font":["Open Sans Regular"]},paint:{"text-color":"#fff"}});
-  map.addLayer({id:"live",type:"symbol",source:"live",filter:["!",["has","point_count"]],layout:{"icon-image":"plane","icon-size":["interpolate",["linear"],["zoom"],3,["case",["==",["get","hl"],1],.42,.32],8,["case",["==",["get","hl"],1],.7,.55]],"icon-rotate":["get","trk"],"icon-rotation-alignment":"map","icon-allow-overlap":true,"icon-ignore-placement":true,"symbol-sort-key":["get","hl"]},
+  map.addSource("live",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+  map.addLayer({id:"live",type:"symbol",source:"live",layout:{"icon-image":"plane","icon-size":["interpolate",["linear"],["zoom"],1,["case",["==",["get","hl"],1],.34,.26],3,["case",["==",["get","hl"],1],.42,.32],8,["case",["==",["get","hl"],1],.7,.55]],"icon-rotate":["get","trk"],"icon-rotation-alignment":"map","icon-allow-overlap":true,"icon-ignore-placement":true,"icon-padding":0,"symbol-sort-key":["get","hl"]},
    paint:{"icon-color":AMB,"icon-halo-color":"#000","icon-halo-width":["case",["==",["get","s"],1],0,.6]}});
   colorMode();
-  map.on("click","cl",e=>{const c=e.features[0];map.getSource("live").getClusterExpansionZoom(c.properties.cluster_id).then(z=>map.easeTo({center:c.geometry.coordinates,zoom:z}))});
   map.on("click","live",e=>select(e.features[0].properties.h));
   map.on("click","arcs",e=>{const p=e.features[0].properties;new maplibregl.Popup().setLngLat(e.lngLat).setHTML(`<span style="color:#000">${p.a} ${p.r}: ${fmt(p.n)} flights${p.inf?` (${p.inf} with one end inferred)`:""}${p.low?" · low confidence":""}</span>`).addTo(map)});
-  ["live","cl","arcs"].forEach(l=>{map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",l,()=>map.getCanvas().style.cursor="")});
+  ["live","arcs"].forEach(l=>{map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",l,()=>map.getCanvas().style.cursor="")});
   CSR=await fetch("/api/csroute").then(r=>r.json()).catch(()=>null);
-  const tick=()=>{if(Date.now()-lastFrame>1000){lastFrame=Date.now();drawLive()}requestAnimationFrame(tick)};tick();onPoll();covDraw();setApt(localStorage.apt||"G")})}
+  const tick=()=>{if(Date.now()-lastFrame>1000){lastFrame=Date.now();drawLive()}requestAnimationFrame(tick)};tick();onPoll();covDraw();setApt(localStorage.apt||"G");applyTrackVis()})}
 function colorMode(){if(!map.getLayer("live"))return;const m=$("cm").value;
  map.setPaintProperty("live","icon-color",["case",["==",["get","s"],1],"#ffffff",["==",["get","g"],1],GND,m==="alt"?ALTC:["match",["get","a"],"QTR",C1,"UAE",C2,AMB]]);
  $("lgc").innerHTML=m==="alt"?`<b>Altitude</b> <i style="background:#ff5a36"></i>&lt;10k <i style="background:#ffb000"></i>10–20k <i style="background:#c6ff3a"></i>20–30k <i style="background:#00e5ff"></i>30–40k <i style="background:#b06bff"></i>40k+ ft`:`<i style="background:${C1}"></i>QTR <i style="background:${C2}"></i>UAE <i style="background:${AMB}"></i>other airlines`}
 function tkDraw(){const v=$("tks").value;let f=v===""?[]:(v==="QTR"||v==="UAE")?TK.f.filter(x=>x.a===v):[TK.f[+v]];
  map.getSource("tk").setData({type:"FeatureCollection",features:f.map(x=>({type:"Feature",properties:{a:x.a},geometry:{type:"MultiLineString",coordinates:x.seg}}))});
  const g=f.length===1&&H.ap[f[0].o]&&H.ap[f[0].d]?[{type:"Feature",properties:{},geometry:{type:"LineString",coordinates:gc(H.ap[f[0].o],H.ap[f[0].d])}}]:[];map.getSource("tkgc").setData({type:"FeatureCollection",features:g});
- $("tki").textContent=f.length===1?`${f[0].cs} ${f[0].reg} ${f[0].t} · ${f[0].o}→${f[0].d}${f[0].inf?" (one end inferred)":""} · ${new Date(f[0].t0*1000).toISOString().slice(0,16).replace("T"," ")} UTC · gaps = no receiver coverage`:f.length?`${f.length} flights on ${TK.day}`:""}
+ $("tki").textContent=f.length===1?`${f[0].cs} ${f[0].reg} ${f[0].t} · ${f[0].o}→${f[0].d}${f[0].inf?" (one end inferred)":""} · ${new Date(f[0].t0*1000).toISOString().slice(0,16).replace("T"," ")} UTC · gaps = no receiver coverage`:f.length?`${f.length} flights on ${TK.day}`:"";applyTrackVis()}
 function odOf(cs){const r=CSR&&CSR.cs[cs];if(!r)return null;const[o,d]=r[0].split("-"),A=CSR.ap;return A[o]&&A[d]?{o,d,O:A[o],D:A[d],n:r[1],tot:r[2]}:null}
 async function select(h){SEL=h;DB=null;const ac0=L&&L.ac.find(x=>x[0]===h);if(ac0)fetch('/api/route?cs='+encodeURIComponent(ac0[1])).then(r=>r.json()).then(j=>{if(SEL===h){DB=j;selUpdate()}}).catch(()=>{});$("sp").style.display="block";const r=await fetch("/api/track?hex="+h+"&t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>({points:[]}));SEL_T=r.points;selUpdate(true)}
 let SEL_T=[],DB=null;
@@ -63,7 +75,7 @@ function selUpdate(first){const a=L&&L.ac.find(x=>x[0]===SEL);if(!a){unsel();ret
   <div class="kv"><div>Flown*<b>${fmt(Math.round(fl))} nm</b></div><div>Remaining*<b>${fmt(Math.round(rm))} nm</b></div><div>Elapsed*<b>${Math.floor(el)}h ${Math.round(el%1*60)}m</b></div><div>Time left*<b>${Math.floor(rm/gs)}h ${Math.round(rm/gs%1*60)}m</b></div><div>ETA* UTC<b>${a[10]?"—":eta.toISOString().slice(11,16)}</b></div></div>
   <p class="mu">${srcNote(db,hi)} Remaining route drawn as an estimated great circle (dashed). *Estimates: distances are great-circle; ETA = remaining ÷ current ground speed.</p>`}
  else pr=`<p class="mu">${DB?'Origin/destination unknown: adsbdb has no route for this callsign and there is no route history for it (history covers QTR/UAE only). ADS-B does not broadcast origin/destination.':'Looking up route in adsbdb…'}</p>`;
- map.getSource("sel").setData({type:"FeatureCollection",features:F});
+ map.getSource("sel").setData({type:"FeatureCollection",features:F});applyTrackVis();
  $("spb").innerHTML=`<div class="sh"><b style="font-size:20px">${a[1]}</b> <span class="pill">${a[2]}</span> ${a[3]||"?"} · ${a[9]||"reg ?"} · hex ${a[0]}</div>
  <div class="kv"><div>Altitude<b>${a[10]?"on ground":fmt(a[6])+" ft"}</b></div><div>Ground speed<b>${a[7]} kt</b></div><div>Vertical rate<b>${a[12]>0?"+":""}${fmt(a[12]||0)} fpm</b></div><div>Track<b>${a[8]}°</b></div><div>Position age<b>${a[11]} s</b></div></div>${pr}`;
  $("prof").style.display=P.length<2?"none":"";if(P.length>=2)ch("prof",{grid:{left:44,right:36,top:12,bottom:46},legend:{bottom:0,itemWidth:12,itemHeight:6,textStyle:{color:"#cfe3ff",fontSize:10},data:["Altitude ft","Ground speed kt","Vertical rate fpm"]},xAxis:ax({type:"time",axisLabel:{fontSize:9,hideOverlap:true}}),yAxis:[ax({type:"value",axisLabel:{fontSize:9}}),ax({type:"value",axisLabel:{fontSize:9},splitLine:{show:false}})],
@@ -97,7 +109,7 @@ function gSetup(){if(map.getSource("sat"))return;const b=map.getStyle().layers.f
  map.addLayer({id:"gnd",type:"symbol",source:"gnd",layout:{"icon-image":"gac","icon-size":.6,"icon-rotate":["get","tr"],"icon-rotation-alignment":"map","icon-allow-overlap":true,"text-field":["get","cs"],"text-size":11,"text-offset":[0,1.3],"text-allow-overlap":false,"text-font":["Open Sans Regular"],visibility:"none"},paint:{"icon-color":["match",["get","st"],"parked","#9aa6b8","taxi","#ffc400","#ff4d6d"],"icon-opacity":["match",["get","mode"],"held",.4,1],"icon-halo-color":"#000","icon-halo-width":1,"text-color":["match",["get","mode"],"held","#9aa6b8","#fff"],"text-opacity":["match",["get","mode"],"held",.7,1],"text-halo-color":"#000","text-halo-width":1.2}})}
 function setApt(a){APT=a;localStorage.apt=a;document.querySelectorAll("#aps button").forEach(b=>b.classList.toggle("on",b.dataset.a===a));if(!map)return;gSetup();const g=a!=="G";
  ["sat","gnd"].forEach(l=>map.setLayoutProperty(l,"visibility",g?"visible":"none"));$("gp").style.display=g?"block":"none";clearInterval(GT);
- if(g){map.flyTo({center:APTC[a],zoom:innerWidth<700?12.6:13.4,speed:2});gLoad();GT=setInterval(gLoad,30000)}else map.flyTo({center:[35,28],zoom:innerWidth<700?1.1:2,speed:2})}
+ if(g){map.flyTo({center:APTC[a],zoom:innerWidth<700?12.6:13.4,speed:2});gLoad();GT=setInterval(gLoad,30000)}else map.flyTo({center:[35,28],zoom:innerWidth<700?1.1:2,speed:2});applyTrackVis()}
 async function gLoad(){const a=APT;if(a==="G")return;const j=await fetch("/api/ground?apt="+a).then(r=>r.json()).catch(()=>null);if(!j||a!==APT)return;
  const all=$("gall").checked,r=j.ac.filter(x=>all||x[2]==="QTR"||x[2]==="UAE"),live=r.filter(x=>x[11]!=="held"),held=r.filter(x=>x[11]==="held");
  map.getSource("gnd").setData({type:"FeatureCollection",features:r.map(x=>({type:"Feature",properties:{cs:x[1]||x[0],tr:x[6],st:x[8],mode:x[11]||"live"},geometry:{type:"Point",coordinates:[x[5],x[4]]}}))});
