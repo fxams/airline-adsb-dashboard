@@ -36,6 +36,8 @@ code{color:var(--c3)}a{color:var(--c1)}@media(max-width:560px){.g2{grid-template
 .qempty,.qfoot{padding:10px 12px;font-size:12px;color:var(--mu);line-height:1.45}
 .qnote{margin:6px 8px 0;font-size:12px}
 .fsb{font-size:12px;padding:6px 10px;min-height:34px;white-space:nowrap}
+.mfsb{position:absolute;z-index:7;top:8px;right:8px}
+.mfsnote{display:none;position:absolute;z-index:8;bottom:8px;right:8px;max-width:min(280px,46vw);background:rgba(6,12,24,.92);border:1px solid var(--bd);border-radius:8px;padding:6px 8px;font-size:11px;line-height:1.35}
 .wxctl{position:absolute;z-index:5;left:8px;bottom:40px;max-width:min(280px,72vw);background:rgba(6,12,24,.9);border:1px solid var(--bd);border-radius:10px;padding:6px 10px;font-size:12px;line-height:1.5}
 .wxctl summary{cursor:pointer;font-weight:600}
 .wxctl label{display:flex;align-items:center;gap:6px;margin:4px 0;min-height:32px}
@@ -43,9 +45,16 @@ code{color:var(--c3)}a{color:var(--c1)}@media(max-width:560px){.g2{grid-template
 .wxst{position:absolute;z-index:5;left:8px;bottom:8px;right:8px;max-width:min(520px,calc(100% - 16px));background:rgba(6,12,24,.9);border:1px solid var(--bd);border-radius:8px;padding:6px 8px;font-size:11px;color:var(--mu);pointer-events:none}
 .wxst.err{border-color:rgba(255,176,32,.5);color:var(--warn);pointer-events:auto}
 .wxdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin:0 4px 0 2px;vertical-align:middle;border:1px solid rgba(255,255,255,.35)}
-body.dash-focus{overflow:hidden}
-body.dash-focus #map,html:fullscreen #map,html:-webkit-full-screen #map{height:calc(100dvh - 168px)!important;border-radius:12px}
-html:fullscreen,html:-webkit-full-screen{background:var(--bg)}.gph{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 4px}#gpl td,#gpl th{padding:4px 6px;font-size:12px}#gpl tr.held td{opacity:.55;font-style:italic}
+#mw:fullscreen,#mw:-webkit-full-screen{width:100%;height:100%;background:#05070d;padding:0;margin:0;overflow:hidden}
+#mw:fullscreen #map,#mw:-webkit-full-screen #map{height:100%!important;width:100%!important;border-radius:0!important}
+body.map-fs{overflow:hidden}
+body.map-fs #mw{position:fixed;inset:0;z-index:200;margin:0;width:100%;height:100dvh;background:#05070d;border-radius:0;overflow:hidden}
+body.map-fs #map{height:100%!important;width:100%!important;border-radius:0!important}
+#mw:fullscreen .mtb,#mw:-webkit-full-screen .mtb,body.map-fs .mtb{display:flex;top:48px}
+#mw:fullscreen #sp.on,#mw:-webkit-full-screen #sp.on,body.map-fs #sp.on{position:absolute!important;z-index:90}
+body.map-fs .mfsnote:not([hidden]){display:block}
+#mw:fullscreen .mfsnote,#mw:-webkit-full-screen .mfsnote{display:none!important}
+.gph{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 4px}#gpl td,#gpl th{padding:4px 6px;font-size:12px}#gpl tr.held td{opacity:.55;font-style:italic}
 #fbtn{position:absolute;top:8px;left:8px;z-index:4;display:none}
 .lg summary{cursor:pointer;font-weight:600}
 @media(max-width:700px){html,body{overflow-x:hidden}main{padding:8px!important}header{flex-wrap:wrap;gap:6px}nav{overflow-x:auto;white-space:nowrap;display:flex;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}nav button{flex:0 0 auto;min-height:44px;padding:10px 14px}
@@ -53,7 +62,7 @@ html:fullscreen,html:-webkit-full-screen{background:var(--bg)}.gph{display:flex;
 #fbtn{display:inline-block;min-height:36px}.lg{top:52px!important;left:8px!important}#sp::before{display:none}#map{width:100%!important}.mw{margin:0 -4px}#sp{max-height:45vh}#mfl{display:none;flex-direction:column;align-items:stretch}#mfl.open{display:flex}#mfl label,#mfl input,#mfl select,#mfl .btn{min-height:40px;font-size:15px;width:100%}
 #map{height:72vh}.lg{max-width:62vw;font-size:11px}.lg:not([open]){padding:6px 10px}.mtb{display:flex}.htb,.rlb{min-height:36px;font-size:13px;padding:7px 12px}
 .qwrap{top:86px;left:8px;right:8px;width:auto}
-.fsb{min-height:40px}
+.fsb{min-height:40px}.mfsb{top:8px;right:8px;min-height:40px}
 .wxctl{left:8px;bottom:48px;max-width:min(280px,calc(100% - 16px))}
 .wxctl label{min-height:40px}
 #sp{position:fixed;left:0!important;right:0!important;bottom:0!important;width:auto!important;overflow-y:auto;z-index:50;max-height:55vh;border-radius:16px 16px 0 0;padding:14px 14px 24px}#sp .x{min-width:44px;min-height:44px;font-size:18px}#sp::before{content:"";display:block;width:40px;height:4px;background:#556;border-radius:2px;margin:0 auto 8px}
@@ -85,6 +94,7 @@ html:fullscreen,html:-webkit-full-screen{background:var(--bg)}.gph{display:flex;
 #sp .sph,#sph{display:none}
 .lg,.lg summary{display:none!important}
 .wxctl{top:88px;right:8px;left:auto;bottom:auto}
+.mfsb{top:8px;left:356px;right:auto}
 }
 @media(max-width:700px){
 #sp.on{left:0!important;right:0!important;bottom:0!important;top:auto!important;width:auto;max-height:min(72dvh,calc(100dvh - 10px));border-radius:16px 16px 0 0;padding:0 0 max(12px,env(safe-area-inset-bottom))}
@@ -97,7 +107,7 @@ html:fullscreen,html:-webkit-full-screen{background:var(--bg)}.gph{display:flex;
 }
 </style></head><body>
 <header><h1><b>◆</b> Airline ADS-B Analytics <span class="mu">· Qatar Airways vs Emirates, 365-day full dumps · global sample · live</span></h1>
-<div class="st"><span id="dot" class="dot"></span><span id="lst">connecting…</span><span id="cnt"></span><button type="button" class="btn fsb" id="fsb" aria-pressed="false">Fullscreen</button></div></header>
+<div class="st"><span id="dot" class="dot"></span><span id="lst">connecting…</span><span id="cnt"></span></div></header>
 <nav id="nav"></nav><main>
 <section class="tab" id="t-overview">
  <div class="g g4" id="kpis"></div>
@@ -108,8 +118,8 @@ html:fullscreen,html:-webkit-full-screen{background:var(--bg)}.gph{display:flex;
 <label>Colour <select id="cm"><option value="air">By airline</option><option value="alt">By altitude</option></select></label>
 <label><input type="checkbox" id="trl" checked> Trails</label><label><input type="checkbox" id="hidet"> Hide tracks</label><label><input type="checkbox" id="reglab"> Registration labels</label><label><input type="checkbox" id="covt" checked> Coverage fill</label><label><input type="checkbox" id="cvb" checked> Coverage boundary</label><label><input type="checkbox" id="arcs"> 365-day route network</label>
 <label>Flown tracks <select id="tks"><option value="">Off</option></select></label></div>
-<div class="mw"><div id="qwrap" class="qwrap"><div class="qbox"><input id="qs" type="search" placeholder="Callsign or registration" autocomplete="off" spellcheck="false" aria-label="Find callsign or registration" aria-autocomplete="list" aria-controls="qres" aria-expanded="false"><button type="button" id="qclr" class="qclr" hidden aria-label="Clear search">×</button><button type="button" id="qsb" class="btn">Go</button></div><div id="qres" class="qres" hidden role="listbox"></div><p class="mu qnote" id="qnote" hidden></p></div>
-<div id="map"></div><button class="btn fb" id="fbtn">Filters ☰</button><div class="aps" id="aps"><button data-a="G">Global</button><button data-a="DOH">DOH</button><button data-a="DXB">DXB</button></div>
+<div class="mw" id="mw"><div id="qwrap" class="qwrap"><div class="qbox"><input id="qs" type="search" placeholder="Callsign or registration" autocomplete="off" spellcheck="false" aria-label="Find callsign or registration" aria-autocomplete="list" aria-controls="qres" aria-expanded="false"><button type="button" id="qclr" class="qclr" hidden aria-label="Clear search">×</button><button type="button" id="qsb" class="btn">Go</button></div><div id="qres" class="qres" hidden role="listbox"></div><p class="mu qnote" id="qnote" hidden></p></div>
+<div id="map"></div><button type="button" class="btn fsb mfsb" id="mfsb" aria-pressed="false" title="Live map only">Map fullscreen</button><p class="mu mfsnote" id="mfsnote" hidden>Expanded live map in the page. Browser chrome stays visible; this is not browser fullscreen.</p><button class="btn fb" id="fbtn">Filters ☰</button><div class="aps" id="aps"><button data-a="G">Global</button><button data-a="DOH">DOH</button><button data-a="DXB">DXB</button></div>
 <div class="mtb" id="mtb"><button type="button" class="htb" id="htb" aria-pressed="false" title="Hide flight-path lines. Aircraft and coverage stay visible.">Hide tracks</button><button type="button" class="rlb" id="rlb" aria-pressed="false" title="Show sourced registration next to aircraft at close zoom.">Reg labels</button></div>
 <details class="wxctl" id="wxctl"><summary>Weather</summary>
 <label><input type="checkbox" id="wxhaz"> Hazard polygons</label>
@@ -122,7 +132,8 @@ html:fullscreen,html:-webkit-full-screen{background:var(--bg)}.gph{display:flex;
 <details class="lg" open><summary>Legend</summary><div><svg width="14" height="14" viewBox="0 0 48 48"><path fill="#ffc400" d="M24 2l3 6v11l18 10v4l-18-6v11l6 5v3l-9-3-9 3v-3l6-5V27L3 33v-4l18-10V8z"/></svg> Live aircraft, nose = heading</div><div id="lgc"></div><div><i style="background:#8a94a6"></i>on ground <i style="background:#fff"></i>selected</div><div class="mu">Registration text appears at close zoom when labels are on (sourced ADS-B reg only).</div><div><i style="background:rgba(154,166,184,.35);border:1px dashed #9aa6b8"></i>held last ground position (ADS-B off / dropped; removed when hex reappears or after 24 h)</div>
 <div><span class="ln" style="background:linear-gradient(90deg,transparent,#ffc400)"></span> trail (recent positions)</div><div><span class="ln" style="background:#ffe14d"></span> selected: observed flown track</div><div><span class="ln dash" style="border-color:#ffe14d"></span> join to displayed marker (dead-reckoning est.)</div><div><span class="ln dash" style="border-color:#8aa0bf"></span> coverage gap (not flown)</div><div><span class="ln dash"></span> remaining route (est.) / great circle</div>
 <div><span class="ln" style="background:linear-gradient(90deg,#00e5ff,#ff2fd6)"></span> real flown track (trace data)</div><div><span class="ln dash" style="border-color:#ff2fd6"></span> 365-day route (faint = low confidence)</div><div class="mu">Positions move between refreshes by dead reckoning (estimate).</div><div><i style="background:rgba(58,160,255,.35);border-radius:2px"></i>receiver coverage (last 24 h)</div><div><span class="ln" style="background:#5cc8ff"></span> coverage boundary: outside = no receiver data in the window (estimated from observed traffic, not an official receiver map)</div>
-<div id="lwx" class="mu">Weather (when on): <i class="wxdot" style="background:#ff7a45"></i>TS/convective <i class="wxdot" style="background:#ff2fd6"></i>turbulence advisory <i class="wxdot" style="background:#5ce1ff"></i>icing advisory <i class="wxdot" style="background:#7cff6b"></i>VFR METAR <i class="wxdot" style="background:#ff5a36"></i>IFR METAR. SIGMETs are advisories. Not for operational flight planning.</div></details>
+<div id="lwx" class="mu">Weather (when on): airport icon = METAR station (not an aircraft). Labels show ICAO, temperature °C, wind °T/kt or calm/VRB, QNH in pascals (Pa, converted from the METAR). Report time UTC; stale if older than 90 min. Not a live minute reading. <i class="wxdot" style="background:#ff7a45"></i>TS/convective <i class="wxdot" style="background:#ff2fd6"></i>turbulence advisory <i class="wxdot" style="background:#5ce1ff"></i>icing advisory <i class="wxdot" style="background:#7cff6b"></i>VFR METAR <i class="wxdot" style="background:#ff5a36"></i>IFR METAR. SIGMETs are advisories. Not for operational flight planning.</div></details>
+<div id="sp" role="dialog" aria-labelledby="spcs"><div class="sphd"><button type="button" id="sph" class="sph" title="Collapse or expand" aria-label="Collapse or expand details"></button><div class="spid"><div class="spk">ADS-B callsign</div><div id="spcs" class="spcs"></div><div id="spal" class="spal"></div></div><button type="button" class="btn x" id="spx" aria-label="Close flight details">Close</button></div><div id="spsum" class="spsum"></div><div class="spbd" id="spbd"><div id="spb"></div><div id="spwx"></div><div id="prof" class="spprof"></div><p class="mu spn" id="spn"></p></div></div>
 </div>
 <div id="gp" style="display:none"><div class="gph"><b id="gpt"></b><label class="mu"><input type="checkbox" id="gall"> other airlines too</label></div><div class="tw"><table id="gpl"></table></div><p class="mu">Ground view (estimate): live aircraft within 8 nm reporting on-ground, or under 300 ft and under 60 kt (refreshed every 30 s). When an aircraft drops out of the feed (common when ADS-B is switched off at the gate), its last ground position is held as a faded marker until the same hex reappears anywhere in the live feed, or for up to 24 h. Status parked/taxi/runway is estimated from ground speed. No gate or stand assignment. Hold store persists across restarts. Imagery © Esri, Maxar, Earthstar Geographics. Times UTC.</p></div><p class="mu" id="tki"></p><p class="mu">Weather overlay (optional): NOAA/NWS Aviation Weather Center international SIGMETs, US SIGMETs, CONUS G-AIRMETs, and selected-airport METARs/TAFs, cached server-side. Forecast winds aloft are NOAA GFS 1.0° via the NOMADS grib filter (simple-packing regional subset; OpenDAP retired SCN 25-81), not WAFS. Not for operational flight planning. Hide tracks does not hide weather. Times UTC.</p>
 <p class="mu">Live positions: worldwide adsb.lol feed, queried by ~50 common airliner types every 90 s (airline callsigns only; aircraft with no type in the database are missed). Blue cells and the outlined boundary = areas where receivers picked up aircraft in the last 24 h (accumulated since server start; estimated from observed traffic, not an official receiver map); everything else (most oceans, much of Africa, Siberia, polar routes) has no receiver coverage, so aircraft there are not visible. <span id="covn"></span>. Data © adsb.lol contributors (ODbL). Times UTC.</p></div>
@@ -176,7 +187,6 @@ html:fullscreen,html:-webkit-full-screen{background:var(--bg)}.gph{display:flex;
  <li>En-route weather: NOAA/NWS Aviation Weather Center Data API (no key; server-side cache; max 100 req/min). International SIGMETs, US SIGMETs, and CONUS-only G-AIRMETs as hazard polygons labelled with the origin bulletin id; METARs (measured) and TAFs (forecasts) for a hub set plus selected origin/destination. Expired advisories are omitted. An upstream error is shown as unavailable, not as “no hazards”. Forecast winds aloft: NOAA GFS 1.0° pressure-level U/V via NOMADS grib filter (OpenDAP retired, SCN 25-81) on a Europe/Africa/Middle East/South Asia subset, decoded with a zero-dep simple-packing (template 5.0) reader and shown every 3°. Complex packing (global 1° template 5.3) is not decoded. Not WAFS, not live turbulence. Not for operational flight planning. No satellite mosaic, no Open-Meteo.</li>
  <li>Data © adsb.lol contributors, <a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL 1.0</a>; airports from OurAirports; live flight routes (origin/destination on click) from <a href="https://www.adsbdb.com">adsbdb.com</a>, cross-checked with routes inferred from adsb.lol history; weather from <a href="https://aviationweather.gov/data/api/">NOAA/NWS Aviation Weather Center</a> and origin agencies; basemap © OpenStreetMap contributors, © CARTO.</li></ul></div>
 </section></main>
-<div id="sp" role="dialog" aria-labelledby="spcs"><div class="sphd"><button type="button" id="sph" class="sph" title="Collapse or expand" aria-label="Collapse or expand details"></button><div class="spid"><div class="spk">ADS-B callsign</div><div id="spcs" class="spcs"></div><div id="spal" class="spal"></div></div><button type="button" class="btn x" id="spx" aria-label="Close flight details">Close</button></div><div id="spsum" class="spsum"></div><div class="spbd" id="spbd"><div id="spb"></div><div id="spwx"></div><div id="prof" class="spprof"></div><p class="mu spn" id="spn"></p></div></div>
 <script>
 const $=id=>document.getElementById(id),C1="#00e5ff",C2="#ff2fd6",AC={QTR:C1,UAE:C2},TABS=[["overview","Overview · Live"],["h2h","QTR vs UAE · 365 days"],["fin","Financial study"],["dist","Distributions"],["global","Global leaderboard"],["data","Data tables"],["api","API and dictionary"],["method","Method"]];
 const fmt=n=>typeof n==="number"?n.toLocaleString("en-US"):n;let H,G,L,charts={},map,lastOk=0;
@@ -275,17 +285,47 @@ $("wxlev").onchange=$("wxhr").onchange=()=>wxDrawWind();
 syncWx();
 function fsEl(){return document.fullscreenElement||document.webkitFullscreenElement}
 function canFS(){return !!(document.fullscreenEnabled||document.webkitFullscreenEnabled)}
-function layoutAfterFS(){setTimeout(()=>{if(map&&map.resize)map.resize();Object.values(charts).forEach(c=>c.resize&&c.resize());padMap()},80)}
-function syncFS(){const on=!!fsEl(),fake=document.body.classList.contains("dash-focus"),b=$("fsb");if(!b)return;
- if(on){b.textContent="Exit fullscreen";b.setAttribute("aria-pressed","true");b.title="Exit browser fullscreen"}
- else if(fake){b.textContent="Exit expanded view";b.setAttribute("aria-pressed","true");b.title="Exit in-page expanded layout. Browser chrome stays visible."}
- else{b.textContent=canFS()?"Fullscreen":"Expand dashboard";b.setAttribute("aria-pressed","false");b.title=canFS()?"Whole dashboard fullscreen":"In-page expanded layout (this browser cannot hide its chrome)"}
- layoutAfterFS()}
-async function toggleFS(){if(fsEl()){try{await(document.exitFullscreen?document.exitFullscreen():document.webkitExitFullscreen())}catch(e){}return}
- if(document.body.classList.contains("dash-focus")){document.body.classList.remove("dash-focus");syncFS();return}
- if(canFS()){try{const el=document.documentElement,p=el.requestFullscreen?el.requestFullscreen():el.webkitRequestFullscreen&&el.webkitRequestFullscreen();if(p&&p.then)await p}catch(e){document.body.classList.add("dash-focus")}}
- else document.body.classList.add("dash-focus");syncFS()}
-$("fsb").onclick=toggleFS;document.addEventListener("fullscreenchange",syncFS);document.addEventListener("webkitfullscreenchange",syncFS);
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.body.classList.contains("dash-focus")&&!fsEl()){document.body.classList.remove("dash-focus");syncFS()}});
+function mwEl(){return $("mw")}
+function mapFsOn(){const el=mwEl();return !!(el&&fsEl()===el)||document.body.classList.contains("map-fs")}
+function layoutAfterFS(){setTimeout(()=>{if(map&&map.resize)map.resize();if(typeof padMap==="function")padMap()},80)}
+function parkMw(on){
+  const el=mwEl(); if(!el)return;
+  if(on){
+    if(!$("mwslot")){const s=document.createElement("div");s.id="mwslot";el.parentNode.insertBefore(s,el)}
+    if(el.parentNode!==document.body)document.body.appendChild(el);
+  } else {
+    const s=$("mwslot");
+    if(s&&s.parentNode&&el.parentNode!==s.parentNode)s.parentNode.insertBefore(el,s);
+    if(s)s.remove();
+  }
+}
+function enterMapFsFallback(){parkMw(true);document.body.classList.add("map-fs")}
+function exitMapFsFallback(){document.body.classList.remove("map-fs");parkMw(false)}
+function syncFS(){
+  const native=!!(mwEl()&&fsEl()===mwEl()), fake=document.body.classList.contains("map-fs")&&!native, on=native||fake, b=$("mfsb");
+  if(!b)return;
+  if(on){b.textContent="Exit map";b.setAttribute("aria-pressed","true");b.title=fake?"Exit expanded map. Browser chrome stays visible; this is not browser fullscreen.":"Exit live-map fullscreen"}
+  else{b.textContent="Map fullscreen";b.setAttribute("aria-pressed","false");b.title=canFS()?"Live map only, with search and weather controls. Not the whole dashboard.":"Expand live map in the page. This browser cannot hide its chrome."}
+  const note=$("mfsnote"); if(note) note.hidden=!fake;
+  layoutAfterFS();
+}
+async function toggleFS(){
+  const el=mwEl(); if(!el)return;
+  if(fsEl()===el){try{await(document.exitFullscreen?document.exitFullscreen():document.webkitExitFullscreen())}catch(e){}return}
+  if(document.body.classList.contains("map-fs")){exitMapFsFallback();syncFS();return}
+  if(canFS()){
+    try{
+      const p=el.requestFullscreen?el.requestFullscreen():el.webkitRequestFullscreen&&el.webkitRequestFullscreen();
+      if(p&&p.then)await p;
+      if(fsEl()!==el) enterMapFsFallback();
+    }catch(e){enterMapFsFallback()}
+  } else enterMapFsFallback();
+  syncFS();
+}
+$("mfsb").onclick=toggleFS;
+function onFsChange(){if(fsEl()===mwEl())exitMapFsFallback();syncFS()}
+document.addEventListener("fullscreenchange",onFsChange);
+document.addEventListener("webkitfullscreenchange",onFsChange);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.body.classList.contains("map-fs")&&fsEl()!==mwEl()){exitMapFsFallback();syncFS()}});
 syncFS();</script>
 </body></html>
