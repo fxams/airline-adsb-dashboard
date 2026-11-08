@@ -170,6 +170,7 @@ async function refresh() {
 refresh();
 setInterval(refresh, REFRESH_MS);
 
+const wx = require("./wx");
 const zlib = require("zlib");
 const send = (res, code, type, body, cache) => {
   const h = { "Content-Type": type, "Cache-Control": cache || "no-store, no-cache, must-revalidate, max-age=0", "Access-Control-Allow-Origin": "*", "Vary": "Accept-Encoding" };
@@ -195,6 +196,9 @@ http.createServer(async (req, res) => {
   if (u === "/api/fin.csv") { res.setHeader("Content-Disposition", "attachment; filename=qtr_uae_monthly_metrics.csv"); return send(res, 200, "text/csv", finCsv, "public, max-age=300"); }
   if (u === "/api/h2h") return send(res, 200, "application/json", h2h, "public, max-age=300");
   if (u === "/api/global") return send(res, 200, "application/json", globalAgg, "public, max-age=300");
+  if (u === "/api/wx/hazards") return send(res, 200, "application/json", JSON.stringify(await wx.hazards()), "public, max-age=60");
+  if (u === "/api/wx/stations") return send(res, 200, "application/json", JSON.stringify(await wx.stations(q.get("ids") || "")), "public, max-age=60");
+  if (u === "/api/wx/winds") return send(res, 200, "application/json", JSON.stringify(await wx.winds()), "public, max-age=120");
   if (u === "/api/live") return send(res, 200, "application/json", JSON.stringify({ ...live, history: hist, refreshSeconds: REFRESH_MS / 1000 }));
   if (u === "/api/map") return send(res, 200, "application/json", JSON.stringify(map));
   if (u === "/healthz") return send(res, 200, "text/plain", "ok");
