@@ -146,7 +146,7 @@ async function refresh() {
       for (const r of ac) { const c = r[2]; if (c && names[c] && !nm[c]) nm[c] = names[c]; }
       live = { at, fields: live.fields, ac, nm };
       const now = Date.now();
-      for (const r of live.ac) { const t = trails.get(r[0]) || []; const p = t[t.length - 1]; if (!p || p[1] !== r[5] || p[2] !== r[4]) t.push([now, r[5], r[4], r[6], r[7], r[12]]); if (t.length > 360) t.shift(); trails.set(r[0], t); }
+      for (const r of live.ac) { const t = trails.get(r[0]) || []; const p = t[t.length - 1]; if (!p || p[1] !== r[5] || p[2] !== r[4]) t.push([now, r[5], r[4], r[6], r[7], r[12], r[10]]); if (t.length > 360) t.shift(); trails.set(r[0], t); }
       for (const [h, t] of trails) if (now - t[t.length - 1][0] > 20 * 60000) trails.delete(h);
       hist.push([at, seen.size, live.ac.length]); if (hist.length > 60) hist.shift();
     }
@@ -168,7 +168,7 @@ http.createServer(async (req, res) => {
   if (u === "/api/snapshot") return send(res, 200, "application/json", JSON.stringify(snapshot));
   if (u === "/api/tracks") return send(res, 200, "application/json", tracks, "public, max-age=300");
   if (u === "/api/trails") { const o = {}; for (const [h, t] of trails) o[h] = t.slice(-12).map((p) => [p[1], p[2]]); return send(res, 200, "application/json", JSON.stringify(o)); }
-  if (u === "/api/track") { const h = (q.get("hex") || "").toLowerCase(); return send(res, 200, "application/json", JSON.stringify({ hex: h, fields: ["t_ms", "lon", "lat", "alt_ft", "gs_kt", "vrate_fpm"], note: "Positions collected by this server every refresh since it last restarted (max ~3 h)", points: trails.get(h) || [] })); }
+  if (u === "/api/track") { const h = (q.get("hex") || "").toLowerCase(); return send(res, 200, "application/json", JSON.stringify({ hex: h, fields: ["t_ms", "lon", "lat", "alt_ft", "gs_kt", "vrate_fpm", "on_ground"], note: "Positions collected by this server every refresh since it last restarted (max ~3 h). on_ground is 1 when the ADS-B snapshot reported ground. First stored point is when this server began tracking the hex, not a departure time.", points: trails.get(h) || [] })); }
   if (u === "/api/coverage") return send(res, 200, "application/json", JSON.stringify({ cell_deg: 2, window_h: 24, since_utc: new Date(T0).toISOString(), note: "2-degree cells where at least one airliner position was received in the last 24 h (accumulated since server start, UTC). Estimated from observed traffic, not an official receiver map. Areas outside = no receiver data in the window.", cells: [...cov.keys()].map((k) => k.split(",").map(Number)) }));
   if (u === "/api/route") {
     const cs = (q.get("cs") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);

@@ -1,6 +1,50 @@
 // Live map: FR24-style aircraft layer, trails, selection panel, real flown tracks. Data: adsb.lol (ODbL).
 let SEL=null,TR={},CSR=null,TK=null,prof=null,lastFrame=0;
-const TRACK_LAYERS=["trails","tk","tkgc","sel-flown","sel-rem"];
+const TRACK_LAYERS=["trails","tk","tkgc","sel-flown","sel-join","sel-gap","sel-rem"];
+function ageS(){return L&&L.at?Math.min(90,(Date.now()-new Date(L.at))/1000):0}
+function dispLonLat(lat,lon,gs,trk,onG){
+  let la=+lat, lo=+lon;
+  if(!onG && gs>40){
+    const d=gs*ageS()/3600/60, t=trk*R2, c=Math.cos(la*R2);
+    la+=d*Math.cos(t); lo+=d*Math.sin(t)/Math.max(Math.abs(c),0.2);
+  }
+  if(lo>180)lo-=360; else if(lo<-180)lo+=360;
+  return [lo,la];
+}
+function unwrapLine(coords){
+  if(!coords||coords.length<2)return coords||[];
+  const o=[coords[0].slice()];
+  for(let i=1;i<coords.length;i++){
+    let lon=coords[i][0]; const prev=o[o.length-1][0];
+    if(lon-prev>180)lon-=360; else if(lon-prev<-180)lon+=360;
+    o.push([lon,coords[i][1]]);
+  }
+  return o;
+}
+function nmLL(a,b){return hv(a[1],a[0],b[1],b[0])}
+function isGapPt(p0,p1){
+  const nm=hv(p0[2],p0[1],p1[2],p1[1]), dt=Math.max(0,(p1[0]-p0[0])/1000);
+  if(dt>8*60 && nm>30)return true;
+  if(dt>1 && nm/(dt/3600)>700)return true;
+  if(nm>80 && dt<30)return true;
+  return false;
+}
+function gndLike(p){return p[6]===1 || ((p[3]||0)===0 && (p[4]||0)<40)}
+function airLike(p){return p[6]!==1 && ((p[3]||0)>=400 || ((p[3]||0)>50 && (p[4]||0)>80))}
+function utcClock(ms){const d=new Date(ms);return isNaN(+d)?null:d.toISOString().slice(0,16).replace("T"," ")+" UTC"}
+function posFresh(a){if(!a||a.held||a.gnd||a.src!=="live")return false; if((a.age||0)>60)return false; if(L&&L.at&&Date.now()-Date.parse(L.at)>120000)return false; return a.gs>120}
+function observedEvents(P,a){
+  const ev={takeoff:null,landing:null,since:P[0]?P[0][0]:null};
+  let lastG=null;
+  for(const p of P){
+    if(gndLike(p)) lastG=p;
+    else if(airLike(p)&&lastG&&!ev.takeoff && (p[0]-lastG[0])<=20*60000) ev.takeoff=p[0];
+  }
+  if(a&&(a.gnd||a.held)){
+    for(let i=1;i<P.length;i++) if(airLike(P[i-1])&&gndLike(P[i])&&(P[i][0]-P[i-1][0])<=20*60000) ev.landing=P[i][0];
+  }
+  return ev;
+}
 function hideTracksOn(){return localStorage.hidet==="1"}
 function applyTrackVis(){
   if(!map)return;
@@ -18,9 +62,9 @@ const AMB="#ffc400",GND="#8a94a6",ALTC=["interpolate",["linear"],["get","alt"],0
 const R2=Math.PI/180,hv=(a,b,c,d)=>{const x=Math.sin((c-a)*R2/2)**2+Math.cos(a*R2)*Math.cos(c*R2)*Math.sin((d-b)*R2/2)**2;return 2*3440.065*Math.asin(Math.sqrt(Math.min(1,x)))};
 function plane(){const s=48,c=document.createElement("canvas");c.width=c.height=s;const x=c.getContext("2d");x.fillStyle="#fff";x.beginPath();
  const p=[[24,2],[27,8],[27,19],[45,29],[45,33],[27,27],[27,38],[33,43],[33,46],[24,43],[15,46],[15,43],[21,38],[21,27],[3,33],[3,29],[21,19],[21,8]];p.forEach(([a,b],i)=>i?x.lineTo(a,b):x.moveTo(a,b));x.closePath();x.fill();return x.getImageData(0,0,s,s)}
-function acF(){const mf=$("mf").value,ty=$("tyf").value.trim().toUpperCase(),now=Date.now(),age=L&&L.at?Math.min(90,(now-new Date(L.at))/1000):0;
- return (L?L.ac:[]).filter(a=>(mf==="all"||(mf==="other"?!["QTR","UAE"].includes(a[2]):a[2]===mf))&&(!ty||(a[3]||"").toUpperCase().startsWith(ty))).map(a=>{let lon=a[5],lat=a[4];
-  if(!a[10]&&a[7]>40){const d=a[7]*age/3600/60,t=a[8]*R2;lat+=d*Math.cos(t);lon+=d*Math.sin(t)/Math.cos(lat*R2)} // dead reckoning between refreshes (estimate)
+function acF(){const mf=$("mf").value,ty=$("tyf").value.trim().toUpperCase();
+ return (L?L.ac:[]).filter(a=>(mf==="all"||(mf==="other"?!["QTR","UAE"].includes(a[2]):a[2]===mf))&&(!ty||(a[3]||"").toUpperCase().startsWith(ty))).map(a=>{
+  const [lon,lat]=dispLonLat(a[4],a[5],a[7],a[8],a[10]);
   return{type:"Feature",properties:{h:a[0],cs:a[1],a:a[2],t:a[3],alt:a[6],gs:a[7],trk:a[8],g:a[10],hl:["QTR","UAE"].includes(a[2])?1:0,s:a[0]===SEL?1:0},geometry:{type:"Point",coordinates:[lon,lat]}}})}
 function drawLive(){if(!map||!map.getSource("live")||!L)return;const f=acF();map.getSource("live").setData({type:"FeatureCollection",features:f});
  if($("trl").checked){const tf=[];for(const x of f){const t=TR[x.properties.h];if(t&&t.length>1)tf.push({type:"Feature",properties:{a:x.properties.a},geometry:{type:"LineString",coordinates:[...t.slice(-12),x.geometry.coordinates]}})}map.getSource("trails").setData({type:"FeatureCollection",features:tf})}
@@ -44,6 +88,8 @@ function initMap(){map=new maplibregl.Map({container:"map",style:"https://basema
   map.addLayer({id:"trails",type:"line",source:"trails",layout:{visibility:tv},paint:{"line-width":1.6,"line-gradient":["interpolate",["linear"],["line-progress"],0,"rgba(255,196,0,0)",1,"rgba(255,196,0,.75)"]}});
   map.addSource("sel",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
   map.addLayer({id:"sel-rem",type:"line",source:"sel",filter:["==",["get","k"],"rem"],layout:{visibility:tv},paint:{"line-color":"#ffffff","line-width":1.6,"line-dasharray":[2,2],"line-opacity":.8}});
+  map.addLayer({id:"sel-gap",type:"line",source:"sel",filter:["==",["get","k"],"gap"],layout:{visibility:tv},paint:{"line-color":"#8aa0bf","line-width":1.5,"line-dasharray":[4,3],"line-opacity":.85}});
+  map.addLayer({id:"sel-join",type:"line",source:"sel",filter:["==",["get","k"],"join"],layout:{visibility:tv},paint:{"line-color":"#ffe14d","line-width":2,"line-dasharray":[1,2],"line-opacity":.85}});
   map.addLayer({id:"sel-flown",type:"line",source:"sel",filter:["==",["get","k"],"flown"],layout:{visibility:tv},paint:{"line-color":"#ffe14d","line-width":3}});
   map.addLayer({id:"sel-ap",type:"circle",source:"sel",filter:["==",["get","k"],"ap"],paint:{"circle-radius":5,"circle-color":"#0b1222","circle-stroke-color":"#fff","circle-stroke-width":2}});
   map.addLayer({id:"sel-apl",type:"symbol",source:"sel",filter:["==",["get","k"],"ap"],layout:{"text-field":["get","n"],"text-size":12,"text-offset":[0,1.2],"text-font":["Open Sans Regular"]},paint:{"text-color":"#fff","text-halo-color":"#000","text-halo-width":1}});
@@ -87,25 +133,38 @@ async function select(h){SEL=h;DB=null;SEL_T=[];openSp();gPaint();const ac0=selA
  if(cs)fetch("/api/route?cs="+encodeURIComponent(cs)).then(r=>r.json()).then(j=>{if(SEL===h){DB=j;selUpdate()}}).catch(()=>{if(SEL===h){DB={found:false};selUpdate()}});
  const r=await fetch("/api/track?hex="+h+"&t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>({points:[]}));if(SEL!==h)return;SEL_T=r.points||[];selUpdate(true)}
 function selUpdate(first){const a=selAc();if(!a){unsel();return}
- const pos=[a.lon,a.lat],{db,hi,od}=routeEnds(a.cs),F=[],P=SEL_T.length?SEL_T:[[Date.now(),a.lon,a.lat,a.alt,a.gs,a.vs||0]];
- const sk=[a.hex,a.lat,a.lon,a.alt,a.gs,a.trk,a.vs,a.age,a.held,!!(DB&&DB.found),P.length,a.src].join("|");
- if(!first&&sk===SEL_DRAW&&$("sp").classList.contains("on"))return;SEL_DRAW=sk;
- if(P.length)F.push({type:"Feature",properties:{k:"flown"},geometry:{type:"LineString",coordinates:[...P.map(p=>[p[1],p[2]]),pos]}});
- let routeHtml="";
+ const snap=[a.lon,a.lat], shown=dispLonLat(a.lat,a.lon,a.gs,a.trk,a.gnd||a.held), {db,hi,od}=routeEnds(a.cs), F=[];
+ let P=SEL_T.length?SEL_T.slice():[];
+ const last=P[P.length-1];
+ if(!last||last[1]!==a.lon||last[2]!==a.lat) P.push([L&&L.at?Date.parse(L.at):Date.now(),a.lon,a.lat,a.alt,a.gs,a.vs||0,a.gnd?1:0]);
+ let seg=[];
+ const flush=()=>{if(seg.length>=2)F.push({type:"Feature",properties:{k:"flown"},geometry:{type:"LineString",coordinates:unwrapLine(seg.map(p=>[p[1],p[2]]))}})};
+ for(let i=0;i<P.length;i++){
+  if(i&&isGapPt(P[i-1],P[i])){
+   flush();
+   F.push({type:"Feature",properties:{k:"gap"},geometry:{type:"LineString",coordinates:unwrapLine([[P[i-1][1],P[i-1][2]],[P[i][1],P[i][2]]])}});
+   seg=[P[i]];
+  } else seg.push(P[i]);
+ }
+ flush();
+ if(nmLL(snap,shown)>0.03) F.push({type:"Feature",properties:{k:"join"},geometry:{type:"LineString",coordinates:unwrapLine([snap,shown])}});
+ let routeHtml="", rm=null, canEta=false, etaMs=null, fl=null, pc=null;
  if(od&&typeof od.o.lat==="number"&&typeof od.d.lat==="number"){
-  F.push({type:"Feature",properties:{k:"rem"},geometry:{type:"LineString",coordinates:gc([a.lat,a.lon],[od.d.lat,od.d.lon])}});
+  F.push({type:"Feature",properties:{k:"rem"},geometry:{type:"LineString",coordinates:gc([shown[1],shown[0]],[od.d.lat,od.d.lon])}});
   F.push({type:"Feature",properties:{k:"ap",n:od.oi},geometry:{type:"Point",coordinates:[od.o.lon,od.o.lat]}},{type:"Feature",properties:{k:"ap",n:od.di},geometry:{type:"Point",coordinates:[od.d.lon,od.d.lat]}});
-  const fl=hv(od.o.lat,od.o.lon,a.lat,a.lon),rm=hv(a.lat,a.lon,od.d.lat,od.d.lon),pc=Math.max(0,Math.min(100,100*fl/(fl+rm||1)));
-  const canEta=!a.gnd&&!a.held&&a.gs>120,left=canEta?rm/a.gs:null;
+  fl=hv(od.o.lat,od.o.lon,shown[1],shown[0]); rm=hv(shown[1],shown[0],od.d.lat,od.d.lon); pc=Math.max(0,Math.min(100,100*fl/(fl+rm||1)));
+  canEta=posFresh(a)&&rm!=null; if(canEta) etaMs=Date.now()+rm/a.gs*3600e3;
   routeHtml=`<div class="spsec"><h3>Route ${tg("est","Estimated")}</h3>
    <div class="od">${apBox(od.o,"from")}<div class="odarr">→</div>${apBox(od.d,"to")}</div>
    <div class="pg"><span>${esc(od.oi)}<small>origin</small></span><div class="bar"><div style="width:${pc}%"></div><b style="left:${pc}%">✈</b></div><span>${esc(od.di)}<small>destination</small></span></div>
-   <div class="scg">${cell("Progress (GC est.)",Math.round(pc)+"%")}${cell("Flown (GC est.)",fmt(Math.round(fl))+" nm")}${cell("Remaining (GC est.)",fmt(Math.round(rm))+" nm")}${canEta?cell("Remaining time (est.)",hm(left)):na("Remaining time")}</div>
-   <p class="mu">${srcNote(db,hi)} Distances are great-circle from the last snapshot position, not the flown path. Remaining time uses observed ground speed only when above 120 kt. Not a schedule.</p></div>`}
+   <div class="scg">${cell("Progress (GC est.)",Math.round(pc)+"%")}${cell("Flown (GC est.)",fmt(Math.round(fl))+" nm")}${cell("Remaining (GC est.)",fmt(Math.round(rm))+" nm")}${canEta?cell("Remaining time (est.)",hm(rm/a.gs)):na("Remaining time")}</div>
+   <p class="mu">${srcNote(db,hi)} Remaining route and the selected marker share the same displayed position (dead-reckoned between refreshes, estimate). Distances are great-circle, not the flown path. Not a schedule.</p></div>`}
  else routeHtml=`<div class="spsec"><h3>Route ${DB?tg("na","Unavailable"):tg("est","Looking up")}</h3>
   <div class="od">${apBox(null,"from")}<div class="odarr">→</div>${apBox(null,"to")}</div>
   <p class="mu">${DB?"Origin and destination unavailable: adsbdb has no route for this callsign and there is no route history for it (history covers QTR/UAE only). ADS-B does not broadcast origin/destination.":"Looking up route in adsbdb…"}</p></div>`;
  if(map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:F});applyTrackVis();gPaint();
+ const sk=[a.hex,a.lat,a.lon,a.alt,a.gs,a.trk,a.vs,a.age,a.held,!!(DB&&DB.found),P.length,a.src,canEta&&etaMs?Math.round(etaMs/60000):""].join("|");
+ if(!first&&sk===SEL_DRAW&&$("sp").classList.contains("on"))return;SEL_DRAW=sk;
  const name=alName(a.al,DB&&DB.airline),fresh=a.held?`Held last ground position, ${a.heldMin>=60?(a.heldMin/60).toFixed(1)+" h":a.heldMin+" min"} ago (ADS-B off / dropped)`:a.gnd?`Observed · on ground · ${a.age} s ago`:`Observed · ${a.age} s ago`;
  $("spcs").textContent=a.cs||"—";$("spal").textContent=name?name+(a.al?" · "+a.al:""):(a.al||"Airline unavailable");
  $("spsum").textContent=`${a.cs} · ${a.gnd||a.held?"ground":fmt(a.alt)+" ft"} · ${a.held?"held":a.gs+" kt"} · ${fresh}`;
@@ -113,21 +172,29 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
  const chips=[a.reg?`<div class="chip"><span>Registration</span>${esc(a.reg)}</div>`:"",a.typ?`<div class="chip"><span>Aircraft type</span>${esc(a.typ)}</div>`:"",a.hex?`<div class="chip"><span>Hex</span>${esc(String(a.hex).toUpperCase())}</div>`:""].filter(Boolean).join("");
  const alt=a.held||a.gnd?"On ground":fmt(a.alt)+" ft";
  const vs=a.held||a.src==="ground"?null:a.vs;
+ const ev=observedEvents(P,a);
+ const toffHtml=ev.takeoff?cell("Observed takeoff",utcClock(ev.takeoff)):ev.since?cell("Tracking since",utcClock(ev.since)):na("Observed takeoff");
+ const etaHtml=canEta&&etaMs?cell("Estimated arrival",`${utcClock(etaMs)}<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">Estimated from remaining distance ÷ current ground speed, not schedule</div>`):na("Estimated arrival");
+ const landHtml=ev.landing?cell("Observed landing",utcClock(ev.landing)):na("Actual arrival");
+ const timeNote=(ev.takeoff
+  ? "Observed takeoff is the first airborne sample after a ground sample in this server's track (not wheels-up, not a schedule or gate time). Refresh interval is about 90 s."
+  : (ev.since?"No ground-to-air transition in this server's track. Tracking since is when this server first stored a position for the hex, not departure.":"No timestamped track yet for this hex."))
+  +(ev.landing?" Observed landing is the first ground sample after airborne in this track (not on-blocks or gate).":" Actual arrival stays unavailable until an air-to-ground transition is captured.");
  $("spb").innerHTML=`<div class="chips">${chips}</div>
   <div class="spsec"><h3>Position ${a.held?tg("est","Held"):tg("obs","Observed")}</h3>
    <div class="scg">${cell("Altitude",alt)}${a.held?na("Ground speed"):cell("Ground speed",a.gs+" kt")}${cell("Heading / track",a.trk+"°")}${vs==null?na("Vertical rate"):cell("Vertical rate",(vs>0?"+":"")+fmt(vs)+" fpm")}${cell("Freshness",esc(fresh))}${cell("Snapshot",a.lat.toFixed(a.src==="ground"?5:3)+" / "+a.lon.toFixed(a.src==="ground"?5:3))}</div>
-   <p class="mu">${a.held?"Last ground position kept after the aircraft dropped out of the ADS-B feed. Not a live update.":"Values are the last adsb.lol snapshot for this hex (not interpolated). Heading is ADS-B track. Times UTC."}</p></div>
+   <p class="mu">${a.held?"Last ground position kept after the aircraft dropped out of the ADS-B feed. Not a live update.":"Snapshot is the last adsb.lol position (not interpolated). The map marker and remaining route use the same displayed point, dead-reckoned from that snapshot between refreshes (estimate). Heading is ADS-B track. Times UTC."}</p></div>
   ${routeHtml}
-  <div class="spsec"><h3>Times ${tg("na","Unavailable")}</h3>
-   <div class="scg">${na("Scheduled departure")}${na("Actual departure")}${na("Scheduled arrival")}${na("Actual arrival")}</div>
-   <p class="mu">No airline schedule or airport actual-time feed is connected. Great-circle remaining time is not a scheduled or actual time.</p></div>
+  <div class="spsec"><h3>Times</h3>
+   <div class="scg">${na("Scheduled departure")}${na("Scheduled arrival")}${toffHtml}${etaHtml}${landHtml}</div>
+   <p class="mu">No airline schedule feed is connected, so scheduled times stay unavailable. Estimated arrival is remaining great-circle distance ÷ current ground speed, UTC, only when the route destination is known and the position is a fresh moving airborne snapshot — not a schedule or airport actual. Actual arrival is shown only after an observed air-to-ground transition in this track. ${timeNote}</p></div>
   <div class="spsec"><h3>Observed track ${P.length>=2?tg("obs","Observed"):tg("na","Unavailable")}</h3></div>`;
  $("prof").style.display=P.length<2?"none":"";
  if(P.length>=2)ch("prof",{grid:{left:44,right:36,top:12,bottom:46},legend:{bottom:0,itemWidth:12,itemHeight:6,textStyle:{color:"#cfe3ff",fontSize:10},data:["Altitude ft","Ground speed kt","Vertical rate fpm"]},xAxis:ax({type:"time",axisLabel:{fontSize:9,hideOverlap:true}}),yAxis:[ax({type:"value",axisLabel:{fontSize:9}}),ax({type:"value",axisLabel:{fontSize:9},splitLine:{show:false}})],
   series:[{name:"Altitude ft",type:"line",showSymbol:false,areaStyle:{opacity:.15},color:"#ffe14d",data:P.map(p=>[p[0],p[3]]),markPoint:{symbol:"circle",symbolSize:7,label:{show:false},data:[{coord:[P[P.length-1][0],P[P.length-1][3]]}]}},
   {name:"Ground speed kt",type:"line",yAxisIndex:1,showSymbol:false,color:C1,data:P.map(p=>[p[0],p[4]])},{name:"Vertical rate fpm",type:"line",yAxisIndex:1,showSymbol:false,color:C2,data:P.map(p=>[p[0],(p[5]||0)/10])}]});
- $("spn").textContent=P.length>=2?`Vertical profile: ${P.length} positions recorded by this server (UTC, since it began tracking this hex; max ~3 h). Not a full flight history.`:"Vertical profile unavailable: this server has not yet stored two positions for this hex.";
- if(first)map.easeTo({center:pos,zoom:Math.max(map.getZoom(),4),padding:innerWidth>700?{right:376,top:0,left:0,bottom:0}:{top:0,left:0,right:0,bottom:120}})}
+ $("spn").textContent=P.length>=2?`Vertical profile: ${P.length} positions recorded by this server (UTC, since it began tracking this hex; max ~3 h). Not a full flight history. Dashed yellow = dead-reckoning join to the displayed marker; grey dashes = coverage gap, not flown track.`:"Vertical profile unavailable: this server has not yet stored two positions for this hex.";
+ if(first)map.easeTo({center:shown,zoom:Math.max(map.getZoom(),4),padding:innerWidth>700?{right:376,top:0,left:0,bottom:0}:{top:0,left:0,right:0,bottom:120}})}
 function unsel(){SEL=null;SEL_T=[];DB=null;SEL_DRAW="";closeSp();if(map&&map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:[]});gPaint()}
 function search(){const q=$("qs").value.trim().toUpperCase();if(!q||!L)return;const a=L.ac.find(x=>x[1]===q||(x[9]||"").toUpperCase()===q||x[0].toUpperCase()===q)||L.ac.find(x=>x[1].startsWith(q)||(x[9]||"").toUpperCase().replace("-","").startsWith(q.replace("-","")));
  if(a){$("mf").value="all";$("tyf").value="";select(a[0])}else $("qs").style.borderColor="#ff4d4d"}
