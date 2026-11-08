@@ -170,6 +170,66 @@ function pressureFromMetar(altim, raw) {
   return { pa: null, via: null, ref: null };
 }
 
+function padMet(n, w) {
+  return String(Math.round(Math.abs(n))).padStart(w, "0");
+}
+function metarTimeZ(obsTime, raw) {
+  const t = Date.parse(obsTime);
+  if (Number.isFinite(t)) {
+    const d = new Date(t);
+    return padMet(d.getUTCDate(), 2) + padMet(d.getUTCHours(), 2) + padMet(d.getUTCMinutes(), 2) + "Z";
+  }
+  const m = String(raw || "").match(/\b(\d{6}Z)\b/);
+  return m ? m[1] : "time n/a";
+}
+function metarWindGroup(wdir, wspd, wgst, raw) {
+  const w = windFromMetar(wdir, wspd, wgst, raw);
+  if (w.calm) return "00000KT";
+  if (w.kt == null) return "wind n/a";
+  const sw = w.kt >= 100 ? 3 : 2, gw = (w.gst || 0) >= 100 ? 3 : 2;
+  const spd = padMet(w.kt, sw) + (w.gst != null ? "G" + padMet(w.gst, gw) : "") + "KT";
+  if (w.vrb) return "VRB" + spd;
+  if (w.dir == null) return "///" + spd;
+  return padMet(w.dir, 3) + spd;
+}
+function metarTempDew(tempC, dewpC, raw) {
+  const fmt = (v) => {
+    if (v == null || v === "") return null;
+    const n = Number(v);
+    if (!Number.isFinite(n)) return null;
+    const r = Math.round(n);
+    return (r < 0 ? "M" : "") + padMet(r, 2);
+  };
+  let t = fmt(tempC), d = fmt(dewpC);
+  if (!t || !d) {
+    const m = String(raw || "").match(/(?:^|\s)(M?\d{2})\/(M?\d{2})(?=\s|$)/);
+    if (m) { if (!t) t = m[1]; if (!d) d = m[2]; }
+  }
+  if (t && d) return t + "/" + d;
+  if (t && !d) return t + "/n/a";
+  if (!t && d) return "n/a/" + d;
+  return "temp n/a";
+}
+function metarAltimGroup(altim, raw) {
+  const qs = String(raw || "").match(/\bQ(\d{4})\b/);
+  if (qs) return "Q" + qs[1];
+  const as = String(raw || "").match(/\bA(\d{4})\b/);
+  if (as) return "A" + as[1];
+  const n = Number(altim);
+  if (Number.isFinite(n) && n > 800 && n < 1100) return "Q" + padMet(n, 4);
+  if (Number.isFinite(n) && n >= 26 && n <= 33) return "A" + padMet(n * 100, 4);
+  return "Q n/a";
+}
+function metarAvn(m) {
+  const raw = m.raw || m.rawOb || "";
+  const timeZ = metarTimeZ(m.obsTime || m.reportTime, raw);
+  const wind = metarWindGroup(m.wdir, m.wspdKt != null ? m.wspdKt : m.wspd, m.wgstKt != null ? m.wgstKt : m.wgst, raw);
+  const tempDew = metarTempDew(m.tempC != null ? m.tempC : m.temp, m.dewpC != null ? m.dewpC : m.dewp, raw);
+  const altim = metarAltimGroup(m.altim, raw);
+  const icao = m.icao || m.icaoId || "";
+  const line = [icao, timeZ, wind, tempDew, altim].filter(Boolean).join(" ");
+  return { timeZ, wind, tempDew, altim, line, subset: true };
+}
 function windFromMetar(wdir, wspd, wgst, raw) {
   let dir = wdir, spd = wspd, gst = wgst;
   if ((dir == null || spd == null) && raw) {
@@ -184,20 +244,23 @@ function windFromMetar(wdir, wspd, wgst, raw) {
   const g = gst == null || gst === "" ? NaN : Number(gst);
   const hasG = Number.isFinite(g) && Number.isFinite(s) && g > s;
   if (!Number.isFinite(s) && (dir == null || dir === "")) {
-    return { text: "wind n/a", calm: false, vrb: false, dir: null, kt: null, gst: null };
+    return { text: "wind n/a", group: "wind n/a", calm: false, vrb: false, dir: null, kt: null, gst: null };
   }
   if (Number.isFinite(s) && s === 0) {
-    return { text: "calm", calm: true, vrb: false, dir: 0, kt: 0, gst: null };
+    return { text: "calm", group: "00000KT", calm: true, vrb: false, dir: 0, kt: 0, gst: null };
   }
   if (dir === "VRB" || dir === "variable") {
-    return { text: "VRB " + s + "kt" + (hasG ? " G" + g + "kt" : ""), calm: false, vrb: true, dir: "VRB", kt: s, gst: hasG ? g : null };
+    const group = "VRB" + padMet(s, s >= 100 ? 3 : 2) + (hasG ? "G" + padMet(g, g >= 100 ? 3 : 2) : "") + "KT";
+    return { text: "VRB " + s + "kt" + (hasG ? " G" + g + "kt" : ""), group, calm: false, vrb: true, dir: "VRB", kt: s, gst: hasG ? g : null };
   }
   const d = dir == null || dir === "" ? NaN : Number(dir);
   if (!Number.isFinite(d)) {
-    return { text: Number.isFinite(s) ? "dir n/a " + s + "kt" : "wind n/a", calm: false, vrb: false, dir: null, kt: Number.isFinite(s) ? s : null, gst: hasG ? g : null };
+    const group = Number.isFinite(s) ? "///" + padMet(s, s >= 100 ? 3 : 2) + (hasG ? "G" + padMet(g, g >= 100 ? 3 : 2) : "") + "KT" : "wind n/a";
+    return { text: Number.isFinite(s) ? "dir n/a " + s + "kt" : "wind n/a", group, calm: false, vrb: false, dir: null, kt: Number.isFinite(s) ? s : null, gst: hasG ? g : null };
   }
-  const deg = String(Math.round(d)).padStart(3, "0");
-  return { text: deg + "°T " + s + "kt" + (hasG ? " G" + g + "kt" : ""), calm: false, vrb: false, dir: d, kt: s, gst: hasG ? g : null };
+  const deg = padMet(d, 3);
+  const group = deg + padMet(s, s >= 100 ? 3 : 2) + (hasG ? "G" + padMet(g, g >= 100 ? 3 : 2) : "") + "KT";
+  return { text: deg + "°T " + s + "kt" + (hasG ? " G" + g + "kt" : ""), group, calm: false, vrb: false, dir: d, kt: s, gst: hasG ? g : null };
 }
 
 function metarRow(m) {
@@ -205,7 +268,7 @@ function metarRow(m) {
   const press = pressureFromMetar(m.altim, raw);
   const wind = windFromMetar(m.wdir, m.wspd, m.wgst, raw);
   const tempC = m.temp ?? null;
-  return {
+  const row = {
     kind: "observation",
     icao: m.icaoId, name: m.name || "", lat: m.lat, lon: m.lon,
     obsTime: m.reportTime || iso(ms(m.obsTime)), receiptTime: m.receiptTime || null,
@@ -213,9 +276,11 @@ function metarRow(m) {
     wdir: m.wdir ?? null, wspdKt: m.wspd ?? null, wgstKt: m.wgst ?? null,
     visib: m.visib ?? null, cover: m.cover || null, altim: m.altim ?? null,
     pressPa: press.pa, pressVia: press.via, pressRef: press.ref,
-    windText: wind.text, windCalm: wind.calm, windVrb: wind.vrb,
+    windText: wind.text, windGroup: wind.group, windCalm: wind.calm, windVrb: wind.vrb,
     raw, source: "NOAA/NWS Aviation Weather Center · METAR (measured observation)"
   };
+  row.avn = metarAvn(row);
+  return row;
 }
 function tafRow(t) {
   return {
@@ -492,4 +557,4 @@ async function winds() {
   return windsBlocked("GFS winds unavailable after trying NOMADS GRIB2 1.0° subsets (simple packing). Last error: " + lastErr + " OpenDAP is retired (SCN 25-81); this path uses the grib filter instead. No substitute winds are invented.", { error: lastErr });
 }
 
-module.exports = { hazards, stations, winds, NOTE, HUB_ICAO, coord32, decodeGrib2Simple, bulletinIssue, pressureFromMetar, windFromMetar, metarRow };
+module.exports = { hazards, stations, winds, NOTE, HUB_ICAO, coord32, decodeGrib2Simple, bulletinIssue, pressureFromMetar, windFromMetar, metarRow, metarTimeZ, metarWindGroup, metarTempDew, metarAltimGroup, metarAvn };

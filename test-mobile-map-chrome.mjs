@@ -142,9 +142,12 @@ async function rendered(page, zoom, center = [55.36, 25.25]) {
       labVis: map.getLayoutProperty("wxmet-lab", "visibility"),
       p,
       api: { icao: api.icao, tempC: api.tempC, windText: api.windText, pressPa: api.pressPa, pressRef: api.pressRef, obsTime: api.obsTime, raw: (api.raw || "").slice(0, 80) },
-      labHasPa: / Pa\b|QNH n\/a/.test(p.lab || ""),
+      labHasPa: / Pa\b|Pa n\/a/.test(p.lab || ""),
       shortHasIcao: (p.labShort || "").includes(p.icao || ""),
+      shortAvn: /\d{6}Z/.test(p.labShort || "") && /KT/.test(p.labShort || "") && /Q\d{4}|A\d{4}|Q n\/a/.test(p.labShort || ""),
+      paNotInQ: !/Q101500|A101500/.test(p.labShort || ""),
       missingHonest: !/101325 Pa/.test(p.lab || "") || api.pressPa != null,
+      iconColor: JSON.stringify(map.getPaintProperty("wxmet", "icon-color") || ""),
     };
   });
 }
@@ -182,7 +185,7 @@ const dock = await mobile.evaluate(() => {
   };
 });
 ok(dock.open && dock.expanded === "true", "Weather sheet opens from the bar button");
-ok(/Airport METAR/i.test(dock.metText) && /runway|temperature|Pa/i.test(dock.lead), "sheet explains runway METAR labels");
+ok(/Airport METAR/i.test(dock.metText) && /runway|pictogram|terminal/i.test(dock.lead), "sheet explains terminal/runway METAR labels");
 evidence.dock = dock;
 await shot(mobile, "mobile-weather-sheet-390");
 
@@ -199,11 +202,16 @@ await shot(mobile, "mobile-metar-world-390");
 const gulf = await rendered(mobile, 6.8);
 ok(gulf.nIcon > 0, "Gulf zoom still shows airport icons");
 ok(gulf.nLab > 0, "METAR labels render at useful regional zoom");
-ok(gulf.labHasPa && gulf.shortHasIcao, "label has ICAO and Pa or honest QNH n/a");
+ok(gulf.shortHasIcao && gulf.shortAvn, "compact label is METAR-style ICAO/time/wind/Q");
+ok(gulf.labHasPa && gulf.paNotInQ, "Pa stays on the expanded label, not in the Q group");
+ok(!/ff5a36|ff2fd6/.test(gulf.iconColor || ""), "airport icon is not hazard red/magenta");
 ok(gulf.api.windText && gulf.api.tempC != null, "sourced temp and wind on the station");
 ok(!/live minute/i.test(gulf.p.lab || ""), "labels do not claim live-minute readings");
-evidence.gulf = { nIcon: gulf.nIcon, nLab: gulf.nLab, lab: gulf.p.lab, api: gulf.api };
+evidence.gulf = { nIcon: gulf.nIcon, nLab: gulf.nLab, lab: gulf.p.lab, labShort: gulf.p.labShort, api: gulf.api };
 await shot(mobile, "mobile-metar-gulf-390");
+await mobile.evaluate(() => map.jumpTo({ center: [55.36, 25.25], zoom: 11.2 }));
+await new Promise((r) => setTimeout(r, 700));
+await shot(mobile, "mobile-airport-icon-closeup-390");
 await mobile.evaluate(() => setHideTracks(true));
 const hid = await rendered(mobile, 6.8);
 ok(hid.nIcon > 0 && hid.nLab > 0, "Hide tracks does not hide airport METAR");
@@ -243,7 +251,17 @@ ok(await mobile.evaluate(() => document.body.classList.contains("map-fs")), "mob
 ok(fsLay.wxbtn && fsLay.wxbtn.vis && /Weather/.test(fsLay.wxbtnText), "Weather remains in map-only fullscreen");
 ok(!overlap(fsLay.wxbtn, fsLay.attrib) && !overlap(fsLay.wxbtn, fsLay.zoom), "fullscreen Weather clear of zoom/attribution");
 ok(fsMet.nIcon > 0 && fsMet.nLab > 0, "airport METAR markers remain in map-only fullscreen");
-evidence.fs390 = { wx: fsLay.wxbtn, nIcon: fsMet.nIcon, nLab: fsMet.nLab };
+ok(!(fsLay.mfsnote && fsLay.mfsnote.vis), "persistent fullscreen notes are hidden on mobile map-fs");
+ok(!(fsLay.wxst && fsLay.wxst.vis && /Not for operational/i.test(fsLay.wxst.t || "")), "verbose weather notes are not a map-fs banner");
+const fsHaz = await mobile.evaluate(async () => {
+  await setWx("haz", true);
+  map.setZoom(3.4);
+  await new Promise((r) => setTimeout(r, 500));
+  const fills = map.queryRenderedFeatures({ layers: ["wxhaz-fill"] });
+  return { nFill: fills.length, vis: map.getLayoutProperty("wxhaz-fill", "visibility") };
+});
+ok(fsHaz.vis === "visible", "hazard polygons remain available and are not the airport icon");
+evidence.fs390 = { wx: fsLay.wxbtn, nIcon: fsMet.nIcon, nLab: fsMet.nLab, noteVis: !!(fsLay.mfsnote && fsLay.mfsnote.vis), nHaz: fsHaz.nFill };
 await shot(mobile, "mobile-metar-fs-390");
 await mobile.click("#mfsb");
 await new Promise((r) => setTimeout(r, 300));

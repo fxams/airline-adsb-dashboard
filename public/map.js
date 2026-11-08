@@ -75,14 +75,45 @@ const R2=Math.PI/180,hv=(a,b,c,d)=>{const x=Math.sin((c-a)*R2/2)**2+Math.cos(a*R
 function plane(){const s=48,c=document.createElement("canvas");c.width=c.height=s;const x=c.getContext("2d");x.fillStyle="#fff";x.beginPath();
  const p=[[24,2],[27,8],[27,19],[45,29],[45,33],[27,27],[27,38],[33,43],[33,46],[24,43],[15,46],[15,43],[21,38],[21,27],[3,33],[3,29],[21,19],[21,8]];p.forEach(([a,b],i)=>i?x.lineTo(a,b):x.moveTo(a,b));x.closePath();x.fill();return x.getImageData(0,0,s,s)}
 function airportMark(){
-  const s=64,c=document.createElement("canvas");c.width=c.height=s;const x=c.getContext("2d");
-  x.translate(32,32);x.fillStyle="#fff";
-  x.save();x.rotate(-Math.PI/5);
-  x.beginPath();x.moveTo(-26,-5);x.lineTo(16,-5);x.lineTo(26,0);x.lineTo(16,5);x.lineTo(-26,5);x.closePath();x.fill();
-  x.fillRect(-24,-12,9,24);
+  const s=80,c=document.createElement("canvas");c.width=c.height=s;const x=c.getContext("2d");
+  x.fillStyle="#fff";
+  x.fillRect(6,30,68,16);
+  x.save();x.globalCompositeOperation="destination-out";
+  for(let i=0;i<4;i++) x.fillRect(10+i*4.2,33,2.2,10);
+  for(let i=0;i<4;i++) x.fillRect(42+i*7,36,4,4);
   x.restore();
-  x.beginPath();x.arc(0,0,5,0,Math.PI*2);x.fill();
+  x.fillRect(16,48,30,18);
+  x.beginPath();x.moveTo(14,48);x.lineTo(31,38);x.lineTo(48,48);x.closePath();x.fill();
+  x.fillRect(50,16,8,32);
+  x.fillRect(47,10,14,10);
   return x.getImageData(0,0,s,s);
+}
+function wxAvn(m){
+  if(m&&m.avn&&m.avn.line) return m.avn;
+  const pad=(n,w)=>String(Math.round(Math.abs(n))).padStart(w,"0");
+  const raw=m&&m.raw||"";
+  let timeZ="time n/a";
+  const t=Date.parse(m&&m.obsTime);
+  if(Number.isFinite(t)){const d=new Date(t);timeZ=pad(d.getUTCDate(),2)+pad(d.getUTCHours(),2)+pad(d.getUTCMinutes(),2)+"Z"}
+  else {const z=String(raw).match(/\b(\d{6}Z)\b/); if(z) timeZ=z[1]}
+  let wind=m&&m.windGroup||"";
+  if(!wind){
+    if(m&&m.windCalm) wind="00000KT";
+    else if(m&&m.windVrb&&m.wspdKt!=null) wind="VRB"+pad(m.wspdKt,m.wspdKt>=100?3:2)+(m.wgstKt?"G"+pad(m.wgstKt,m.wgstKt>=100?3:2):"")+"KT";
+    else if(m&&m.wdir!=null&&m.wspdKt!=null) wind=pad(m.wdir,3)+pad(m.wspdKt,m.wspdKt>=100?3:2)+(m.wgstKt?"G"+pad(m.wgstKt,m.wgstKt>=100?3:2):"")+"KT";
+    else {const w=String(raw).match(/\b((?:VRB|\d{3})\d{2,3}(?:G\d{2,3})?KT|00000KT)\b/); wind=w?w[1]:"wind n/a"}
+  }
+  const fmt=v=>{if(v==null||v==="")return null;const n=Number(v);if(!Number.isFinite(n))return null;const r=Math.round(n);return (r<0?"M":"")+pad(r,2)};
+  let td=null, tt=fmt(m&&m.tempC), dd=fmt(m&&m.dewpC);
+  if(!tt||!dd){const g=String(raw).match(/(?:^|\s)(M?\d{2})\/(M?\d{2})(?=\s|$)/); if(g){if(!tt)tt=g[1];if(!dd)dd=g[2]}}
+  td=tt&&dd?tt+"/"+dd:tt&&!dd?tt+"/n/a":!tt&&dd?"n/a/"+dd:"temp n/a";
+  let altim="Q n/a";
+  const q=String(raw).match(/\bQ(\d{4})\b/), a=String(raw).match(/\bA(\d{4})\b/);
+  if(q) altim="Q"+q[1]; else if(a) altim="A"+a[1];
+  else if(m&&m.altim>800&&m.altim<1100) altim="Q"+pad(m.altim,4);
+  else if(m&&m.altim>=26&&m.altim<=33) altim="A"+pad(m.altim*100,4);
+  const icao=m&&m.icao||"";
+  return {timeZ,wind,tempDew:td,altim,line:[icao,timeZ,wind,td,altim].join(" "),subset:true};
 }
 function acF(){const mf=$("mf").value,ty=$("tyf").value.trim().toUpperCase();
  return (L?L.ac:[]).filter(a=>(mf==="all"||(mf==="other"?!["QTR","UAE"].includes(a[2]):a[2]===mf))&&(!ty||(a[3]||"").toUpperCase().startsWith(ty))).map(a=>{
@@ -96,7 +127,7 @@ function onPoll(){if(!L)return;for(const a of L.ac){const t=TR[a[0]]||(TR[a[0]]=
  const al=[...new Set(L.ac.map(a=>a[2]))].sort(),mf=$("mf"),v=mf.value;if(mf.options.length<4+al.length-2){mf.innerHTML=`<option value="all">All airlines</option><option value="QTR">QTR</option><option value="UAE">UAE</option><option value="other">Other airlines</option>`+al.filter(x=>!["QTR","UAE"].includes(x)).map(x=>`<option>${x}</option>`).join("");mf.value=v}drawLive()}
 function initMap(){map=new maplibregl.Map({container:"map",style:"https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",center:[35,28],zoom:innerWidth<700?1.1:2,attributionControl:{compact:true}});
  map.addControl(new maplibregl.NavigationControl(),"bottom-right");
- map.on("load",async()=>{map.addImage("plane",plane(),{sdf:true});if(!map.hasImage("airport"))map.addImage("airport",airportMark(),{sdf:true});
+ map.on("load",async()=>{map.addImage("plane",plane(),{sdf:true});if(map.hasImage("airport"))map.removeImage("airport");map.addImage("airport",airportMark(),{sdf:true});
   const cf=H.map.filter(r=>H.ap[r[1]]&&H.ap[r[2]]).map(r=>({type:"Feature",properties:{a:r[0],n:r[3],inf:r[4]||0,low:(r[3]<5||(r[4]||0)/r[3]>.5)?1:0,r:r[1]+"-"+r[2]},geometry:{type:"LineString",coordinates:gc(H.ap[r[1]],H.ap[r[2]])}}));
   map.addSource("cov",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addLayer({id:"cov",type:"fill",source:"cov",paint:{"fill-color":"#3aa0ff","fill-opacity":.06}});map.addSource("covb",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addLayer({id:"covb",type:"line",source:"covb",layout:{"line-join":"round",visibility:localStorage.cvb==="0"?"none":"visible"},paint:{"line-color":"#5cc8ff","line-width":["interpolate",["linear"],["zoom"],1,.8,6,1.6],"line-opacity":.85}});
   wxSetup();
@@ -159,12 +190,13 @@ function apBox(ap,side){if(!ap)return `<div class="ode ${side}"><div class="iata
  const code=ap.iata||ap.icao||"—";return `<div class="ode ${side}"><div class="iata">${esc(code)}</div><div class="city">${esc(ap.city||"")}</div><div class="an">${esc(ap.name||(ap.iata||ap.icao?"":"Unavailable"))}</div></div>`}
 function routeEnds(cs){const db=DB&&DB.found?{o:{iata:DB.origin.iata||"",icao:DB.origin.icao||"",name:DB.origin.name||"",city:DB.origin.city||"",lat:DB.origin.lat,lon:DB.origin.lon},d:{iata:DB.destination.iata||"",icao:DB.destination.icao||"",name:DB.destination.name||"",city:DB.destination.city||"",lat:DB.destination.lat,lon:DB.destination.lon},oi:DB.origin.iata||DB.origin.icao,di:DB.destination.iata||DB.destination.icao}:null;
  const hi0=odOf(cs),hi=hi0?{o:{iata:hi0.o,icao:"",name:"",city:hi0.O[2]||"",lat:hi0.O[0],lon:hi0.O[1]},d:{iata:hi0.d,icao:"",name:"",city:hi0.D[2]||"",lat:hi0.D[0],lon:hi0.D[1]},oi:hi0.o,di:hi0.d,n:hi0.n,tot:hi0.tot}:null;
- return{db,hi,od:db||hi}}
+ const conflict=!!(db&&hi&&(db.oi!==hi.oi||db.di!==hi.di));
+ return{db,hi,od:conflict?null:(db||hi),conflict}}
 async function select(h){SEL=h;DB=null;SEL_T=[];openSp();gPaint();wxPanel();const ac0=selAc();const cs=ac0&&ac0.cs;
  if(cs)fetch("/api/route?cs="+encodeURIComponent(cs)).then(r=>r.json()).then(j=>{if(SEL===h){DB=j;selUpdate();wxPanel()}}).catch(()=>{if(SEL===h){DB={found:false};selUpdate();wxPanel()}});
  const r=await fetch("/api/track?hex="+h+"&t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>({points:[]}));if(SEL!==h)return;SEL_T=r.points||[];selUpdate(true);wxPanel()}
 function selUpdate(first){const a=selAc();if(!a){unsel();return}
- const snap=[a.lon,a.lat], shown=dispLonLat(a.lat,a.lon,a.gs,a.trk,a.gnd||a.held), {db,hi,od}=routeEnds(a.cs), F=[];
+ const snap=[a.lon,a.lat], shown=dispLonLat(a.lat,a.lon,a.gs,a.trk,a.gnd||a.held), {db,hi,od,conflict}=routeEnds(a.cs), F=[];
  let P=SEL_T.length?SEL_T.slice():[];
  const last=P[P.length-1];
  if(!last||last[1]!==a.lon||last[2]!==a.lat) P.push([L&&L.at?Date.parse(L.at):Date.now(),a.lon,a.lat,a.alt,a.gs,a.vs||0,a.gnd?1:0]);
@@ -180,7 +212,11 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
  flush();
  if(nmLL(snap,shown)>0.03) F.push({type:"Feature",properties:{k:"join"},geometry:{type:"LineString",coordinates:unwrapLine([snap,shown])}});
  let routeHtml="", rm=null, canEta=false, etaMs=null, fl=null, pc=null;
- if(od&&typeof od.o.lat==="number"&&typeof od.d.lat==="number"){
+ if(conflict){
+  routeHtml=`<div class="spsec"><h3>Route ${tg("na","Unavailable")}</h3>
+   <div class="od">${apBox(null,"from")}<div class="odarr">→</div>${apBox(null,"to")}</div>
+   <p class="mu">${srcNote(db,hi)} Origin and destination for this flight stay unavailable because the two connected route sources disagree. Remaining route is not drawn from a guessed pair. Not a marketed flight number.</p></div>`
+ } else if(od&&typeof od.o.lat==="number"&&typeof od.d.lat==="number"){
   F.push({type:"Feature",properties:{k:"rem"},geometry:{type:"LineString",coordinates:gc([shown[1],shown[0]],[od.d.lat,od.d.lon])}});
   F.push({type:"Feature",properties:{k:"ap",n:od.oi,icao:od.o.icao||""},geometry:{type:"Point",coordinates:[od.o.lon,od.o.lat]}},{type:"Feature",properties:{k:"ap",n:od.di,icao:od.d.icao||""},geometry:{type:"Point",coordinates:[od.d.lon,od.d.lat]}});
   fl=hv(od.o.lat,od.o.lon,shown[1],shown[0]); rm=hv(shown[1],shown[0],od.d.lat,od.d.lon); pc=Math.max(0,Math.min(100,100*fl/(fl+rm||1)));
@@ -201,7 +237,6 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
  $("spsum").textContent=`Callsign ${a.cs||"—"} · ${a.gnd||a.held?"ground":fmt(a.alt)+" ft"} · ${a.held?"held":a.gs+" kt"} · ${fresh}`;
  $("sp").dataset.hex=a.hex||"";
  const chips=[a.reg?`<div class="chip"><span>Registration</span>${esc(a.reg)}</div>`:"",a.typ?`<div class="chip"><span>Aircraft type</span>${esc(a.typ)}</div>`:"",a.hex?`<div class="chip"><span>Hex</span>${esc(String(a.hex).toUpperCase())}</div>`:""].filter(Boolean).join("");
- const iataCs=DB&&DB.callsign_iata&&DB.callsign_iata!==a.cs?cell("IATA-form callsign",esc(DB.callsign_iata)+`<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">adsbdb spelling of this ADS-B callsign, not a ticketed flight number</div>`):"";
  const alt=a.held||a.gnd?"On ground":fmt(a.alt)+" ft";
  const vs=a.held||a.src==="ground"?null:a.vs;
  const ev=observedEvents(P,a);
@@ -214,8 +249,8 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
   +(ev.landing?" Observed landing is the first ground sample after airborne in this track (not on-blocks or gate).":" Actual arrival stays unavailable until an air-to-ground transition is captured.");
  $("spb").innerHTML=`<div class="chips">${chips}</div>
   <div class="spsec"><h3>Identity</h3>
-   <div class="scg">${cell("Callsign",esc(a.cs||"—"))}${na("Flight number")}${iataCs}</div>
-   <p class="mu">Callsign is the ADS-B transponder identity from adsb.lol (observed). Flight number means the marketed/ticketed passenger number: none of the connected sources provide a verified current one. adsbdb returns <code>callsign_iata</code> by putting the airline IATA prefix on the same callsign string (QR72L for QTR72L, EK214 for UAE214) — that is not a ticketed flight, especially for alphanumeric callsigns, and the route can be stale or reused. Codeshares are not resolved.</p></div>
+   <div class="scg">${cell("Callsign",esc(a.cs||"—"))}${na("Flight number")}</div>
+   <p class="mu">Callsign is the ADS-B transponder identity from adsb.lol (observed). Flight number means the marketed/ticketed passenger number: none of the connected sources provide a verified current one, so it stays unavailable. An airline prefix conversion (QTR→QR, UAE→EK) is not that number — QTR68M is not QR68, UAE81W is not EK81. adsbdb <code>callsign_iata</code> is the same radio callsign with an IATA prefix and is never shown as a flight number. Codeshares are not resolved.</p></div>
   <div class="spsec"><h3>Position ${a.held?tg("est","Held"):tg("obs","Observed")}</h3>
    <div class="scg">${cell("Altitude",alt)}${a.held?na("Ground speed"):cell("Ground speed",a.gs+" kt")}${cell("Heading / track",a.trk+"°")}${vs==null?na("Vertical rate"):cell("Vertical rate",(vs>0?"+":"")+fmt(vs)+" fpm")}${cell("Freshness",esc(fresh))}${cell("Snapshot",a.lat.toFixed(a.src==="ground"?5:3)+" / "+a.lon.toFixed(a.src==="ground"?5:3))}</div>
    <p class="mu">${a.held?"Last ground position kept after the aircraft dropped out of the ADS-B feed. Not a live update.":"Snapshot is the last adsb.lol position (not interpolated). The map marker and remaining route use the same displayed point, dead-reckoned from that snapshot between refreshes (estimate). Heading is ADS-B track. Times UTC."}</p></div>
@@ -400,10 +435,10 @@ function wxSetup(){
   if(!map.hasImage("warrow")){const s=32,c=document.createElement("canvas");c.width=c.height=s;const x=c.getContext("2d");x.translate(16,16);x.rotate(0);x.fillStyle="#fff";x.beginPath();x.moveTo(0,-12);x.lineTo(5,10);x.lineTo(0,6);x.lineTo(-5,10);x.closePath();x.fill();map.addImage("warrow",x.getImageData(0,0,s,s),{sdf:true})}
   map.addLayer({id:"wxwnd",type:"symbol",source:"wxwnd",minzoom:2.4,layout:{visibility:"none","icon-image":"warrow","icon-size":["interpolate",["linear"],["zoom"],2,.35,6,.7],"icon-rotate":["get","dir"],"icon-rotation-alignment":"map","icon-allow-overlap":true,"icon-ignore-placement":true},paint:{"icon-color":["interpolate",["linear"],["get","kt"],10,"#8aa0bf",40,"#7cff6b",80,"#ffb020",120,"#ff5a36"],"icon-halo-color":"#05070d","icon-halo-width":.4}});
   map.addLayer({id:"wxwnd-lab",type:"symbol",source:"wxwnd",minzoom:4.5,layout:{visibility:"none","text-field":["to-string",["get","kt"]],"text-size":9,"text-offset":[0,1.1],"text-font":["Open Sans Regular"],"text-optional":true},paint:{"text-color":"#e6f1ff","text-halo-color":"#05070d","text-halo-width":1}});
-  if(!map.hasImage("airport"))map.addImage("airport",airportMark(),{sdf:true});
+  if(map.hasImage("airport"))map.removeImage("airport");map.addImage("airport",airportMark(),{sdf:true});
   map.addSource("wxmet",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-  map.addLayer({id:"wxmet",type:"symbol",source:"wxmet",minzoom:0,layout:{visibility:wxOn("met")?"visible":"none","icon-image":"airport","icon-size":["interpolate",["linear"],["zoom"],0,.46,2,.55,5,.68,8,.82],"icon-anchor":"center","icon-allow-overlap":true,"icon-ignore-placement":true,"icon-padding":0},paint:{"icon-color":["match",["get","fltCat"],"VFR","#7cff6b","MVFR","#3aa0ff","IFR","#ff5a36","LIFR","#ff2fd6","#e8f0ff"],"icon-halo-color":"#05070d","icon-halo-width":1.5}});
-  map.addLayer({id:"wxmet-lab",type:"symbol",source:"wxmet",minzoom:2.4,layout:{visibility:wxOn("met")?"visible":"none","text-field":["step",["zoom"],["get","labShort"],4.4,["get","lab"]],"text-size":["interpolate",["linear"],["zoom"],2.4,10,4.4,11,7,13],"text-font":["Open Sans Regular"],"text-optional":true,"text-allow-overlap":false,"text-ignore-placement":false,"text-padding":2,"text-line-height":1.05,"text-max-width":16,"text-variable-anchor":["left","right","bottom","top"],"text-radial-offset":1.15,"text-justify":"auto"},paint:{"text-color":["case",["==",["get","stale"],1],"#ffb020","#e6f1ff"],"text-halo-color":"#05070d","text-halo-width":1.6}});
+  map.addLayer({id:"wxmet",type:"symbol",source:"wxmet",minzoom:0,layout:{visibility:wxOn("met")?"visible":"none","icon-image":"airport","icon-size":["interpolate",["linear"],["zoom"],0,.58,2,.72,5,.9,8,1.05],"icon-anchor":"center","icon-allow-overlap":true,"icon-ignore-placement":true,"icon-padding":0},paint:{"icon-color":["case",["==",["get","stale"],1],"#d6c48a","#e8eef8"],"icon-halo-color":"#05070d","icon-halo-width":1.6}});
+  map.addLayer({id:"wxmet-lab",type:"symbol",source:"wxmet",minzoom:2.4,layout:{visibility:wxOn("met")?"visible":"none","text-field":["step",["zoom"],["get","labShort"],4.4,["get","lab"]],"text-size":["interpolate",["linear"],["zoom"],2.4,10,4.4,11,7,12.5],"text-font":["Open Sans Regular"],"text-optional":true,"text-allow-overlap":false,"text-ignore-placement":false,"text-padding":2,"text-line-height":1.05,"text-max-width":18,"text-variable-anchor":["left","right","bottom","top"],"text-radial-offset":1.2,"text-justify":"auto"},paint:{"text-color":["case",["==",["get","stale"],1],"#ffb020","#e6f1ff"],"text-halo-color":"#05070d","text-halo-width":1.6}});
   const pop=html=>new maplibregl.Popup({maxWidth:"320px"}).setHTML(`<div style="color:#000;font:12px/1.4 sans-serif">${html}</div>`);
   map.on("click","wxhaz-fill",e=>{const p=e.features[0].properties;pop(wxHazHtml(p)).setLngLat(e.lngLat).addTo(map)});
   map.on("click","wxhaz-line",e=>{const p=e.features[0].properties;pop(wxHazHtml(p)).setLngLat(e.lngLat).addTo(map)});
@@ -431,29 +466,29 @@ function wxObsAgeMin(obs){
 function wxMetFeat(m){
   const age=wxObsAgeMin(m.obsTime);
   const stale=age!=null&&age>=90;
-  const temp=(m.tempC==null||m.tempC==="")?"temp n/a":m.tempC+"°C";
-  const wind=m.windText||"wind n/a";
-  const pa=m.pressPa==null?"QNH n/a":m.pressPa+" Pa";
-  const clock=m.obsTime?String(m.obsTime).replace("T"," ").slice(11,16)+" UTC":"time n/a";
+  const av=wxAvn(m);
+  const pa=m.pressPa==null||m.pressPa===""?"Pa n/a":m.pressPa+" Pa";
   const ageBit=age==null?"age n/a":(age<1?"age <1 min":"age "+age+" min");
+  const avLine=[m.icao||"",av.timeZ].join(" ");
+  const avMet=[av.wind,av.tempDew,av.altim].join(" ");
   return {
     icao:m.icao||"", name:m.name||"", fltCat:m.fltCat||"", raw:m.raw||"", obsTime:m.obsTime||"",
-    tempC:m.tempC==null?"":String(m.tempC), windText:wind,
+    tempC:m.tempC==null?"":String(m.tempC), dewpC:m.dewpC==null?"":String(m.dewpC),
+    windText:m.windText||"wind n/a", windGroup:av.wind, tempDew:av.tempDew, altimGroup:av.altim, avnLine:av.line,
     pressPa:m.pressPa==null?"":String(m.pressPa), pressRef:m.pressRef||"", pressVia:m.pressVia||"",
-    labShort:[m.icao,temp+" · "+wind].join("\n"),
-    lab:[m.icao,temp+" · "+wind,pa,stale?clock+" · "+ageBit+" · stale":clock+" · "+ageBit].join("\n"),
+    labShort:[avLine,avMet].join("\n"),
+    lab:[avLine,avMet,pa+(stale?" · stale":""),ageBit].join("\n"),
     stale:stale?1:0, ageMin:age==null?"":String(age)
   };
 }
 function wxMetHtml(p){
   const taf=WX.st&&WX.st.taf&&WX.st.taf.find(t=>t.icao===p.icao);
-  const temp=p.tempC===""||p.tempC==null?"temp n/a":esc(p.tempC)+" °C";
-  const wind=esc(p.windText||"wind n/a");
   const pa=p.pressPa===""||p.pressPa==null?"pressure n/a (no QNH/altimeter in this METAR)":esc(p.pressPa)+" Pa";
   const ref=p.pressRef?" ("+esc(p.pressRef)+")":"";
   const age=p.ageMin===""||p.ageMin==null?"age n/a":esc(p.ageMin)+" min old";
   const stale=+p.stale===1?" · stale (not a live minute reading)":" · not a live minute reading";
-  return `<b>METAR · measured observation</b><br>${esc(p.icao)} ${esc(p.name||"")}<br>${temp} · ${wind}<br>${pa}${ref}<br>${p.obsTime?esc(String(p.obsTime).replace("T"," ").slice(0,16))+" UTC":"obs time n/a"} · ${age}${stale}${p.fltCat?" · "+esc(p.fltCat):""}<br><code>${esc(p.raw||"")}</code>${taf?`<br><b>TAF · terminal forecast</b><br>Issued ${esc(String(taf.issueTime||"").replace("T"," ").slice(0,16))} UTC<br>Valid ${esc(String(taf.validFrom||"").slice(0,16))} → ${esc(String(taf.validTo||"").slice(0,16))}<br><code>${esc(taf.raw||"")}</code>`:"<br>TAF unavailable for this station in the current cache."}<br><i>Not for operational flight planning. NOAA/NWS AWC. Times UTC.</i>`}
+  const av=esc(p.avnLine||[p.icao,p.windGroup,p.tempDew,p.altimGroup].filter(Boolean).join(" "));
+  return `<b>METAR summary</b> (subset for the map label, not a complete report)<br>${esc(p.icao)} ${esc(p.name||"")}<br><code>${av}</code><br>${pa}${ref}<br>${p.obsTime?esc(String(p.obsTime).replace("T"," ").slice(0,16))+" UTC":"obs time n/a"} · ${age}${stale}${p.fltCat?" · "+esc(p.fltCat):""}<br><b>Full raw METAR</b><br><code>${esc(p.raw||"raw METAR unavailable")}</code>${taf?`<br><b>TAF · terminal forecast</b><br>Issued ${esc(String(taf.issueTime||"").replace("T"," ").slice(0,16))} UTC<br>Valid ${esc(String(taf.validFrom||"").slice(0,16))} → ${esc(String(taf.validTo||"").slice(0,16))}<br><code>${esc(taf.raw||"")}</code>`:"<br>TAF unavailable for this station in the current cache."}<br><i>Not for operational flight planning or official briefing. NOAA/NWS AWC. Times UTC.</i>`}
 function wxStatus(msg,err){
   const el=$("wxst"), full=$("wxfull"), btn=$("wxbtn");
   const bits=[], chip=[];
@@ -638,7 +673,7 @@ function wxStationBlock(st,od,lat,lon,a){
     const m=rows.find(x=>x.icao===id), t=(st.taf||[]).find(x=>x.icao===id);
     const f=m?wxMetFeat(m):null;
     const press=m?(m.pressPa==null?"pressure n/a":m.pressPa+" Pa"+(m.pressRef?" ("+m.pressRef+")":"")):"pressure n/a";
-    const obs=m?cell(lab+" METAR (measured)",`${esc(id)} · ${esc(m.fltCat||"cat n/a")}<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">${esc(f.tempC?f.tempC+" °C":"temp n/a")} · ${esc(f.windText)}<br>${esc(press)}<br>${esc(m.raw||"")}<br>${utcShort(m.obsTime)}${f.stale?" · stale":""} · not a live minute reading</div>`):na(lab+" METAR (measured)");
+    const obs=m?cell(lab+" METAR (measured)",`${esc(id)} · ${esc(m.fltCat||"cat n/a")}<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">Summary (subset): <code>${esc(f.avnLine||"")}</code><br>${esc(press)} — Pa is converted, not a METAR Q group<br>Full raw: ${esc(m.raw||"raw METAR unavailable")}<br>${utcShort(m.obsTime)}${f.stale?" · stale":""} · not a live minute reading</div>`):na(lab+" METAR (measured)");
     const fc=t?cell(lab+" TAF (forecast)",`${esc(id)}<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">${esc(t.raw||"")}<br>Valid ${utcShort(t.validFrom)} → ${utcShort(t.validTo)}</div>`):na(lab+" TAF (forecast)");
     return `<div class="scg">${obs}${fc}</div>`;
   }).join("");

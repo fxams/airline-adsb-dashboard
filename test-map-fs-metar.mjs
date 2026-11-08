@@ -114,15 +114,19 @@ const met = await desk.evaluate(() => {
   return {
     vis, labVis, type, n: d.features.length, p,
     api: { icao: api.icao, tempC: api.tempC, windText: api.windText, pressPa: api.pressPa, pressRef: api.pressRef, obsTime: api.obsTime },
-    labHasPa: / Pa\b|QNH n\/a/.test(p.lab || ""),
+    labHasPa: / Pa\b|Pa n\/a/.test(p.lab || ""),
     labHasIcao: (p.lab || "").includes(p.icao),
-    labHasUtc: /UTC/.test(p.lab || ""),
+    labHasZ: /\d{6}Z/.test(p.lab || "") || /\d{6}Z/.test(p.labShort || ""),
+    labAvn: /KT/.test(p.labShort || "") && /Q\d{4}|A\d{4}|Q n\/a/.test(p.labShort || ""),
+    paNotInQ: !/Q101500|A101500/.test(p.labShort || ""),
     noFakeLive: !/live minute/i.test(p.lab || ""),
   };
 });
 ok(met.vis === "visible" && met.labVis === "visible", "weather toggle shows airport icon + METAR labels");
 ok(met.type === "symbol", "wxmet is airport icon");
-ok(met.labHasPa && met.labHasIcao && met.labHasUtc, "label has ICAO, Pa or QNH n/a, UTC time");
+ok(met.labHasIcao && met.labHasZ && met.labAvn, "aviation label has ICAO, DDHHMMZ, KT, Q/A group");
+ok(met.labHasPa, "expanded label still shows Pa");
+ok(met.paNotInQ, "Pa is not substituted into the METAR Q group");
 ok(met.p.labShort && met.p.labShort.includes(met.p.icao), "compact label keeps ICAO");
 ok(met.api.pressPa == null || (Number.isInteger(met.api.pressPa) && met.api.pressRef), "API Pa is converted with original ref");
 ok(met.api.windText && met.api.windText !== "000°T 0kt", "wind uses calm/VRB/kt text");
@@ -281,6 +285,13 @@ const mobFs = await mob.evaluate(() => ({
   fake: document.body.classList.contains("map-fs"),
   btn: document.getElementById("mfsb").textContent,
   note: document.getElementById("mfsnote").textContent,
+  noteOverlay: (() => {
+    const el = document.getElementById("mfsnote");
+    const sheet = el && el.closest(".infosheet");
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    return !!(el && !(sheet && sheet.hidden) && cs.display !== "none" && r.width > 1 && r.height > 1);
+  })(),
   mapH: document.getElementById("map").getBoundingClientRect().height,
   mwTop: document.getElementById("mw").getBoundingClientRect().top,
   innerH: innerHeight,
@@ -289,6 +300,7 @@ const mobFs = await mob.evaluate(() => ({
 }));
 ok(mobFs.fake && /exit map/i.test(mobFs.btn), "mobile map-fs fallback");
 ok(/chrome stays visible/i.test(mobFs.note), "mobile fallback honest about chrome");
+ok(!mobFs.noteOverlay, "mobile map-fs does not keep a persistent note banner on the map");
 ok(mobFs.parent && mobFs.mwTop <= 2 && mobFs.mapH > 500, "mobile map fills fallback over the dashboard");
 evidence.mobFs = mobFs;
 await shot(mob, "map-fs-390");

@@ -39,8 +39,19 @@ function ok(cond, msg) { if (!cond) fail.push(msg); }
   ok(wx.windFromMetar("VRB", 3, null, "").text === "VRB 3kt", "variable");
   ok(wx.windFromMetar(260, 12, 22, "").text === "260°T 12kt G22kt", "gusts");
   ok(wx.windFromMetar(null, null, null, "").text === "wind n/a", "missing wind");
-  const row = wx.metarRow({ icaoId: "OTHH", temp: 28, wdir: 260, wspd: 12, wgst: 22, altim: 1013, rawOb: "OTHH 081200Z 26012G22KT Q1013", reportTime: "2026-11-08T12:00:00Z", lat: 25, lon: 51 });
+  const row = wx.metarRow({ icaoId: "OTHH", temp: 28, wdir: 260, wspd: 12, wgst: 22, altim: 1013, rawOb: "OTHH 081200Z 26012G22KT 9999 SCT040 28/16 Q1013", reportTime: "2026-11-08T12:00:00Z", lat: 25, lon: 51 });
   ok(row.pressPa === 101300 && row.windText.includes("260°T") && row.tempC === 28, "metarRow fields");
+  ok(wx.metarWindGroup(0, 0, null, "") === "00000KT", "calm 00000KT");
+  ok(wx.metarWindGroup("VRB", 4, null, "") === "VRB04KT", "VRB04KT");
+  ok(wx.metarWindGroup(260, 12, 22, "") === "26012G22KT", "gust group");
+  ok(wx.metarTempDew(-3, -8, "") === "M03/M08", "subzero M notation");
+  ok(wx.metarTempDew(12, null, "") === "12/n/a", "missing dewpoint not invented");
+  ok(wx.metarAltimGroup(null, "CAVOK") === "Q n/a", "missing QNH not invented");
+  ok(wx.metarAltimGroup(null, "KJFK 081251Z 18008KT A2992") === "A2992", "original Axxxx");
+  ok(wx.metarAltimGroup(1015, "OMDB 082100Z 10004KT CAVOK 29/21 Q1015") === "Q1015", "original Qxxxx not Pa");
+  const avn = wx.metarAvn({ icao: "OMDB", obsTime: "2026-11-08T21:00:00.000Z", wdir: 100, wspdKt: 4, tempC: 29, dewpC: 21, altim: 1015, raw: "METAR OMDB 082100Z 10004KT 9999 29/21 Q1015" });
+  ok(avn.timeZ === "082100Z" && avn.wind === "10004KT" && avn.tempDew === "29/21" && avn.altim === "Q1015", "aviation summary " + avn.line);
+  ok(!/Pa/.test(avn.line) && !/101500/.test(avn.altim), "Pa is not stuffed into the Q group");
 }
 
 const tiny = "/tmp/wx/tiny.grib2";
@@ -224,7 +235,8 @@ const metUi = await desk.evaluate(() => {
 });
 ok(metUi.vis === "visible" && metUi.n > 10, "METAR airport features");
 ok(metUi.type === "symbol", "airport layer is symbol icon not circle");
-ok(metUi.sample && /Pa|QNH n\/a/.test(metUi.sample.lab || ""), "METAR label has Pa or honest QNH n/a");
+ok(metUi.sample && / Pa\b|Pa n\/a/.test(metUi.sample.lab || ""), "expanded METAR label has Pa or Pa n/a");
+ok(metUi.sample && /\d{6}Z/.test(metUi.sample.labShort || "") && /KT/.test(metUi.sample.labShort || "") && /Q\d{4}|A\d{4}|Q n\/a/.test(metUi.sample.labShort || ""), "compact METAR is aviation format");
 ok(metUi.sample && (metUi.sample.windText || "").length > 0, "METAR wind text on feature");
 ok(/METAR/i.test(metUi.st), "status mentions METAR");
 ok(!metUi.err, "status not error when overlays ok");

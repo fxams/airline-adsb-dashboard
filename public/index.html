@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Airline ADS-B Analytics · QTR vs UAE · Live</title>
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -48,12 +48,12 @@ code{color:var(--c3)}a{color:var(--c1)}@media(max-width:560px){.g2{grid-template
 #mw:fullscreen,#mw:-webkit-full-screen{width:100%;height:100%;background:#05070d;padding:0;margin:0;overflow:hidden}
 #mw:fullscreen #map,#mw:-webkit-full-screen #map{height:100%!important;width:100%!important;border-radius:0!important}
 body.map-fs{overflow:hidden}
-body.map-fs #mw{position:fixed;inset:0;z-index:200;margin:0;width:100%;height:100dvh;background:#05070d;border-radius:0;overflow:hidden}
+body.map-fs #mw{position:fixed;top:0;left:0;right:0;z-index:200;margin:0;width:100%;height:100svh;max-height:100dvh;background:#05070d;border-radius:0;overflow:hidden}
 body.map-fs #map{height:100%!important;width:100%!important;border-radius:0!important}
 #mw:fullscreen .mtb,#mw:-webkit-full-screen .mtb,body.map-fs .mtb{display:flex;top:48px}
 #mw:fullscreen #sp.on,#mw:-webkit-full-screen #sp.on,body.map-fs #sp.on{position:absolute!important;z-index:90}
-body.map-fs .mfsnote:not([hidden]){display:block}
-#mw:fullscreen .mfsnote,#mw:-webkit-full-screen .mfsnote{display:none!important}
+@media(min-width:701px){body.map-fs .mfsnote:not([hidden]){display:block}}
+#mw:fullscreen .mfsnote,#mw:-webkit-full-screen .mfsnote,body.map-fs .mfsnote{display:none!important}
 .gph{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 4px}#gpl td,#gpl th{padding:4px 6px;font-size:12px}#gpl tr.held td{opacity:.55;font-style:italic}
 #fbtn{position:absolute;top:8px;left:8px;z-index:4;display:none}
 .lg summary{cursor:pointer;font-weight:600}
@@ -127,23 +127,24 @@ body.map-fs .mfsnote:not([hidden]){display:block}
 .wxctl{position:static;left:auto;right:auto;bottom:auto;top:auto;max-width:none;background:none;border:0;padding:0}
 .wxctl summary{display:none}
 .wxctl label{min-height:44px;font-size:14px}
-.wxdock{display:none;position:absolute;left:8px;right:8px;bottom:calc(58px + env(safe-area-inset-bottom));top:auto;max-height:min(52vh,380px);overflow:auto;-webkit-overflow-scrolling:touch;background:rgba(6,12,24,.96);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;z-index:12}
+.wxdock{display:none;position:absolute;left:8px;right:8px;bottom:calc(58px + env(safe-area-inset-bottom) + var(--vvb,0px));top:auto;max-height:min(52vh,380px);overflow:auto;-webkit-overflow-scrolling:touch;background:rgba(6,12,24,.96);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;z-index:12}
 .wxdock.open{display:block}
 .wxst{position:static;margin-top:8px;max-width:none;pointer-events:auto;white-space:normal;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
-.mbar{display:flex;position:absolute;z-index:11;left:0;right:0;bottom:0;gap:4px;align-items:stretch;padding:6px 6px max(8px,env(safe-area-inset-bottom));background:linear-gradient(180deg,transparent,rgba(5,7,13,.88) 28%);pointer-events:none}
+.mbar{display:flex;position:absolute;z-index:11;left:0;right:0;bottom:var(--vvb,0px);gap:4px;align-items:stretch;padding:6px 6px max(8px,env(safe-area-inset-bottom));background:linear-gradient(180deg,transparent,rgba(5,7,13,.88) 28%);pointer-events:none}
 .mbar > *{pointer-events:auto}
 .wxbtn,#infobtn{display:flex}
 .mbar .mtb{display:flex;position:static;transform:none;top:auto;left:auto;flex:2;gap:4px;background:none;border:0}
 .mbar .mctl,.mbar .htb,.mbar .rlb,.wxbtn{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:48px;min-width:0;padding:4px 2px;font-size:11px;line-height:1.15;text-align:center;white-space:nowrap;background:rgba(6,12,24,.92);border:1px solid var(--bd);border-radius:10px;color:var(--tx);cursor:pointer;font-family:inherit}
 .wxbtn.on,.mbar .htb.on,.mbar .rlb.on{border-color:var(--c1);color:var(--c1)}
 .wxbtn.err{border-color:var(--warn);color:var(--warn)}
-.infosheet{display:none;position:absolute;z-index:12;left:8px;right:8px;bottom:calc(58px + env(safe-area-inset-bottom));max-height:min(58vh,420px);overflow:auto;-webkit-overflow-scrolling:touch;background:rgba(6,12,24,.96);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;font-size:12px;line-height:1.45}
+.infosheet{display:none;position:absolute;z-index:12;left:8px;right:8px;bottom:calc(58px + env(safe-area-inset-bottom) + var(--vvb,0px));max-height:min(58vh,420px);overflow:auto;-webkit-overflow-scrolling:touch;background:rgba(6,12,24,.96);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;font-size:12px;line-height:1.45}
 .infosheet:not([hidden]){display:block}
 .sheet-hd{display:flex}
 .infosheet #wxfull{display:block}
 .infosheet .lg,.infosheet .lg summary{display:block!important;position:static;max-width:none;top:auto!important;left:auto!important;padding:8px 0;background:none;border:0}
 .infosheet .mfsnote:not([hidden]){display:block!important;position:static;max-width:none;margin:0 0 8px;right:auto;bottom:auto}
-.mw .maplibregl-ctrl-bottom-right,.mw .maplibregl-ctrl-bottom-left{bottom:calc(56px + env(safe-area-inset-bottom))!important}
+body.map-fs .infosheet .mfsnote:not([hidden]),#mw:fullscreen .infosheet .mfsnote:not([hidden]){display:block!important}
+.mw .maplibregl-ctrl-bottom-right,.mw .maplibregl-ctrl-bottom-left{bottom:calc(56px + env(safe-area-inset-bottom) + var(--vvb,0px))!important}
 .mw .maplibregl-ctrl-attrib{font-size:10px;max-width:42vw}
 #mw:fullscreen .mbar,body.map-fs .mbar,#mw:-webkit-full-screen .mbar{display:flex}
 #mw:fullscreen .mtb,body.map-fs .mtb,#mw:-webkit-full-screen .mtb{position:static;top:auto;transform:none}
@@ -182,7 +183,7 @@ body.map-fs .mfsnote:not([hidden]){display:block}
 </div>
 <div class="wxdock" id="wxdock">
 <details class="wxctl" id="wxctl"><summary>Weather</summary>
-<p class="mu wxlead">Airport METAR draws runway icons (not aircraft) with measured temperature °C, wind °T/kt and QNH in Pa. Off until you enable it. Missing fields stay n/a. Not for operational flight planning.</p>
+<p class="mu wxlead">Airport METAR draws a terminal/runway pictogram (not an aircraft, not a hazard polygon). Labels use METAR-style groups (ICAO DDHHMMZ dddssKT temp/dew Qxxxx or Axxxx). Pressure in pascals is in the tap popup, not the Q group. Off until you enable it. Missing fields stay n/a. Not for operational flight planning or official briefing.</p>
 <label><input type="checkbox" id="wxmet"> Airport METAR/TAF</label>
 <label><input type="checkbox" id="wxhaz"> Hazard polygons</label>
 <label><input type="checkbox" id="wxwnd"> Forecast winds aloft</label>
@@ -198,7 +199,7 @@ body.map-fs .mfsnote:not([hidden]){display:block}
 <details class="lg" open><summary>Legend</summary><div><svg width="14" height="14" viewBox="0 0 48 48"><path fill="#ffc400" d="M24 2l3 6v11l18 10v4l-18-6v11l6 5v3l-9-3-9 3v-3l6-5V27L3 33v-4l18-10V8z"/></svg> Live aircraft, nose = heading</div><div id="lgc"></div><div><i style="background:#8a94a6"></i>on ground <i style="background:#fff"></i>selected</div><div class="mu">Registration text appears at close zoom when labels are on (sourced ADS-B reg only).</div><div><i style="background:rgba(154,166,184,.35);border:1px dashed #9aa6b8"></i>held last ground position (ADS-B off / dropped; removed when hex reappears or after 24 h)</div>
 <div><span class="ln" style="background:linear-gradient(90deg,transparent,#ffc400)"></span> trail (recent positions)</div><div><span class="ln" style="background:#ffe14d"></span> selected: observed flown track</div><div><span class="ln dash" style="border-color:#ffe14d"></span> join to displayed marker (dead-reckoning est.)</div><div><span class="ln dash" style="border-color:#8aa0bf"></span> coverage gap (not flown)</div><div><span class="ln dash"></span> remaining route (est.) / great circle</div>
 <div><span class="ln" style="background:linear-gradient(90deg,#00e5ff,#ff2fd6)"></span> real flown track (trace data)</div><div><span class="ln dash" style="border-color:#ff2fd6"></span> 365-day route (faint = low confidence)</div><div class="mu">Positions move between refreshes by dead reckoning (estimate).</div><div><i style="background:rgba(58,160,255,.35);border-radius:2px"></i>receiver coverage (last 24 h)</div><div><span class="ln" style="background:#5cc8ff"></span> coverage boundary: outside = no receiver data in the window (estimated from observed traffic, not an official receiver map)</div>
-<div id="lwx" class="mu">Airport runway icon = METAR station, not an aircraft. Labels show ICAO, temperature °C, wind °T/kt or calm/VRB, QNH in pascals (Pa). Report time UTC; stale if older than 90 min. Not a live minute reading. Missing fields are labelled n/a. <i class="wxdot" style="background:#ff7a45"></i>TS/convective <i class="wxdot" style="background:#ff2fd6"></i>turbulence advisory <i class="wxdot" style="background:#5ce1ff"></i>icing advisory <i class="wxdot" style="background:#7cff6b"></i>VFR METAR <i class="wxdot" style="background:#ff5a36"></i>IFR METAR. SIGMETs are advisories. Upstream errors are not “no hazards”. Not for operational flight planning.</div></details>
+<div id="lwx" class="mu">Neutral terminal/runway pictogram = METAR station, not an aircraft and not a SIGMET/AIRMET polygon (those stay coloured area fills). Map labels are a METAR-style subset (ICAO, DDHHMMZ, wind KT, temp/dew with M for below zero, Qxxxx hPa or Axxxx). Pa is in the expanded popup, not substituted into the Q group. The label is not a complete raw METAR; tap the icon for the full report. Stale if older than 90 min. Missing fields stay n/a. Coloured <i class="wxdot" style="background:#ff7a45"></i>TS/convective <i class="wxdot" style="background:#ff2fd6"></i>turbulence <i class="wxdot" style="background:#5ce1ff"></i>icing fills are advisories, not airport icons. Upstream errors are not “no hazards”. Not for operational flight planning or official briefing.</div></details>
 </div>
 <div id="sp" role="dialog" aria-labelledby="spcs"><div class="sphd"><button type="button" id="sph" class="sph" title="Collapse or expand" aria-label="Collapse or expand details"></button><div class="spid"><div class="spk">ADS-B callsign</div><div id="spcs" class="spcs"></div><div id="spal" class="spal"></div></div><button type="button" class="btn x" id="spx" aria-label="Close flight details">Close</button></div><div id="spsum" class="spsum"></div><div class="spbd" id="spbd"><div id="spb"></div><div id="spwx"></div><div id="prof" class="spprof"></div><p class="mu spn" id="spn"></p></div></div>
 </div>
@@ -428,5 +429,14 @@ document.addEventListener("keydown",e=>{
   if(sheet){closeSheets();e.preventDefault();return}
   if(document.body.classList.contains("map-fs")&&fsEl()!==mwEl()){exitMapFsFallback();syncFS()}
 });
-syncFS();</script>
+syncFS();
+function syncVv(){
+  const vv=window.visualViewport;
+  const gap=vv?Math.max(0, innerHeight-vv.height-vv.offsetTop):0;
+  document.documentElement.style.setProperty("--vvb", gap+"px");
+}
+syncVv();
+if(window.visualViewport){visualViewport.addEventListener("resize",syncVv);visualViewport.addEventListener("scroll",syncVv)}
+window.addEventListener("resize",syncVv);
+</script>
 </body></html>
