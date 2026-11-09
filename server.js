@@ -271,6 +271,9 @@ http.createServer(async (req, res) => {
       mode: meta.mode, state: meta.state, source: meta.aip, source_url: meta.aip_url,
       ad2_url: meta.ad2_url, ad2_label: meta.ad2_label, terms_url: meta.terms_url, terms: meta.terms, why: meta.why,
       n_sid: 0, n_star: 0, n_match: 0, procs: [], match: [],
+      ident_mode: meta.ident_mode || "none",
+      ident_terms: meta.ident_terms || "",
+      ident: { source: null, mode: "none", flights: 0, named: 0, by_rwy: [], rep: [], raw: [], disclaimer: "No licence-safe SID/STAR coding table for this state. Procedure names are not assigned." },
       disclaimer: aipIndex.disclaimer || "Not for navigation. Not for operational flight planning.",
       note: meta.why
     }), "public, max-age=300");
@@ -299,6 +302,7 @@ http.createServer(async (req, res) => {
   if (u === "/api/feed") return send(res, 200, "application/json", JSON.stringify(liveFeed.summary()));
   if (u === "/api/map") return send(res, 200, "application/json", JSON.stringify(map));
   if (u === "/healthz") return send(res, 200, "text/plain", "ok");
+  if (u === "/aip-ident.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/aip-ident.js")));
   if (u === "/map.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/map.js")));
   if (u === "/route-plaus.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/route-plaus.js")));
   if (u === "/flightno.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/flightno.js")));

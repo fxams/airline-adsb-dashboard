@@ -422,8 +422,11 @@ def pack_tile(apt, parsed, header, hist_tile):
     pol = policy_for(apt["icao"], apt.get("iata") or apt.get("id"))
     procs = (parsed or {}).get("procs") or []
     matches = []
+    ident = None
     if pol["mode"] == "draw" and procs:
+        from aip_ident import identify_hist
         matches = match_hist(procs, hist_tile, apt["lat"], apt["lon"])
+        ident = identify_hist(procs, hist_tile, apt["lat"], apt["lon"])
     return {
         "apt": apt.get("id") or apt.get("iata"),
         "icao": apt["icao"],
@@ -448,13 +451,31 @@ def pack_tile(apt, parsed, header, hist_tile):
         "n_sid": sum(1 for p in procs if p["kind"] == "sid"),
         "n_star": sum(1 for p in procs if p["kind"] == "star"),
         "n_match": len(matches),
+        "ident_mode": pol.get("ident_mode") or ("cifp" if pol["mode"] == "draw" else "none"),
+        "ident_terms": pol.get("ident_terms"),
         "procs": procs if pol["mode"] == "draw" else [],
         "match": matches,
+        "ident": ident if pol["mode"] == "draw" else {
+            "source": None,
+            "mode": "none",
+            "flights": 0,
+            "named": 0,
+            "by_rwy": [],
+            "rep": [],
+            "raw": [],
+            "disclaimer": (
+                "No licence-safe SID/STAR coding table for this state. Procedure names are not assigned. "
+                "Name-only identification is off; the labelled toggle only shows the licensing assessment."
+            ),
+        },
         "note": (
             "FAA CIFP ARINC 424-18 cycle 2611 (CIFP 261029, effective 2026-10-29 to 2026-11-26 UTC). "
             "US government work, 17 U.S.C. § 105. Drawn SID/STAR are published fixes only. "
             "Nearest-procedure labels compare observed Kalman runway representatives to CIFP paths "
-            "and are omitted when no procedure is close enough. Not Navigraph/Jeppesen."
+            "and are omitted when no procedure is close enough. Per-flight identification uses "
+            "ordered CIFP-fix hits plus Fréchet/DTW on Kalman-smoothed ADS-B; below threshold "
+            "the label is No match / vectored. Estimated from the track, not the ATC clearance. "
+            "Not Navigraph/Jeppesen."
             if pol["mode"] == "draw"
             else (
                 "SID/STAR geometry is not redrawn. Open the official AIP AD 2 page. "

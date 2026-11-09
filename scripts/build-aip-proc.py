@@ -94,6 +94,10 @@ def main():
             "n_sid": tile["n_sid"],
             "n_star": tile["n_star"],
             "n_match": tile["n_match"],
+            "ident_mode": tile.get("ident_mode") or pol.get("ident_mode"),
+            "ident_terms": tile.get("ident_terms") or pol.get("ident_terms"),
+            "ident_flights": (tile.get("ident") or {}).get("flights") or 0,
+            "ident_named": (tile.get("ident") or {}).get("named") or 0,
             "tile": tile_name,
         })
 
@@ -118,6 +122,15 @@ def main():
             "Not Navigraph, not Jeppesen, not EUROCONTROL EAD geometry."
         ),
         "disclaimer": "Not for navigation. Not for operational flight planning.",
+        "ident_policy": (
+            "Per-flight SID/STAR names are assigned only from FAA CIFP (US public domain). "
+            "Matching uses published CIFP fix sequences plus Fréchet/DTW on Kalman-smoothed ADS-B; "
+            "below threshold the label is No match / vectored. Estimated from the track, not the ATC clearance. "
+            "Non-US AIP coding tables are not ingested (NATS redistribution ban and other state terms are "
+            "unclear or forbid reuse). OurAirports navaids have coordinates but no SID/STAR association; "
+            "OpenAIP is unused (CC BY-NC). Name-only identification is therefore off behind a labelled toggle "
+            "that shows this assessment only — names and fixes are never fabricated."
+        ),
         "note": (
             "Airport list = observed QTR origins/destinations in the 365-day ADS-B aggregates. "
             "DRAW only where AIP terms explicitly allow public-website reuse (FAA CIFP). "

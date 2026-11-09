@@ -42,6 +42,12 @@ US = {
         "in the US). Procedures are parsed from ARINC 424 PD/PE records, not from "
         "Navigraph or Jeppesen."
     ),
+    "ident_mode": "cifp",
+    "ident_terms": (
+        "Per-flight SID/STAR names come from FAA CIFP (public domain). "
+        "Matching uses published fix coordinates and paths already in CIFP. "
+        "The label is estimated from the ADS-B track, not the ATC clearance."
+    ),
 }
 
 
@@ -57,6 +63,16 @@ def _link(state, aip, aip_url, terms_url, terms, ad2_url=None, ad2_label="offici
         "terms": terms,
         "why": (
             "LINK only: " + terms + " No SID/STAR geometry is redrawn on this site."
+        ),
+        "ident_mode": "none",
+        "ident_terms": (
+            "Name-only identification still needs that state's SID/STAR coding (the ordered fix "
+            "sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, "
+            "FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. "
+            "OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; "
+            "DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not "
+            "ingested, so this site does not assign procedure names here and does not redraw charts. "
+            "The toggle only shows this assessment — names and fixes are never fabricated."
         ),
     }
 

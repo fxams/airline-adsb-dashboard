@@ -14,6 +14,7 @@
   "source": "FAA CIFP ARINC 424-18 for US DRAW airports; official national AIP/eAIP AD 2 links otherwise.",
   "license": "US procedure geometry: FAA CIFP, U.S. government work (17 U.S.C. \u00a7 105), cycle CIFP 261029. Not for navigation. Non-US: no procedure geometry; official AIP AD 2 links only. Not Navigraph, not Jeppesen, not EUROCONTROL EAD geometry.",
   "disclaimer": "Not for navigation. Not for operational flight planning.",
+  "ident_policy": "Per-flight SID/STAR names are assigned only from FAA CIFP (US public domain). Matching uses published CIFP fix sequences plus Fr\u00e9chet/DTW on Kalman-smoothed ADS-B; below threshold the label is No match / vectored. Estimated from the track, not the ATC clearance. Non-US AIP coding tables are not ingested (NATS redistribution ban and other state terms are unclear or forbid reuse). OurAirports navaids have coordinates but no SID/STAR association; OpenAIP is unused (CC BY-NC). Name-only identification is therefore off behind a labelled toggle that shows this assessment only \u2014 names and fixes are never fabricated.",
   "note": "Airport list = observed QTR origins/destinations in the 365-day ADS-B aggregates. DRAW only where AIP terms explicitly allow public-website reuse (FAA CIFP). UK NATS, DFS, Airservices Australia, NAV CANADA, QCAA and other state AIPs are link-only. Nearest-published-procedure match runs only on DRAW airports against Kalman runway representatives.",
   "airports": [
     {
@@ -35,6 +36,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -56,6 +61,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -77,6 +86,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -98,6 +111,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -119,6 +136,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -140,6 +161,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -161,6 +186,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -182,6 +211,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -203,6 +236,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -224,6 +261,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -245,6 +286,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -266,6 +311,10 @@
       "n_sid": 167,
       "n_star": 95,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 7,
+      "ident_named": 4,
       "tile": "ATL.json.gz"
     },
     {
@@ -287,6 +336,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -308,6 +361,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -329,6 +386,10 @@
       "n_sid": 22,
       "n_star": 34,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "AUS.json.gz"
     },
     {
@@ -350,6 +411,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -371,6 +436,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -392,6 +461,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -413,6 +486,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -434,6 +511,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -455,6 +536,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -476,6 +561,10 @@
       "n_sid": 4,
       "n_star": 12,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "BFI.json.gz"
     },
     {
@@ -497,6 +586,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -518,6 +611,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -539,6 +636,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -560,6 +661,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -581,6 +686,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -602,6 +711,10 @@
       "n_sid": 57,
       "n_star": 35,
       "n_match": 1,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 12,
+      "ident_named": 8,
       "tile": "BOS.json.gz"
     },
     {
@@ -623,6 +736,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -644,6 +761,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -665,6 +786,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -686,6 +811,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -707,6 +836,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -728,6 +861,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -749,6 +886,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -770,6 +911,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -791,6 +936,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -812,6 +961,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -833,6 +986,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -854,6 +1011,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -875,6 +1036,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -896,6 +1061,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -917,6 +1086,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -938,6 +1111,10 @@
       "n_sid": 28,
       "n_star": 21,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "CHS.json.gz"
     },
     {
@@ -959,6 +1136,10 @@
       "n_sid": 26,
       "n_star": 58,
       "n_match": 1,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 5,
+      "ident_named": 4,
       "tile": "CLT.json.gz"
     },
     {
@@ -980,6 +1161,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1001,6 +1186,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1022,6 +1211,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1043,6 +1236,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1064,6 +1261,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1085,6 +1286,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1106,6 +1311,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1127,6 +1336,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1148,6 +1361,10 @@
       "n_sid": 243,
       "n_star": 134,
       "n_match": 2,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 30,
+      "ident_named": 21,
       "tile": "DFW.json.gz"
     },
     {
@@ -1169,6 +1386,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1190,6 +1411,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1211,6 +1436,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1232,6 +1461,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1253,6 +1486,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1274,6 +1511,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1295,6 +1536,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1316,6 +1561,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1337,6 +1586,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1358,6 +1611,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1379,6 +1636,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1400,6 +1661,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1421,6 +1686,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1442,6 +1711,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1463,6 +1736,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1484,6 +1761,10 @@
       "n_sid": 63,
       "n_star": 53,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "FTW.json.gz"
     },
     {
@@ -1505,6 +1786,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1526,6 +1811,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1547,6 +1836,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1568,6 +1861,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1589,6 +1886,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1610,6 +1911,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1631,6 +1936,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1652,6 +1961,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1673,6 +1986,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1694,6 +2011,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1715,6 +2036,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1736,6 +2061,10 @@
       "n_sid": 2,
       "n_star": 11,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "HHR.json.gz"
     },
     {
@@ -1757,6 +2086,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1778,6 +2111,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1799,6 +2136,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1820,6 +2161,10 @@
       "n_sid": 32,
       "n_star": 70,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "HNL.json.gz"
     },
     {
@@ -1841,6 +2186,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1862,6 +2211,10 @@
       "n_sid": 42,
       "n_star": 51,
       "n_match": 4,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 17,
+      "ident_named": 10,
       "tile": "IAD.json.gz"
     },
     {
@@ -1883,6 +2236,10 @@
       "n_sid": 72,
       "n_star": 163,
       "n_match": 4,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 23,
+      "ident_named": 12,
       "tile": "IAH.json.gz"
     },
     {
@@ -1904,6 +2261,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1925,6 +2286,10 @@
       "n_sid": 5,
       "n_star": 44,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "IND.json.gz"
     },
     {
@@ -1946,6 +2311,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1967,6 +2336,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -1988,6 +2361,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2009,6 +2386,10 @@
       "n_sid": 8,
       "n_star": 14,
       "n_match": 3,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 34,
+      "ident_named": 16,
       "tile": "JFK.json.gz"
     },
     {
@@ -2030,6 +2411,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2051,6 +2436,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2072,6 +2461,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2093,6 +2486,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2114,6 +2511,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2135,6 +2536,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2156,6 +2561,10 @@
       "n_sid": 69,
       "n_star": 52,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "LAS.json.gz"
     },
     {
@@ -2177,6 +2586,10 @@
       "n_sid": 139,
       "n_star": 95,
       "n_match": 3,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 13,
+      "ident_named": 10,
       "tile": "LAX.json.gz"
     },
     {
@@ -2198,6 +2611,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2219,6 +2636,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2240,6 +2661,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2261,6 +2686,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2282,6 +2711,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2303,6 +2736,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2324,6 +2761,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2345,6 +2786,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2366,6 +2811,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2387,6 +2836,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2408,6 +2861,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2429,6 +2886,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2450,6 +2911,10 @@
       "n_sid": 16,
       "n_star": 55,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "MCI.json.gz"
     },
     {
@@ -2471,6 +2936,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2492,6 +2961,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2513,6 +2986,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2534,6 +3011,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2555,6 +3036,10 @@
       "n_sid": 114,
       "n_star": 75,
       "n_match": 6,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 25,
+      "ident_named": 12,
       "tile": "MIA.json.gz"
     },
     {
@@ -2576,6 +3061,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2597,6 +3086,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2618,6 +3111,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2639,6 +3136,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2660,6 +3161,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2681,6 +3186,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2702,6 +3211,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2723,6 +3236,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2744,6 +3261,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2765,6 +3286,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2786,6 +3311,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2807,6 +3336,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2828,6 +3361,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2849,6 +3386,10 @@
       "n_sid": 31,
       "n_star": 62,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 1,
+      "ident_named": 0,
       "tile": "OPF.json.gz"
     },
     {
@@ -2870,6 +3411,10 @@
       "n_sid": 0,
       "n_star": 145,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 42,
+      "ident_named": 3,
       "tile": "ORD.json.gz"
     },
     {
@@ -2891,6 +3436,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2912,6 +3461,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2933,6 +3486,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -2954,6 +3511,10 @@
       "n_sid": 0,
       "n_star": 9,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "PAE.json.gz"
     },
     {
@@ -2975,6 +3536,10 @@
       "n_sid": 0,
       "n_star": 21,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 1,
+      "ident_named": 1,
       "tile": "PDK.json.gz"
     },
     {
@@ -2996,6 +3561,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3017,6 +3586,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3038,6 +3611,10 @@
       "n_sid": 0,
       "n_star": 25,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 5,
+      "ident_named": 2,
       "tile": "PHL.json.gz"
     },
     {
@@ -3059,6 +3636,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3080,6 +3661,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3101,6 +3686,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3122,6 +3711,10 @@
       "n_sid": 3,
       "n_star": 12,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "RFD.json.gz"
     },
     {
@@ -3143,6 +3736,10 @@
       "n_sid": 7,
       "n_star": 12,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "RSW.json.gz"
     },
     {
@@ -3164,6 +3761,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3185,6 +3786,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3206,6 +3811,10 @@
       "n_sid": 47,
       "n_star": 33,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "SAN.json.gz"
     },
     {
@@ -3227,6 +3836,10 @@
       "n_sid": 25,
       "n_star": 60,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "SAT.json.gz"
     },
     {
@@ -3248,6 +3861,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3269,6 +3886,10 @@
       "n_sid": 43,
       "n_star": 29,
       "n_match": 0,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": "SDF.json.gz"
     },
     {
@@ -3290,6 +3911,10 @@
       "n_sid": 49,
       "n_star": 29,
       "n_match": 2,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 4,
+      "ident_named": 4,
       "tile": "SEA.json.gz"
     },
     {
@@ -3311,6 +3936,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3332,6 +3961,10 @@
       "n_sid": 68,
       "n_star": 45,
       "n_match": 3,
+      "ident_mode": "cifp",
+      "ident_terms": "Per-flight SID/STAR names come from FAA CIFP (public domain). Matching uses published fix coordinates and paths already in CIFP. The label is estimated from the ADS-B track, not the ATC clearance.",
+      "ident_flights": 6,
+      "ident_named": 5,
       "tile": "SFO.json.gz"
     },
     {
@@ -3353,6 +3986,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3374,6 +4011,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3395,6 +4036,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3416,6 +4061,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3437,6 +4086,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3458,6 +4111,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3479,6 +4136,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3500,6 +4161,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3521,6 +4186,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3542,6 +4211,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3563,6 +4236,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3584,6 +4261,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3605,6 +4286,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3626,6 +4311,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3647,6 +4336,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3668,6 +4361,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3689,6 +4386,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3710,6 +4411,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3731,6 +4436,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3752,6 +4461,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3773,6 +4486,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3794,6 +4511,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3815,6 +4536,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3836,6 +4561,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3857,6 +4586,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3878,6 +4611,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3899,6 +4636,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3920,6 +4661,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3941,6 +4686,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3962,6 +4711,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -3983,6 +4736,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -4004,6 +4761,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -4025,6 +4786,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -4046,6 +4811,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     },
     {
@@ -4067,6 +4836,10 @@
       "n_sid": 0,
       "n_star": 0,
       "n_match": 0,
+      "ident_mode": "none",
+      "ident_terms": "Name-only identification still needs that state's SID/STAR coding (the ordered fix sequence that makes a name a procedure). Individual published waypoints (AIP ENR 4.4, FAA/OurAirports navaids) are factual coordinates but do not associate a SID/STAR name. OpenAIP is CC BY-NC and is not used. NATS UK AIS terms forbid redistributing AIS products; DFS, Airservices, NAV CANADA and others require permission. Those coding tables were not ingested, so this site does not assign procedure names here and does not redraw charts. The toggle only shows this assessment \u2014 names and fixes are never fabricated.",
+      "ident_flights": 0,
+      "ident_named": 0,
       "tile": null
     }
   ]

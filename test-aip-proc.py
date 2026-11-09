@@ -38,6 +38,8 @@ ok("FAA" in jfk["aip"] and "105" in (policy_for("KJFK", "JFK")["terms"]), "JFK F
 lhr = by_id["LHR"]
 ok(lhr["mode"] == "link" and lhr["icao"] == "EGLL", "LHR/EGLL LINK")
 ok(lhr["tile"] is None and lhr["n_sid"] == 0, "EGLL has no procedure tile")
+ok(lhr.get("ident_mode") == "none" and lhr.get("ident_named") == 0, "EGLL ident_mode none")
+ok("OurAirports" in (lhr.get("ident_terms") or "") and "OpenAIP" in (lhr.get("ident_terms") or ""), "EGLL ident terms cite open sources")
 ok("EG-AD-2.EGLL" in (lhr["ad2_url"] or ""), f"EGLL AD 2 URL {lhr['ad2_url']}")
 ok("nats-uk.ead-it.com" in (lhr["terms_url"] or "") and "redistribute" in (lhr["terms"] or "").lower(), "NATS T&Cs cited")
 
@@ -65,6 +67,13 @@ ok(any(p["id"].startswith("DEEZZ") or p["id"].startswith("SKORR") for p in tile[
 ok(any(p["kind"] == "star" for p in tile["procs"]), "JFK STAR drawn")
 ok("Not for navigation" in (tile["disclaimer"] or "") + (tile["note"] or ""), "not for navigation")
 ok(all(len(p["path"]) >= 2 for p in tile["procs"]), "every drawn proc has ≥2 fixes")
+ok(tile.get("ident_mode") == "cifp" and (tile.get("ident") or {}).get("flights", 0) >= 1, "JFK ident subsample")
+ok((tile.get("ident") or {}).get("named", 0) <= (tile.get("ident") or {}).get("flights", 0), "named ⊆ flights")
+cifp_ids = {p["id"] for p in tile["procs"]}
+for row in (tile.get("ident") or {}).get("raw") or []:
+    if row.get("proc"):
+        ok(row["proc"] in cifp_ids, f"invented ident name {row}")
+ok(any(b.get("id") == "04L" and b.get("dir") == "dep" and any(s.get("proc") == "DEEZZ6" for s in b.get("share") or []) for b in (tile.get("ident") or {}).get("by_rwy") or []), "04L dep DEEZZ6")
 for m in tile.get("match") or []:
     ok(m["kind"] in ("sid", "star") and m["mean_nm"] <= 4.2, f"match gate {m}")
 

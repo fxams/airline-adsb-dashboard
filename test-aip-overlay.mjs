@@ -31,12 +31,18 @@ ok(/not navigraph/i.test(JSON.stringify(idxFile)) && /not jeppesen/i.test(JSON.s
 const html = fs.readFileSync("public/index.html", "utf8");
 ok(html.includes("id=\"aipsid\""), "SID/STAR toggle");
 ok(html.includes("id=\"aipp\""), "AIP panel");
+ok(html.includes("id=\"aipname\""), "name-only licence-restricted toggle");
+ok(/licence-restricted/i.test(html), "toggle labelled licence-restricted");
 ok(/Not for navigation/i.test(html), "disclaimer in page");
 ok(/17 U\.S\.C\.|FAA CIFP/i.test(html), "FAA CIFP cited in method");
 ok(/NATS UK AIS/i.test(html), "NATS cited in method");
+ok(/estimated from ADS-B track, not the ATC clearance/i.test(html), "ident disclaimer in page");
+ok(/aip-ident\.js/.test(html), "aip-ident.js loaded");
 
 const mapjs = fs.readFileSync("public/map.js", "utf8");
 ok(mapjs.includes("aipLoad") && mapjs.includes("aip-sid"), "map overlay");
+ok(mapjs.includes("identLive") && mapjs.includes("sidStarPanelHtml") && mapjs.includes("histIdentPopup"), "ident UI wired");
+ok(mapjs.includes("Name-only SID/STAR ID") || html.includes("Name-only SID/STAR ID"), "name-only copy");
 
 const idx = await api("/api/aip/index");
 ok(idx.status === 200, "/api/aip/index 200");
@@ -51,6 +57,9 @@ ok((jf.procs || []).some((p) => p.kind === "sid" && p.path.length >= 2), "JFK SI
 ok((jf.procs || []).some((p) => p.kind === "star"), "JFK STAR geometry");
 ok(/not for navigation/i.test(jf.disclaimer || jf.note || ""), "JFK not for navigation");
 ok(jf.airac === "2611" && jf.cycle === "CIFP 261029", "AIRAC cycle on tile");
+ok(jf.ident_mode === "cifp" && jf.ident && jf.ident.flights >= 1, "JFK ident blob");
+ok((jf.ident.raw || []).filter((r) => r.proc).every((r) => (jf.procs || []).some((p) => p.id === r.proc)), "JFK named procs are CIFP ids");
+ok((jf.ident.by_rwy || []).some((b) => b.id === "04L" && b.dir === "dep" && (b.share || []).some((s) => s.proc === "DEEZZ6")), "JFK 04L dep DEEZZ6 share");
 
 const lhr = await api("/api/aip?apt=EGLL");
 ok(lhr.status === 200, "/api/aip?apt=EGLL");
@@ -59,6 +68,8 @@ ok(lf.mode === "link" && lf.icao === "EGLL", "EGLL alias is link-only");
 ok(!(lf.procs && lf.procs.length), "EGLL has no redrawn procedures");
 ok(/EG-AD-2\.EGLL/.test(lf.ad2_url || ""), "EGLL official AD 2");
 ok(/redistribute/i.test(lf.terms || lf.why || ""), "NATS redistribute cited");
+ok(lf.ident_mode === "none" && !(lf.ident && lf.ident.named), "EGLL ident_mode none");
+ok(/OurAirports/.test(lf.ident_terms || "") && /OpenAIP/.test(lf.ident_terms || ""), "EGLL ident terms");
 
 const doh = await api("/api/aip?apt=DOH");
 const df = JSON.parse(doh.body);
@@ -72,6 +83,22 @@ const ap = await api("/api/airports");
 const apj = JSON.parse(ap.body);
 ok(apj.aip && apj.aip.n_draw === 30, "/api/airports includes aip coverage");
 ok(A.resolveApt("EGLL").id === "LHR", "catalog still resolves EGLL");
+
+const identJs = await api("/aip-ident.js");
+ok(identJs.status === 200 && /function identify/.test(identJs.body), "/aip-ident.js served");
+const Ident = require("./public/aip-ident.js");
+const deez = (jf.procs || []).find((p) => p.id === "DEEZZ6" && p.trans === "RW04L");
+ok(deez && deez.path.length >= 2, "DEEZZ6 RW04L in API");
+{
+  const dense = [deez.path[0].slice()];
+  for (let i = 0; i < deez.path.length - 1; i++) {
+    const a = deez.path[i], b = deez.path[i + 1];
+    for (let t = 1; t <= 8; t++) { const f = t / 8; dense.push([a[0] + f * (b[0] - a[0]), a[1] + f * (b[1] - a[1])]); }
+  }
+  const ident = Ident.identify(dense, jf.procs, jf.lat, jf.lon, "sid", "04L");
+  ok(ident.status === "match" && ident.proc === "DEEZZ6", `JS identify DEEZZ6 ${ident.status} ${ident.proc}`);
+  ok(/estimated from ADS-B track, not the ATC clearance/i.test(ident.label || ""), `label copy ${ident.label}`);
+}
 
 if (fail.length) {
   console.error("FAIL\n" + fail.join("\n"));
