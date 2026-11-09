@@ -294,6 +294,8 @@ function syncLiveCount(){
   const el=$("cnt"); if(!el||!L) return;
   const tot=L.ac.length, n=acF().length;
   el.textContent=n===tot?`· ${fmt(tot)} live airline aircraft`:`· ${fmt(n)} of ${fmt(tot)} live airline aircraft`;
+  const note=typeof feedNote==="function"?feedNote(L.feed):"";
+  el.title=note||"Aircraft in the current live sample. Not fleet size.";
   syncAirCounts();
 }
 function acF(){const ty=$("tyf").value.trim().toUpperCase();
