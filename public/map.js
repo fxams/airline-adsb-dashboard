@@ -137,11 +137,14 @@ function drawProf(P){
 }
 function posFresh(a){if(!a||a.held||a.gnd||a.src!=="live")return false; if((a.age||0)>60)return false; if(L&&L.at&&Date.now()-Date.parse(L.at)>120000)return false; return a.gs>120}
 function observedEvents(P,a){
-  const ev={takeoff:null,landing:null,since:P[0]?P[0][0]:null};
+  const ev={takeoff:null,landing:null,since:P[0]?P[0][0]:null,takeoffLL:null};
   let lastG=null;
   for(const p of P){
     if(gndLike(p)) lastG=p;
-    else if(airLike(p)&&lastG&&!ev.takeoff && (p[0]-lastG[0])<=20*60000) ev.takeoff=p[0];
+    else if(airLike(p)&&lastG&&!ev.takeoff && (p[0]-lastG[0])<=20*60000){
+      ev.takeoff=p[0];
+      ev.takeoffLL=[lastG[2], lastG[1]];
+    }
   }
   if(a&&(a.gnd||a.held)){
     for(let i=1;i<P.length;i++) if(airLike(P[i-1])&&gndLike(P[i])&&(P[i][0]-P[i-1][0])<=20*60000) ev.landing=P[i][0];
@@ -380,15 +383,23 @@ function selAc(){const a=L&&L.ac.find(x=>x[0]===SEL);if(a)return{hex:a[0],cs:a[1
 function alName(code,dbName){return (L&&L.nm&&code&&L.nm[code])||dbName||""}
 function apBox(ap,side){if(!ap)return `<div class="ode ${side}"><div class="iata">—</div><div class="city">Unavailable</div></div>`;
  const code=ap.iata||ap.icao||"—";return `<div class="ode ${side}"><div class="iata">${esc(code)}</div><div class="city">${esc(ap.city||"")}</div><div class="an">${esc(ap.name||(ap.iata||ap.icao?"":"Unavailable"))}</div></div>`}
-function routeEnds(cs){const db=DB&&DB.found?{o:{iata:DB.origin.iata||"",icao:DB.origin.icao||"",name:DB.origin.name||"",city:DB.origin.city||"",lat:DB.origin.lat,lon:DB.origin.lon},d:{iata:DB.destination.iata||"",icao:DB.destination.icao||"",name:DB.destination.name||"",city:DB.destination.city||"",lat:DB.destination.lat,lon:DB.destination.lon},oi:DB.origin.iata||DB.origin.icao,di:DB.destination.iata||DB.destination.icao}:null;
+function routeOpts(a){
+  if(!a) return {pos:null};
+  const shown=dispLonLat(a.lat,a.lon,a.gs,a.trk,a.gnd||a.held,a.gnd||a.held?0:a.alt,a.age);
+  const ev=observedEvents(SEL_T||[],a);
+  return {pos:{lat:shown[1],lon:shown[0]}, gs:a.gs, trk:a.trk, gnd:!!a.gnd, held:!!a.held, pts:SEL_T||[], takeoffLL:ev.takeoffLL};
+}
+function routeEnds(cs,a){const db=DB&&DB.found?{o:{iata:DB.origin.iata||"",icao:DB.origin.icao||"",name:DB.origin.name||"",city:DB.origin.city||"",lat:DB.origin.lat,lon:DB.origin.lon},d:{iata:DB.destination.iata||"",icao:DB.destination.icao||"",name:DB.destination.name||"",city:DB.destination.city||"",lat:DB.destination.lat,lon:DB.destination.lon},oi:DB.origin.iata||DB.origin.icao,di:DB.destination.iata||DB.destination.icao}:null;
  const hi0=odOf(cs),hi=hi0?{o:{iata:hi0.o,icao:"",name:"",city:hi0.O[2]||"",lat:hi0.O[0],lon:hi0.O[1]},d:{iata:hi0.d,icao:"",name:"",city:hi0.D[2]||"",lat:hi0.D[0],lon:hi0.D[1]},oi:hi0.o,di:hi0.d,n:hi0.n,tot:hi0.tot}:null;
+ const o=routeOpts(a);
+ if(typeof pickRoute==="function") return pickRoute(db,hi,o.pos,o);
  const conflict=!!(db&&hi&&(db.oi!==hi.oi||db.di!==hi.di));
- return{db,hi,od:conflict?null:(db||hi),conflict}}
+ return{db,hi,od:conflict?null:(db||hi),conflict,unverified:false,rejected:[],src:null}}
 async function select(h){SEL=h;DB=null;SEL_T=[];openSp();gPaint();wxPanel();const ac0=selAc();const cs=ac0&&ac0.cs;
  if(cs)fetch("/api/route?cs="+encodeURIComponent(cs)).then(r=>r.json()).then(j=>{if(SEL===h){DB=j;selUpdate();wxPanel()}}).catch(()=>{if(SEL===h){DB={found:false};selUpdate();wxPanel()}});
  const r=await fetch("/api/track?hex="+h+"&t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>({points:[]}));if(SEL!==h)return;SEL_T=r.points||[];selUpdate(true);wxPanel()}
 function selUpdate(first){const a=selAc();if(!a){unsel();return}
- const snap=[a.lon,a.lat], shown=dispLonLat(a.lat,a.lon,a.gs,a.trk,a.gnd||a.held,a.gnd||a.held?0:a.alt,a.age), {db,hi,od,conflict}=routeEnds(a.cs), F=[];
+ const snap=[a.lon,a.lat], shown=dispLonLat(a.lat,a.lon,a.gs,a.trk,a.gnd||a.held,a.gnd||a.held?0:a.alt,a.age), {db,hi,od,conflict,unverified,rejected,src}=routeEnds(a.cs,a), F=[];
  let P=SEL_T.length?SEL_T.slice():[];
  const last=P[P.length-1];
  if(!last||last[1]!==a.lon||last[2]!==a.lat) P.push([L&&L.at?Date.parse(L.at):Date.now(),a.lon,a.lat,a.alt,a.gs,a.vs==null?null:a.vs,a.gnd?1:0]);
@@ -407,8 +418,14 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
  const phone=isPhone();
  const noteP=t=>phone?"":`<p class="mu">${t}</p>`;
  let more=[];
- if(conflict){
-  const rn=`${srcNote(db,hi)} Origin and destination stay unavailable because the two connected route sources disagree. Remaining route is not drawn from a guessed pair. Not a marketed flight number.`;
+ if(unverified){
+  const rn=`${srcNote(db,hi,{unverified:true,rejected,src})} Remaining route, progress and ETA are not drawn from it.`;
+  more.push(rn);
+  routeHtml=`<div class="spsec"><h3>Route ${tg("na","Unverified")}</h3>
+   <div class="od">${apBox(null,"from")}<div class="odarr">→</div>${apBox(null,"to")}</div>
+   <div class="scg">${cell("Route","unverified/unavailable","na")}</div>${noteP(rn)}</div>`
+ } else if(conflict){
+  const rn=`${srcNote(db,hi,{conflict:true,rejected,src})} Remaining route is not drawn from a guessed pair. Not a marketed flight number.`;
   more.push(rn);
   routeHtml=`<div class="spsec"><h3>Route ${tg("na","Unavailable")}</h3>
    <div class="od">${apBox(null,"from")}<div class="odarr">→</div>${apBox(null,"to")}</div>${noteP(rn)}</div>`
@@ -417,7 +434,7 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
   F.push({type:"Feature",properties:{k:"ap",n:od.oi,icao:od.o.icao||""},geometry:{type:"Point",coordinates:[od.o.lon,od.o.lat]}},{type:"Feature",properties:{k:"ap",n:od.di,icao:od.d.icao||""},geometry:{type:"Point",coordinates:[od.d.lon,od.d.lat]}});
   fl=hv(od.o.lat,od.o.lon,shown[1],shown[0]); rm=hv(shown[1],shown[0],od.d.lat,od.d.lon); pc=Math.max(0,Math.min(100,100*fl/(fl+rm||1)));
   canEta=posFresh(a)&&rm!=null; if(canEta) etaMs=Date.now()+rm/a.gs*3600e3;
-  const rn=`${srcNote(db,hi)} Remaining route and the selected marker share the same displayed position (dead-reckoned between refreshes, estimate). Distances are great-circle, not the flown path. Not a schedule.`;
+  const rn=`${srcNote(db,hi,{src,rejected})} Remaining route and the selected marker share the same displayed position (dead-reckoned between refreshes, estimate). Distances are great-circle, not the flown path. Not a schedule.`;
   more.push(rn);
   routeHtml=`<div class="spsec"><h3>Route ${tg("est","Estimated")}</h3>
    <div class="od">${apBox(od.o,"from")}<div class="odarr">→</div>${apBox(od.d,"to")}</div>
@@ -430,7 +447,7 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
   <div class="od">${apBox(null,"from")}<div class="odarr">→</div>${apBox(null,"to")}</div>${noteP(rn)}</div>`;
  }
  if(map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:F});applyTrackVis();gPaint();
- const sk=[a.hex,a.lat,a.lon,a.alt,a.gs,a.trk,a.vs,a.age,a.held,!!(DB&&DB.found),P.length,a.src,canEta&&etaMs?Math.round(etaMs/60000):""].join("|");
+ const sk=[a.hex,a.lat,a.lon,a.alt,a.gs,a.trk,a.vs,a.age,a.held,!!(DB&&DB.found),P.length,a.src,canEta&&etaMs?Math.round(etaMs/60000):"",od&&od.oi||"",od&&od.di||"",unverified?1:0,conflict?1:0,src||""].join("|");
  if(!first&&sk===SEL_DRAW&&$("sp").classList.contains("on"))return;SEL_DRAW=sk;
  const name=alName(a.al,DB&&DB.airline),fresh=a.held?`Held last ground position, ${a.heldMin>=60?(a.heldMin/60).toFixed(1)+" h":a.heldMin+" min"} ago (ADS-B off / dropped)`:a.gnd?`Observed · on ground · ${a.age} s ago`:`Observed · ${a.age} s ago`;
  $("spcs").textContent=a.cs||"—";$("spal").textContent=name?name+(a.al?" · "+a.al:""):(a.al||"Airline unavailable");
@@ -542,7 +559,14 @@ function onQsKey(e){
   clearTimeout(QTm);QTm=setTimeout(search,220);
 }
 
-function srcNote(db,hi){const h=hi?`${hi.oi}→${hi.di} (${hi.n}/${hi.tot} past flights)`:null;
+function srcNote(db,hi,meta){const h=hi?`${hi.oi}→${hi.di} (${hi.n}/${hi.tot} past flights)`:null;
+ const rej=(meta&&meta.rejected||[]).filter(r=>r&&r.pair).map(r=>`${r.pair} (${r.src})`).join("; ");
+ const drop=rej?` Discarded as geographically implausible from the displayed position: ${rej}. No replacement pair is invented.`:"";
+ if(meta&&meta.unverified) return `Route unverified/unavailable.${drop} Crowd-sourced callsign routes can be stale or reused; alphanumeric callsigns are not a marketed flight number.`;
+ if(meta&&meta.conflict) return `Origin and destination stay unavailable because the two connected route sources disagree and both are geographically plausible.${drop} Not a marketed flight number.`;
+ if(meta&&meta.src==="history") return (db?`adsbdb.com pair was not used.${drop} `:drop)+`Estimated from adsb.lol history ${h}. Not observed on this flight. Not a marketed flight number.`;
+ if(meta&&meta.src==="adsbdb") return "Route from adsbdb.com for this ADS-B callsign"+(hi?" (history pair was not used after the geographic check).":" (no adsb.lol history to cross-check).")+" Geographically consistent with the displayed position. Crowd-sourced; may still be stale or a reused callsign. Not a marketed flight number."+drop;
+ if(meta&&meta.src==="both") return `Route from adsbdb.com for this ADS-B callsign, matches adsb.lol history ${h}. Crowd-sourced; may be stale or a reused callsign. Not a marketed flight number.`;
  if(db&&hi)return (db.oi===hi.oi&&db.di===hi.di)?`Route from adsbdb.com for this ADS-B callsign, matches adsb.lol history ${h}. Crowd-sourced; may be stale or a reused callsign. Not a marketed flight number.`:`Route from adsbdb.com (${db.oi}→${db.di}); <b style="color:#ffb020">disagrees</b> with adsb.lol history ${h}. adsbdb routes are crowd-sourced and can be stale or reused. Not a marketed flight number.`;
  if(db)return "Route from adsbdb.com for this ADS-B callsign (no adsb.lol history to cross-check). Crowd-sourced; may be stale or a reused callsign. Not a marketed flight number.";
  return DB?`adsbdb has no route for this callsign; estimated from adsb.lol history ${h}. Not observed on this flight.`:`Estimated from adsb.lol history ${h}; checking adsbdb…`}
@@ -778,7 +802,7 @@ function wxDrawMetar(){
   map.getSource("wxmet").setData({type:"FeatureCollection",features:rows.filter(m=>typeof m.lat==="number"&&typeof m.lon==="number").map(m=>({type:"Feature",properties:wxMetFeat(m),geometry:{type:"Point",coordinates:[m.lon,m.lat]}}))});
 }
 function wxExtraIcao(){
-  const a=SEL&&selAc(), {od}=a?routeEnds(a.cs||""):{};
+  const a=SEL&&selAc(), {od}=a?routeEnds(a.cs||"",a):{};
   const iata=wxIata();
   const ids=[];
   if(od){if(od.o&&od.o.icao)ids.push(od.o.icao);if(od.d&&od.d.icao)ids.push(od.d.icao);if(od.oi&&iata[od.oi])ids.push(iata[od.oi]);if(od.di&&iata[od.di])ids.push(iata[od.di])}
@@ -806,7 +830,7 @@ function wxPanel(){
   if(!SEL){el.innerHTML="";return}
   const a=selAc();if(!a){el.innerHTML="";return}
   const [lon,lat]=dispLonLat(a.lat,a.lon,a.gs,a.trk,a.gnd||a.held,a.gnd||a.held?0:a.alt,a.age);
-  const {od}=routeEnds(a.cs);
+  const {od,unverified}=routeEnds(a.cs,a);
   let rem=null;
   if(od&&typeof od.d.lat==="number") rem=typeof gc==="function"?gc([lat,lon],[od.d.lat,od.d.lon]):null;
   const needHaz=true, needSt=true;
@@ -828,7 +852,7 @@ function wxPanel(){
     else body+=`<p class="mu">No current SIGMET/G-AIRMET polygon in this overlay contains the displayed position. That is not a clearance and is not “no weather”.</p>`;
     if(route.length) body+=`<p><b>${phone?"On remaining GC":"Provisional remaining-route intersections"}</b>${phone?"":" (estimated great-circle to destination, <em>not</em> a filed plan)"}</p>`+route.map(f=>wxAdvLine(f)).join("");
     else if(rem) body+=`<p class="mu">No current advisory polygon in this overlay intersects the estimated remaining great-circle. Intersections are provisional because the remaining route is not a filed flight plan.</p>`;
-    else body+=`<p class="mu">Remaining-route intersection unavailable: destination is unknown, so there is no estimated great-circle.</p>`;
+    else body+=`<p class="mu">${unverified?"Remaining-route intersection unavailable: route unverified/unavailable, so there is no estimated great-circle.":"Remaining-route intersection unavailable: destination is unknown, so there is no estimated great-circle."}</p>`;
     if(h.counts) body+=`<p class="mu">${h.counts.current} current advisories in overlay · ${h.expiredOmitted||0} expired omitted · ${h.at?("fetched "+h.at.replace("T"," ").slice(0,16)+" UTC"):""}</p>`;
   }
   body+=wxStationBlock(st,od,lat,lon,a);

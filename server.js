@@ -203,6 +203,7 @@ http.createServer(async (req, res) => {
   if (u === "/api/map") return send(res, 200, "application/json", JSON.stringify(map));
   if (u === "/healthz") return send(res, 200, "text/plain", "ok");
   if (u === "/map.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/map.js")));
+  if (u === "/route-plaus.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/route-plaus.js")));
   if (u === "/" || u === "/index.html") return send(res, 200, "text/html; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/index.html")));
   send(res, 404, "text/plain", "not found");
 }).listen(PORT, () => console.log(`listening on ${PORT}`));
