@@ -18,6 +18,7 @@ const fin = fs.readFileSync(path.join(__dirname, "data/fin.json"), "utf8");
 const finCsv = (() => { const j = JSON.parse(fin); const k = Object.keys(j.m.QTR[0]); return "# Estimates/proxies derived from open ADS-B data (adsb.lol, ODbL). Not reported financials. Not investment advice. Months UTC.\nairline," + k.join(",") + "\n" + Object.entries(j.m).flatMap(([a, r]) => r.map((x) => a + "," + k.map((c) => x[c] ?? "").join(","))).join("\n") + "\n"; })();
 const globalAgg = fs.readFileSync(path.join(__dirname, "data/global.json"), "utf8");
 const names = JSON.parse(fs.readFileSync(path.join(__dirname, "data/airlines.json"), "utf8"));
+const { inspectSources } = require("./public/flightno.js");
 let snapshot = { at: null, error: "warming up", airlines: [], total: 0 };
 let live = { at: null, fields: ["hex","callsign","airline","type","lat","lon","alt_ft","gs_kt","track","reg","on_ground","pos_age_s","vrate_fpm"], ac: [], nm: {} };
 const trails = new Map(); 
@@ -34,6 +35,10 @@ async function adsbdb(cs) {
     const r = await fetch(`https://api.adsbdb.com/v0/callsign/${cs}`, { headers: { "User-Agent": "airline-adsb-dashboard" }, signal: AbortSignal.timeout(8000) });
     const f = r.ok ? ((await r.json()).response || {}).flightroute : null;
     const ap = (x) => x && { iata: x.iata_code, icao: x.icao_code, name: x.name, city: x.municipality, lat: x.latitude, lon: x.longitude };
+    const lookup = inspectSources({
+      callsign: cs,
+      records: f ? [{ source: "adsbdb.com", payload: f, origin: f.origin, destination: f.destination }] : []
+    });
     if (f && f.origin && f.destination) v = {
       callsign: cs,
       found: true,
@@ -46,8 +51,10 @@ async function adsbdb(cs) {
       origin: ap(f.origin),
       destination: ap(f.destination),
       flight_number: null,
+      flight_number_lookup: lookup,
       note: "adsbdb lookup is by ADS-B callsign. callsign_iata is the IATA spelling of that same callsign (airline IATA prefix + remainder), including alphanumeric suffixes. It is not a marketed/ticketed passenger flight number. Routes are crowd-sourced and can be stale or reused; codeshares are not resolved."
     };
+    else v = { ...v, flight_number: null, flight_number_lookup: lookup };
   } catch (e) { v.error = "lookup failed"; return v; }
   rc.set(cs, { t: Date.now(), v }); if (rc.size > 20000) rc.clear();
   return v;
@@ -207,6 +214,7 @@ http.createServer(async (req, res) => {
   if (u === "/healthz") return send(res, 200, "text/plain", "ok");
   if (u === "/map.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/map.js")));
   if (u === "/route-plaus.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/route-plaus.js")));
+  if (u === "/flightno.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/flightno.js")));
   if (u === "/" || u === "/index.html") return send(res, 200, "text/html; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/index.html")));
   send(res, 404, "text/plain", "not found");
 }).listen(PORT, () => console.log(`listening on ${PORT}`));
