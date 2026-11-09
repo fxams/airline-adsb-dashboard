@@ -277,9 +277,23 @@ function airCountOf(code){
   if(!code) return rows.length;
   return rows.filter(a=>a[2]===code).length;
 }
+function liveLoading(){
+  const n=((L&&L.ac)||[]).length;
+  if(n) return false;
+  const f=L&&L.feed;
+  if(f&&f.loading) return true;
+  if(!L||!L.at) return true;
+  return false;
+}
+function syncLiveLoad(){
+  const el=$("liveload"); if(!el) return;
+  const on=liveLoading();
+  el.hidden=!on;
+  if(on) el.textContent="Loading live data…";
+}
 function syncAirCounts(){
   const el=$("filn"); if(!el) return;
-  if(!L||!L.ac){el.textContent="";return}
+  if(!L||!L.ac){el.textContent=liveLoading()?"Loading live data…":"";syncLiveLoad();return}
   const ty=($("tyf")&&$("tyf").value||"").trim().toUpperCase();
   const sel=airSel();
   const lab=ty?" "+ty:"";
@@ -295,13 +309,16 @@ function syncAirCounts(){
       return `${name} ${typeof fmt==="function"?fmt(n):n}`;
     });
   }
+  if(!L.ac.length && liveLoading()) lines=["Loading live data…"];
   el.textContent=lines.join("\n");
   el.title="Currently loaded live ADS-B aircraft in this sample matching the active filters. Not fleet size. Held last-ground positions are not counted. Not limited to the map viewport.";
+  syncLiveLoad();
 }
 function syncLiveCount(){
   const el=$("cnt"); if(!el||!L) return;
   const tot=L.ac.length, n=acF().length;
-  el.textContent=n===tot?`· ${fmt(tot)} live airline aircraft`:`· ${fmt(n)} of ${fmt(tot)} live airline aircraft`;
+  if(!tot && liveLoading()) el.textContent="· Loading live data…";
+  else el.textContent=n===tot?`· ${fmt(tot)} live airline aircraft`:`· ${fmt(n)} of ${fmt(tot)} live airline aircraft`;
   const note=typeof feedNote==="function"?feedNote(L.feed):"";
   el.title=note||"Aircraft in the current live sample. Not fleet size.";
   syncAirCounts();
@@ -322,7 +339,7 @@ function acF(){const ty=$("tyf").value.trim().toUpperCase();
 function drawLive(){if(!map||!map.getSource("live")||(!L&&!(LOCAL_AIR&&LOCAL_AIR.length)))return;const f=acF();map.getSource("live").setData({type:"FeatureCollection",features:f});
  if($("trl").checked){const tf=[];for(const x of f){const t=TR[x.properties.h];if(t&&t.length>1)tf.push({type:"Feature",properties:{a:x.properties.a},geometry:{type:"LineString",coordinates:[...t.slice(-12),x.geometry.coordinates]}})}map.getSource("trails").setData({type:"FeatureCollection",features:tf})}
  else map.getSource("trails").setData({type:"FeatureCollection",features:[]});applyTrackVis();applyRegLab();if(SEL)selUpdate();refreshQres();syncLiveCount();if(typeof syncFilChips==="function")syncFilChips()}
-function onPoll(){if(!L&&!(LOCAL_AIR&&LOCAL_AIR.length))return;for(const a of liveRows()){const t=TR[a[0]]||(TR[a[0]]=[]),p=t[t.length-1];if(!p||p[0]!==a[5]||p[1]!==a[4])t.push([a[5],a[4]]);if(t.length>14)t.shift();const rg=(a[9]||"").trim();if(a[0]&&rg)REG_BY_HEX[a[0]]=rg}covDraw();
+function onPoll(){syncLiveLoad();if(!L&&!(LOCAL_AIR&&LOCAL_AIR.length))return;for(const a of liveRows()){const t=TR[a[0]]||(TR[a[0]]=[]),p=t[t.length-1];if(!p||p[0]!==a[5]||p[1]!==a[4])t.push([a[5],a[4]]);if(t.length>14)t.shift();const rg=(a[9]||"").trim();if(a[0]&&rg)REG_BY_HEX[a[0]]=rg}covDraw();
  syncMfOptions();drawLive()}
 function initMap(){map=new maplibregl.Map({container:"map",style:"https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",center:[35,28],zoom:innerWidth<700?1.1:2,attributionControl:{compact:true}});
  map.addControl(new maplibregl.NavigationControl(),"bottom-right");
