@@ -66,8 +66,12 @@ async function open(w, h, store = {}) {
 }
 
 async function shot(page, name) {
+  await page.evaluate(() => { const el = document.getElementById("mw"); if (el) el.scrollIntoView({ block: "nearest" }); });
+  await new Promise((r) => setTimeout(r, 160));
   const p = `${OUT}/${name}.png`;
-  await page.screenshot({ path: p, fullPage: false });
+  const el = await page.$("#mw");
+  if (el) await el.screenshot({ path: p });
+  else await page.screenshot({ path: p, fullPage: false });
   return p;
 }
 
@@ -81,6 +85,7 @@ const chrome = await desk.evaluate(() => ({
   qsInMw: !!(document.getElementById("mw") && document.getElementById("mw").contains(document.getElementById("qs"))),
   kxcInMw: !!(document.getElementById("mw") && document.getElementById("mw").contains(document.getElementById("kxc"))),
   airportImg: map.hasImage("airport"),
+  metMin: map.getLayer("wxmet") && map.getLayer("wxmet").minzoom,
   metType: map.getLayer("wxmet") && map.getLayer("wxmet").type,
   selType: map.getLayer("sel-ap") && map.getLayer("sel-ap").type,
   btn: document.getElementById("mfsb").textContent,
@@ -89,12 +94,12 @@ ok(!chrome.headerFs, "no dashboard fullscreen button");
 ok(chrome.mapFs && chrome.mw && chrome.spInMw && chrome.wxctlInMw && chrome.qsInMw, "map chrome includes search/weather/panel");
 ok(!chrome.kxcInMw, "KPI table is outside the map fullscreen container");
 ok(chrome.airportImg && chrome.metType === "symbol" && chrome.selType === "symbol", "runway-style airport symbol");
+ok(chrome.metMin === 0, "airport METAR icons are not hidden at world zoom");
 ok(/map fullscreen/i.test(chrome.btn), "idle label is map fullscreen");
 evidence.chrome = chrome;
 await shot(desk, "map-normal-1280");
 
-await desk.evaluate(() => { document.getElementById("wxctl").open = true; });
-if (!(await desk.evaluate(() => document.getElementById("wxmet").checked))) await desk.click("#wxmet");
+await desk.evaluate(() => { document.getElementById("wxctl").open = true; if (typeof setWx === "function") setWx("met", true); });
 await desk.waitForFunction(() => WX.st && WX.st.metar && WX.st.metar.length > 0, { timeout: 30000 });
 await desk.evaluate(() => map.jumpTo({ center: [55.36, 25.25], zoom: 7.2 }));
 await new Promise((r) => setTimeout(r, 900));
@@ -109,15 +114,20 @@ const met = await desk.evaluate(() => {
   return {
     vis, labVis, type, n: d.features.length, p,
     api: { icao: api.icao, tempC: api.tempC, windText: api.windText, pressPa: api.pressPa, pressRef: api.pressRef, obsTime: api.obsTime },
-    labHasPa: / Pa\b|QNH n\/a/.test(p.lab || ""),
+    labHasPa: / Pa\b|Pa n\/a/.test(p.lab || ""),
     labHasIcao: (p.lab || "").includes(p.icao),
-    labHasUtc: /UTC/.test(p.lab || ""),
+    labHasZ: /\d{6}Z/.test(p.lab || "") || /\d{6}Z/.test(p.labShort || ""),
+    labAvn: /KT/.test(p.labShort || "") && /Q\d{4}|A\d{4}|Q n\/a/.test(p.labShort || ""),
+    paNotInQ: !/Q101500|A101500/.test(p.labShort || ""),
     noFakeLive: !/live minute/i.test(p.lab || ""),
   };
 });
 ok(met.vis === "visible" && met.labVis === "visible", "weather toggle shows airport icon + METAR labels");
 ok(met.type === "symbol", "wxmet is airport icon");
-ok(met.labHasPa && met.labHasIcao && met.labHasUtc, "label has ICAO, Pa or QNH n/a, UTC time");
+ok(met.labHasIcao && met.labHasZ && met.labAvn, "aviation label has ICAO, DDHHMMZ, KT, Q/A group");
+ok(met.labHasPa, "expanded label still shows Pa");
+ok(met.paNotInQ, "Pa is not substituted into the METAR Q group");
+ok(met.p.labShort && met.p.labShort.includes(met.p.icao), "compact label keeps ICAO");
 ok(met.api.pressPa == null || (Number.isInteger(met.api.pressPa) && met.api.pressRef), "API Pa is converted with original ref");
 ok(met.api.windText && met.api.windText !== "000°T 0kt", "wind uses calm/VRB/kt text");
 evidence.met = met;
@@ -251,8 +261,7 @@ await ios.close();
 const mob = await open(390, 844);
 ok(await mob.evaluate(() => !document.getElementById("fsb") && !!document.getElementById("mfsb")), "mobile has map FS only");
 await shot(mob, "map-normal-390");
-await mob.evaluate(() => { document.getElementById("wxctl").open = true; });
-if (!(await mob.evaluate(() => document.getElementById("wxmet").checked))) await mob.click("#wxmet");
+await mob.evaluate(() => { document.getElementById("wxctl").open = true; if (typeof setWx === "function") setWx("met", true); if (typeof closeSheets === "function") closeSheets(); });
 await mob.waitForFunction(() => WX.st && WX.st.metar && WX.st.metar.length > 0, { timeout: 30000 });
 await mob.evaluate(() => map.jumpTo({ center: [55.36, 25.25], zoom: 6.8 }));
 await new Promise((r) => setTimeout(r, 900));
@@ -276,6 +285,13 @@ const mobFs = await mob.evaluate(() => ({
   fake: document.body.classList.contains("map-fs"),
   btn: document.getElementById("mfsb").textContent,
   note: document.getElementById("mfsnote").textContent,
+  noteOverlay: (() => {
+    const el = document.getElementById("mfsnote");
+    const sheet = el && el.closest(".infosheet");
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    return !!(el && !(sheet && sheet.hidden) && cs.display !== "none" && r.width > 1 && r.height > 1);
+  })(),
   mapH: document.getElementById("map").getBoundingClientRect().height,
   mwTop: document.getElementById("mw").getBoundingClientRect().top,
   innerH: innerHeight,
@@ -284,6 +300,7 @@ const mobFs = await mob.evaluate(() => ({
 }));
 ok(mobFs.fake && /exit map/i.test(mobFs.btn), "mobile map-fs fallback");
 ok(/chrome stays visible/i.test(mobFs.note), "mobile fallback honest about chrome");
+ok(!mobFs.noteOverlay, "mobile map-fs does not keep a persistent note banner on the map");
 ok(mobFs.parent && mobFs.mwTop <= 2 && mobFs.mapH > 500, "mobile map fills fallback over the dashboard");
 evidence.mobFs = mobFs;
 await shot(mob, "map-fs-390");

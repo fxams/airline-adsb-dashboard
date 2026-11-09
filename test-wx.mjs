@@ -39,8 +39,19 @@ function ok(cond, msg) { if (!cond) fail.push(msg); }
   ok(wx.windFromMetar("VRB", 3, null, "").text === "VRB 3kt", "variable");
   ok(wx.windFromMetar(260, 12, 22, "").text === "260°T 12kt G22kt", "gusts");
   ok(wx.windFromMetar(null, null, null, "").text === "wind n/a", "missing wind");
-  const row = wx.metarRow({ icaoId: "OTHH", temp: 28, wdir: 260, wspd: 12, wgst: 22, altim: 1013, rawOb: "OTHH 081200Z 26012G22KT Q1013", reportTime: "2026-11-08T12:00:00Z", lat: 25, lon: 51 });
+  const row = wx.metarRow({ icaoId: "OTHH", temp: 28, wdir: 260, wspd: 12, wgst: 22, altim: 1013, rawOb: "OTHH 081200Z 26012G22KT 9999 SCT040 28/16 Q1013", reportTime: "2026-11-08T12:00:00Z", lat: 25, lon: 51 });
   ok(row.pressPa === 101300 && row.windText.includes("260°T") && row.tempC === 28, "metarRow fields");
+  ok(wx.metarWindGroup(0, 0, null, "") === "00000KT", "calm 00000KT");
+  ok(wx.metarWindGroup("VRB", 4, null, "") === "VRB04KT", "VRB04KT");
+  ok(wx.metarWindGroup(260, 12, 22, "") === "26012G22KT", "gust group");
+  ok(wx.metarTempDew(-3, -8, "") === "M03/M08", "subzero M notation");
+  ok(wx.metarTempDew(12, null, "") === "12/n/a", "missing dewpoint not invented");
+  ok(wx.metarAltimGroup(null, "CAVOK") === "Q n/a", "missing QNH not invented");
+  ok(wx.metarAltimGroup(null, "KJFK 081251Z 18008KT A2992") === "A2992", "original Axxxx");
+  ok(wx.metarAltimGroup(1015, "OMDB 082100Z 10004KT CAVOK 29/21 Q1015") === "Q1015", "original Qxxxx not Pa");
+  const avn = wx.metarAvn({ icao: "OMDB", obsTime: "2026-11-08T21:00:00.000Z", wdir: 100, wspdKt: 4, tempC: 29, dewpC: 21, altim: 1015, raw: "METAR OMDB 082100Z 10004KT 9999 29/21 Q1015" });
+  ok(avn.timeZ === "082100Z" && avn.wind === "10004KT" && avn.tempDew === "29/21" && avn.altim === "Q1015", "aviation summary " + avn.line);
+  ok(!/Pa/.test(avn.line) && !/101500/.test(avn.altim), "Pa is not stuffed into the Q group");
 }
 
 const tiny = "/tmp/wx/tiny.grib2";
@@ -191,7 +202,7 @@ await desk.evaluate(() => { document.getElementById("wxctl").open = true; });
 await desk.click("#wxhaz");
 await desk.waitForFunction(() => WX.haz && WX.haz.features && WX.haz.features.features.length > 0, { timeout: 30000 });
 const hazUi = await desk.evaluate(() => {
-  const st = document.getElementById("wxst").textContent;
+  const st = document.getElementById("wxst").textContent + " " + ((document.getElementById("wxfull") && document.getElementById("wxfull").textContent) || "");
   const src = (id) => { const s = map.getSource(id); const d = (s && s._data) || (s && s.serialize && s.serialize().data) || { features: [] }; return d; };
   const n = src("wxhaz").features.length;
   const labs = src("wxhaz-pts").features;
@@ -203,9 +214,9 @@ const hazUi = await desk.evaluate(() => {
 ok(hazUi.vis === "visible" && hazUi.labVis === "visible", "hazard layers visible");
 ok(hazUi.n > 0 && hazUi.nLab > 0, "hazard polygons and origLabel points");
 ok(!!hazUi.lab0, "origLabel on point " + hazUi.lab0);
-ok(/current advisories/i.test(hazUi.st), "status current advisories: " + hazUi.st);
+ok(/current advisories|\d+ adv\./i.test(hazUi.st), "status current advisories: " + hazUi.st);
 ok(hazUi.persist === "1", "hazard toggle persisted");
-ok(!/no hazards/i.test(hazUi.st) || /current advisories/i.test(hazUi.st), "status not a false all-clear");
+ok(!/no hazards/i.test(hazUi.st) || /current advisories|\d+ adv\./i.test(hazUi.st), "status not a false all-clear");
 evidence.deskHaz = hazUi;
 await desk.evaluate(() => map.flyTo({ center: [55, 25], zoom: 4, duration: 0 }));
 await new Promise((r) => setTimeout(r, 800));
@@ -224,7 +235,8 @@ const metUi = await desk.evaluate(() => {
 });
 ok(metUi.vis === "visible" && metUi.n > 10, "METAR airport features");
 ok(metUi.type === "symbol", "airport layer is symbol icon not circle");
-ok(metUi.sample && /Pa|QNH n\/a/.test(metUi.sample.lab || ""), "METAR label has Pa or honest QNH n/a");
+ok(metUi.sample && / Pa\b|Pa n\/a/.test(metUi.sample.lab || ""), "expanded METAR label has Pa or Pa n/a");
+ok(metUi.sample && /\d{6}Z/.test(metUi.sample.labShort || "") && /KT/.test(metUi.sample.labShort || "") && /Q\d{4}|A\d{4}|Q n\/a/.test(metUi.sample.labShort || ""), "compact METAR is aviation format");
 ok(metUi.sample && (metUi.sample.windText || "").length > 0, "METAR wind text on feature");
 ok(/METAR/i.test(metUi.st), "status mentions METAR");
 ok(!metUi.err, "status not error when overlays ok");
@@ -321,28 +333,38 @@ ok(search.ok, "search still finds callsign");
 
 const mob = await open(390, 844);
 const ui390 = await mob.evaluate(() => {
-  const lg = document.querySelector(".lg");
+  const wxbtn = document.getElementById("wxbtn");
+  const infobtn = document.getElementById("infobtn");
+  if (typeof toggleInfo === "function") toggleInfo();
+  const lg = document.querySelector(".infosheet .lg, .lg");
   const cs = lg ? getComputedStyle(lg) : null;
-  const wx = document.getElementById("wxctl");
-  const wxcs = wx ? getComputedStyle(wx) : null;
-  return { legendDisplay: cs && cs.display, wxBottom: wxcs && wxcs.bottom, wxTop: wxcs && wxcs.top, fsb: !!document.getElementById("fsb"), mfsb: !!document.getElementById("mfsb") };
+  const sheet = document.getElementById("infosheet");
+  return {
+    wxText: (wxbtn && wxbtn.textContent || "").replace(/\s+/g, " ").trim(),
+    wxH: wxbtn && wxbtn.getBoundingClientRect().height,
+    info: !!(infobtn && infobtn.getBoundingClientRect().height > 20),
+    legendInInfo: !!(sheet && !sheet.hidden && cs && cs.display !== "none"),
+    fsb: !!document.getElementById("fsb"),
+    mfsb: !!document.getElementById("mfsb")
+  };
 });
-ok(ui390.legendDisplay !== "none", "mobile legend stays " + ui390.legendDisplay);
-await mob.evaluate(() => { document.getElementById("wxctl").open = true; });
-await mob.click("#wxhaz");
+ok(/Weather/.test(ui390.wxText) && ui390.wxH >= 44, "mobile Weather control with text");
+ok(ui390.info && ui390.legendInInfo, "mobile legend lives in Info sheet");
+ok(!ui390.fsb && ui390.mfsb, "mobile has map fullscreen only");
+await mob.evaluate(() => { if (typeof closeSheets === "function") closeSheets(); document.getElementById("wxctl").open = true; setWx("haz", true); });
 await mob.waitForFunction(() => WX.haz && WX.haz.features && WX.haz.features.features.length > 0, { timeout: 30000 });
 await mob.evaluate(() => map.flyTo({ center: [55, 25], zoom: 3.5, duration: 0 }));
 await new Promise((r) => setTimeout(r, 800));
 await shot(mob, "wx-hazards-390");
-await mob.click("#wxmet");
+await mob.evaluate(() => setWx("met", true));
 await mob.waitForFunction(() => WX.st && WX.st.metar && WX.st.metar.length > 0, { timeout: 30000 });
 await shot(mob, "wx-metar-390");
-await mob.click("#wxwnd");
+await mob.evaluate(() => setWx("wnd", true));
 await mob.waitForFunction(() => WX.wnd && (WX.wnd.available === true || WX.wnd.available === false), { timeout: 90000 });
 await mob.evaluate(() => map.flyTo({ center: [45, 25], zoom: 3, duration: 0 }));
 await new Promise((r) => setTimeout(r, 800));
 await shot(mob, "wx-winds-390");
-const mobSt = await mob.evaluate(() => document.getElementById("wxst").textContent);
+const mobSt = await mob.evaluate(() => (document.getElementById("wxst").textContent || "") + " " + (document.getElementById("wxfull") && document.getElementById("wxfull").textContent || ""));
 ok(/advisory|METAR|GFS|unavailable/i.test(mobSt), "mobile status populated");
 evidence.mob = { ui390, st: mobSt };
 
