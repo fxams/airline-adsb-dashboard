@@ -5,6 +5,17 @@ const path = require("path");
 
 const { LiveFeed, parseTypes, feedBanner } = require("./live-feed");
 const airports = require("./public/airports.js");
+const HIST_DIR = path.join(__dirname, "data", "hist");
+function loadHistIndex() {
+  try {
+    const idx = JSON.parse(fs.readFileSync(path.join(HIST_DIR, "index.json"), "utf8"));
+    if (Array.isArray(idx.airports)) airports.merge(idx.airports);
+    return idx;
+  } catch (_) {
+    return { airports: [], n_airports: 0, n_with_geom: 0, geom_days: [], note: "No terminal-area tiles in this build." };
+  }
+}
+const histIndex = loadHistIndex();
 const PORT = process.env.PORT || 10000;
 const REFRESH_MS = Number(process.env.REFRESH_SECONDS || 90) * 1000;
 // Public hub points (airports), 250 nm radius each.
@@ -214,7 +225,23 @@ http.createServer(async (req, res) => {
     if (!hub) return send(res, 400, "application/json", JSON.stringify({ error: "unknown airport", hint: "apt is IATA or ICAO from /api/airports (e.g. LHR or EGLL)" }));
     return ground(hub.id).then((v) => send(res, 200, "application/json", JSON.stringify(v), "public, max-age=30"));
   }
-  if (u === "/api/airports") return send(res, 200, "application/json", JSON.stringify({ presets: airports.PRESETS, hubs: airports.HUBS, point_nm: airports.POINT_NM, gnd_nm: airports.GND_NM, auto_zoom: airports.AUTO_ZOOM, auto_nm: airports.AUTO_NM, note: "Public ARP coordinates (OurAirports, public domain). Local ADS-B via adsb.lol /v2/point when the map is at a hub. Not SID/STAR procedures." }), "public, max-age=3600");
+  if (u === "/api/airports") return send(res, 200, "application/json", JSON.stringify({ presets: airports.PRESETS, hubs: airports.HUBS, point_nm: airports.POINT_NM, gnd_nm: airports.GND_NM, auto_zoom: airports.AUTO_ZOOM, auto_nm: airports.AUTO_NM, hist: { n_airports: histIndex.n_airports, n_with_geom: histIndex.n_with_geom, from: histIndex.from, to: histIndex.to, geom_days: histIndex.geom_days }, note: "Public ARP coordinates (OurAirports, public domain). Local ADS-B via adsb.lol /v2/point when the map is at a hub. Observed QTR airports from 365-day ADS-B history are merged for zoom-in overlay. Not SID/STAR procedures." }), "public, max-age=3600");
+  if (u === "/api/hist/index") return send(res, 200, "application/json", JSON.stringify(histIndex), "public, max-age=300");
+  if (u === "/api/hist") {
+    const hub = airports.resolveApt((q.get("apt") || "").toUpperCase());
+    if (!hub) return send(res, 400, "application/json", JSON.stringify({ error: "unknown airport" }));
+    const fp = path.join(HIST_DIR, hub.id + ".json.gz");
+    const meta = (histIndex.airports || []).find((a) => a.id === hub.id) || { id: hub.id };
+    if (!fs.existsSync(fp)) {
+      return send(res, 200, "application/json", JSON.stringify({
+        apt: hub.id, icao: hub.icao, error: "no_geometry",
+        h2h_n: meta.h2h_n || 0, h2h_inf: meta.h2h_inf || 0,
+        from: histIndex.from, to: histIndex.to, geom_days: histIndex.geom_days || [],
+        note: "No terminal-area QTR/UAE traces could be assigned to a runway in the sampled UTC days (no receiver coverage, too few points, or ambiguous runway). 365-day city-pair counts still come from the full aggregate. Observed ADS-B, not published SID/STAR."
+      }), "public, max-age=300");
+    }
+    return send(res, 200, "application/json", zlib.gunzipSync(fs.readFileSync(fp)).toString("utf8"), "public, max-age=300");
+  }
   if (u === "/airports.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/airports.js")));
   if (u === "/api/snapshot") return send(res, 200, "application/json", JSON.stringify(snapshot));
   if (u === "/api/tracks") return send(res, 200, "application/json", tracks, "public, max-age=300");

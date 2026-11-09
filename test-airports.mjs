@@ -35,6 +35,13 @@ ok(A.AUTO_ZOOM === 10.5 && A.AUTO_NM === 15, "auto overlay at zoom 10.5 within 1
 const lgw = A.nearestApt(51.148, -0.19, 10);
 ok(lgw && lgw.id === "LGW", "Gatwick is in the catalog for zoom-in (not a chrome preset)");
 ok(!A.PRESETS.includes("LGW"), "LGW is not a top-bar preset");
+ok(typeof A.merge === "function", "catalog can merge observed-history airports");
+const nBefore = A.HUBS.length;
+const added = A.merge([{ id: "PEN", icao: "WMKP", iata: "PEN", lat: 5.2971, lon: 100.277, name: "Penang" }]);
+ok(added === 1 && A.resolveApt("WMKP") && A.resolveApt("WMKP").id === "PEN", "merge adds observed QTR airport PEN");
+ok(A.merge([{ id: "PEN", icao: "WMKP", iata: "PEN", lat: 5.3, lon: 100.3 }]) === 0, "merge does not duplicate");
+ok(A.HUBS.length === nBefore + 1, "merge grows catalog by one");
+ok(!A.PRESETS.includes("PEN"), "merged airports are not chrome presets");
 
 if (fail.length) {
   console.error("FAIL\n" + fail.join("\n"));
