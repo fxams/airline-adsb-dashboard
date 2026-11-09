@@ -6,6 +6,7 @@ const path = require("path");
 const { LiveFeed, parseTypes, feedBanner } = require("./live-feed");
 const airports = require("./public/airports.js");
 const HIST_DIR = path.join(__dirname, "data", "hist");
+const AIP_DIR = path.join(__dirname, "data", "aip");
 function loadHistIndex() {
   try {
     const idx = JSON.parse(fs.readFileSync(path.join(HIST_DIR, "index.json"), "utf8"));
@@ -15,7 +16,18 @@ function loadHistIndex() {
     return { airports: [], n_airports: 0, n_with_geom: 0, geom_days: [], note: "No terminal-area tiles in this build." };
   }
 }
+function loadAipIndex() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(AIP_DIR, "index.json"), "utf8"));
+  } catch (_) {
+    return { airports: [], n_airports: 0, n_draw: 0, n_link: 0, note: "No AIP SID/STAR index in this build." };
+  }
+}
 const histIndex = loadHistIndex();
+const aipIndex = loadAipIndex();
+function aipMeta(id) {
+  return (aipIndex.airports || []).find((a) => a.id === id) || null;
+}
 const PORT = process.env.PORT || 10000;
 const REFRESH_MS = Number(process.env.REFRESH_SECONDS || 90) * 1000;
 // Public hub points (airports), 250 nm radius each.
@@ -225,7 +237,7 @@ http.createServer(async (req, res) => {
     if (!hub) return send(res, 400, "application/json", JSON.stringify({ error: "unknown airport", hint: "apt is IATA or ICAO from /api/airports (e.g. LHR or EGLL)" }));
     return ground(hub.id).then((v) => send(res, 200, "application/json", JSON.stringify(v), "public, max-age=30"));
   }
-  if (u === "/api/airports") return send(res, 200, "application/json", JSON.stringify({ presets: airports.PRESETS, hubs: airports.HUBS, point_nm: airports.POINT_NM, gnd_nm: airports.GND_NM, auto_zoom: airports.AUTO_ZOOM, auto_nm: airports.AUTO_NM, hist: { n_airports: histIndex.n_airports, n_with_geom: histIndex.n_with_geom, from: histIndex.from, to: histIndex.to, geom_days: histIndex.geom_days }, note: "Public ARP coordinates (OurAirports, public domain). Local ADS-B via adsb.lol /v2/point when the map is at a hub. Observed QTR airports from 365-day ADS-B history are merged for zoom-in overlay. Not SID/STAR procedures." }), "public, max-age=3600");
+  if (u === "/api/airports") return send(res, 200, "application/json", JSON.stringify({ presets: airports.PRESETS, hubs: airports.HUBS, point_nm: airports.POINT_NM, gnd_nm: airports.GND_NM, auto_zoom: airports.AUTO_ZOOM, auto_nm: airports.AUTO_NM, hist: { n_airports: histIndex.n_airports, n_with_geom: histIndex.n_with_geom, from: histIndex.from, to: histIndex.to, geom_days: histIndex.geom_days }, aip: { n_airports: aipIndex.n_airports, n_draw: aipIndex.n_draw, n_link: aipIndex.n_link, cycle: aipIndex.cycle, airac: aipIndex.airac }, note: "Public ARP coordinates (OurAirports, public domain). Local ADS-B via adsb.lol /v2/point when the map is at a hub. Observed QTR airports from 365-day ADS-B history are merged for zoom-in overlay. SID/STAR geometry only where AIP terms allow (FAA CIFP); otherwise an official AD 2 link." }), "public, max-age=3600");
   if (u === "/api/hist/index") return send(res, 200, "application/json", JSON.stringify(histIndex), "public, max-age=300");
   if (u === "/api/hist") {
     const hub = airports.resolveApt((q.get("apt") || "").toUpperCase());
@@ -241,6 +253,30 @@ http.createServer(async (req, res) => {
       }), "public, max-age=300");
     }
     return send(res, 200, "application/json", zlib.gunzipSync(fs.readFileSync(fp)).toString("utf8"), "public, max-age=300");
+  }
+  if (u === "/api/aip/index") return send(res, 200, "application/json", JSON.stringify(aipIndex), "public, max-age=300");
+  if (u === "/api/aip") {
+    const hub = airports.resolveApt((q.get("apt") || "").toUpperCase());
+    if (!hub) return send(res, 400, "application/json", JSON.stringify({ error: "unknown airport" }));
+    const meta = aipMeta(hub.id);
+    if (!meta) {
+      return send(res, 200, "application/json", JSON.stringify({ apt: hub.id, icao: hub.icao, mode: "link", error: "no_aip", note: "No AIP policy row for this airport." }), "public, max-age=300");
+    }
+    if (meta.tile) {
+      const fp = path.join(AIP_DIR, meta.tile);
+      if (fs.existsSync(fp)) return send(res, 200, "application/json", zlib.gunzipSync(fs.readFileSync(fp)).toString("utf8"), "public, max-age=300");
+    }
+    return send(res, 200, "application/json", JSON.stringify({
+      apt: meta.id, icao: meta.icao, iata: meta.iata, name: meta.name, lat: meta.lat, lon: meta.lon,
+      mode: meta.mode, state: meta.state, source: meta.aip, source_url: meta.aip_url,
+      ad2_url: meta.ad2_url, ad2_label: meta.ad2_label, terms_url: meta.terms_url, terms: meta.terms, why: meta.why,
+      n_sid: 0, n_star: 0, n_match: 0, procs: [], match: [],
+      ident_mode: meta.ident_mode || "none",
+      ident_terms: meta.ident_terms || "",
+      ident: { source: null, mode: "none", flights: 0, named: 0, by_rwy: [], rep: [], raw: [], disclaimer: "No licence-safe SID/STAR coding table for this state. Procedure names are not assigned." },
+      disclaimer: aipIndex.disclaimer || "Not for navigation. Not for operational flight planning.",
+      note: meta.why
+    }), "public, max-age=300");
   }
   if (u === "/airports.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/airports.js")));
   if (u === "/api/snapshot") return send(res, 200, "application/json", JSON.stringify(snapshot));
@@ -266,6 +302,7 @@ http.createServer(async (req, res) => {
   if (u === "/api/feed") return send(res, 200, "application/json", JSON.stringify(liveFeed.summary()));
   if (u === "/api/map") return send(res, 200, "application/json", JSON.stringify(map));
   if (u === "/healthz") return send(res, 200, "text/plain", "ok");
+  if (u === "/aip-ident.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/aip-ident.js")));
   if (u === "/map.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/map.js")));
   if (u === "/route-plaus.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/route-plaus.js")));
   if (u === "/flightno.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/flightno.js")));

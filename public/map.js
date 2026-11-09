@@ -1,7 +1,7 @@
 // Live map: FR24-style aircraft layer, trails, selection panel, real flown tracks. Data: adsb.lol (ODbL).
 let SEL=null,TR={},CSR=null,TK=null,prof=null,lastFrame=0,REG_BY_HEX={},SRCH_GND=[],QHits=[],QIx=-1,QTm=null;
 const TRACK_LAYERS=["trails","tk","tkgc","sel-flown","sel-join","sel-gap","sel-rem","hist-rep","hist-cor","hist-lab"];
-let HI=null,HIST=null,HIST_APT=null;
+let HI=null,HIST=null,HIST_APT=null,AIPI=null,AIP=null,AIP_APT=null;
 function ageS(){return L&&L.at?Math.min(90,(Date.now()-new Date(L.at))/1000):0}
 function gndLikePos(onG,gs,alt,posAge){
   if(onG) return true;
@@ -335,6 +335,8 @@ function initMap(){map=new maplibregl.Map({container:"map",style:"https://basema
   HI=await fetch("/api/hist/index").then(r=>r.json()).catch(()=>null);
   if(HI&&HI.airports&&AH&&AH.merge) AH.merge(HI.airports);
   if($("histinfo")&&HI) $("histinfo").textContent=`${HI.n_airports||0} observed QTR airports; geometry tiles ${HI.n_with_geom||0}; sampled UTC days ${(HI.geom_days||[]).join(", ")||"none"}; window ${HI.from||"?"}–${HI.to||"?"} UTC.`;
+  AIPI=await fetch("/api/aip/index").then(r=>r.json()).catch(()=>null);
+  if($("aipinfo")&&AIPI) $("aipinfo").textContent=`${AIPI.n_draw||0} DRAW (FAA CIFP ${AIPI.cycle||""}, AIRAC ${AIPI.airac||"?"}, ${AIPI.effective_utc||"?"}–${AIPI.until_utc||"?"} UTC); ${AIPI.n_link||0} LINK-only official AIP AD 2. Per-flight ident: CIFP names only.`;
   TK=await fetch("/api/tracks").then(r=>r.json()).catch(()=>({f:[]}));
   const ts=$("tks");ts.innerHTML=`<option value="">Off</option><option value="QTR">All QTR (${TK.day})</option><option value="UAE">All UAE (${TK.day})</option>`+TK.f.map((f,i)=>[f.a+" "+f.o+"-"+f.d,i]).sort().map(([l,i])=>`<option value="${i}">${l}</option>`).join("");
   map.addSource("tk",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addSource("tkgc",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
@@ -471,7 +473,8 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
  }
  if(map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:F});applyTrackVis();gPaint();
  const fn=(typeof acceptMarketedFlight==="function")?acceptMarketedFlight({callsign:a.cs,lookup:DB&&DB.flight_number_lookup,route:{od,unverified,conflict,src}}):{found:false,note:"Flight-number resolver unavailable."};
- const sk=[a.hex,a.lat,a.lon,a.alt,a.gs,a.trk,a.vs,a.age,a.held,!!(DB&&DB.found),P.length,a.src,canEta&&etaMs?Math.round(etaMs/60000):"",od&&od.oi||"",od&&od.di||"",unverified?1:0,conflict?1:0,src||"",fn.found?fn.number:""].join("|");
+ const ident=identLive(a,P);
+ const sk=[a.hex,a.lat,a.lon,a.alt,a.gs,a.trk,a.vs,a.age,a.held,!!(DB&&DB.found),P.length,a.src,canEta&&etaMs?Math.round(etaMs/60000):"",od&&od.oi||"",od&&od.di||"",unverified?1:0,conflict?1:0,src||"",fn.found?fn.number:"",ident&&ident.label||"",AIP_APT||""].join("|");
  if(!first&&sk===SEL_DRAW&&$("sp").classList.contains("on"))return;SEL_DRAW=sk;
  const name=alName(a.al,DB&&DB.airline),fresh=a.held?`Held last ground position, ${a.heldMin>=60?(a.heldMin/60).toFixed(1)+" h":a.heldMin+" min"} ago (ADS-B off / dropped)`:a.gnd?`Observed · on ground · ${a.age} s ago`:`Observed · ${a.age} s ago`;
  $("spcs").textContent=a.cs||"—";$("spal").textContent=name?name+(a.al?" · "+a.al:""):(a.al||"Airline unavailable");
@@ -499,6 +502,7 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
   :"Snapshot is the last adsb.lol position. Marker stays on that snapshot (on-ground, below 1000 ft baro, gs ≤ 40 kt, or position older than 20 s) — not dead-reckoned, not snapped to a runway. Heading is ADS-B track. Times UTC.");
  const tmNote="No airline schedule feed is connected, so scheduled times stay unavailable. Estimated arrival is remaining great-circle distance ÷ current ground speed, UTC, only when the route destination is known and the position is a fresh moving airborne snapshot — not a schedule or airport actual. Actual arrival is shown only after an observed air-to-ground transition in this track. "+timeNote;
  more.unshift(idNote,fnNote,posNote); more.push(tmNote,"Barometric altitude as FL (hundreds of feet) is not a certified flight level. Hover or tap a profile point for that sample’s FL, ground speed and vertical speed; missing fields stay n/a. Not a full flight history.","Live lat/lon are stored to 5 decimal degrees (~1.1 m). Markers are not snapped to runway or taxiway centreline. Satellite pavement can sit tens of metres off WGS84. Dead-reckoning between snapshots is airborne-only (baro at least 1000 ft, gs over 40 kt, age under 20 s), capped at 20 s.","Not for operational flight planning. NOAA/NWS Aviation Weather Center. Live positions © adsb.lol contributors (ODbL). Routes: adsbdb.com. Times UTC.");
+ if(ident&&ident.note) more.push(ident.note);
  $("spb").innerHTML=`<div class="chips">${chips}</div>
   <p class="spcaveat">Not for operational flight planning</p>
   <div class="spsec"><h3>Identity</h3>
@@ -508,6 +512,7 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
   ${routeHtml}
   <div class="spsec"><h3>Times</h3>
    <div class="scg">${na("Scheduled departure")}${na("Scheduled arrival")}${toffHtml}${etaHtml}${landHtml}</div>${noteP(tmNote)}</div>
+  ${sidStarPanelHtml(ident)}
   <div class="spsec"><h3>Observed track ${P.length>=2?tg("obs","Observed"):tg("na","Unavailable")}</h3></div>`;
  fillMore(more);
  drawProf(P);
@@ -631,8 +636,28 @@ function gSetup(){if(map.getSource("sat"))return;const b=map.getStyle().layers.f
     map.addLayer({id:"hist-rep",type:"line",source:"hist",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","dir"],"dep","#4ee0ff","#ff9f43"],"line-width":["case",["==",["get","sec"],1],2.1,3.2],"line-opacity":["case",["==",["get","sec"],1],0.7,0.95]}});
     map.addSource("histlab",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
     map.addLayer({id:"hist-lab",type:"symbol",source:"histlab",minzoom:10.2,layout:{visibility:"none","text-field":["get","lab"],"text-size":11,"text-font":["Open Sans Regular"],"text-anchor":"left","text-offset":[0.5,0],"text-optional":true,"text-allow-overlap":true,"text-ignore-placement":true,"text-padding":2},paint:{"text-color":"#e6f1ff","text-halo-color":"#05070d","text-halo-width":1.4}});
+    const histClick=(e, raw)=>{
+      if(!e.features||!e.features[0]) return;
+      histIdentPopup(e.lngLat, e.features[0].properties, raw);
+    };
+    map.on("click","hist-rep",e=>histClick(e,false));
+    map.on("click","hist-raw",e=>histClick(e,true));
+    ["hist-rep","hist-raw"].forEach(l=>{map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",l,()=>map.getCanvas().style.cursor="")});
   }
-  if($("hraw")&&!$("hraw").dataset.bound){$("hraw").dataset.bound="1";$("hraw").onchange=()=>histPaint()}}
+  if($("hraw")&&!$("hraw").dataset.bound){$("hraw").dataset.bound="1";$("hraw").onchange=()=>histPaint()}
+  if(!map.getSource("aip")){
+    map.addSource("aip",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    map.addLayer({id:"aip-sid",type:"line",source:"aip",filter:["==",["get","kind"],"sid"],minzoom:9.8,layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":"#7CFFB2","line-width":1.35,"line-opacity":0.45,"line-dasharray":[2.2,1.6]}});
+    map.addLayer({id:"aip-star",type:"line",source:"aip",filter:["==",["get","kind"],"star"],minzoom:9.8,layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":"#e08cff","line-width":1.35,"line-opacity":0.45,"line-dasharray":[2.2,1.6]}});
+    map.addSource("aipnear",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    map.addLayer({id:"aip-near",type:"line",source:"aipnear",minzoom:9.8,layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","kind"],"sid","#b6ffd4","#f3c4ff"],"line-width":2.6,"line-opacity":0.92}});
+    map.addSource("aiplab",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    map.addLayer({id:"aip-lab",type:"symbol",source:"aiplab",minzoom:10.4,layout:{visibility:"none","text-field":["get","lab"],"text-size":11,"text-font":["Open Sans Regular"],"text-anchor":"left","text-offset":[0.45,0],"text-optional":true,"text-allow-overlap":false,"text-padding":2},paint:{"text-color":"#d8ffe8","text-halo-color":"#05070d","text-halo-width":1.4}});
+  }
+  if($("aipsid")&&!$("aipsid").dataset.bound){$("aipsid").dataset.bound="1";$("aipsid").onchange=()=>{localStorage.aipsid=$("aipsid").checked?"1":"0";aipPaint()}}
+  if($("aipall")&&!$("aipall").dataset.bound){$("aipall").dataset.bound="1";$("aipall").onchange=()=>{localStorage.aipall=$("aipall").checked?"1":"0";aipPaint()}}
+  if($("aipname")&&!$("aipname").dataset.bound){$("aipname").dataset.bound="1";$("aipname").onchange=()=>{localStorage.aipname=$("aipname").checked?"1":"0";aipPaint();histPaint();if(SEL)selUpdate()}}
+}
 function setApt(a,opts){
   const fly=!opts||opts.fly!==false;
   const hub=a&&a!=="G"?aptHub(a):null;
@@ -643,13 +668,15 @@ function setApt(a,opts){
   if(!map)return;gSetup();const g=id!=="G";
   ["sat","gnd"].forEach(l=>{if(map.getLayer(l))map.setLayoutProperty(l,"visibility",g?"visible":"none")});
   if($("gp"))$("gp").style.display=g?"block":"none";
+  if($("gpt")&&hub) $("gpt").textContent=`${hub.id} (${hub.icao||hub.id} ${hub.name||""})`;
+  else if($("gpt")&&!g) $("gpt").textContent="";
   clearInterval(GT);
   if(!g){LOCAL_AIR=[];GND_AC=[];if(map.getSource("gnd"))map.getSource("gnd").setData({type:"FeatureCollection",features:[]});drawLive()}
   const afterFly=()=>{APT_FLY=false};
   if(g){
     if(fly){APT_FLY=true;map.flyTo({center:[hub.lon,hub.lat],zoom:innerWidth<700?12.6:13.4,speed:2});map.once("moveend",afterFly)}
-    gLoad();GT=setInterval(gLoad,30000);histLoad(id)
-  }else {histLoad("G");if(fly){APT_FLY=true;map.flyTo({center:[35,28],zoom:innerWidth<700?1.1:2,speed:2});map.once("moveend",afterFly)}}
+    gLoad();GT=setInterval(gLoad,30000);histLoad(id);aipLoad(id)
+  }else {histLoad("G");aipLoad("G");if(fly){APT_FLY=true;map.flyTo({center:[35,28],zoom:innerWidth<700?1.1:2,speed:2});map.once("moveend",afterFly)}}
   applyTrackVis();applyRegLab()
 }
 async function histLoad(id){
@@ -660,6 +687,166 @@ async function histLoad(id){
   if(HIST_APT!==id) return;
   HIST=j;
   histPaint();
+}
+function aipEsc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]))}
+function aipNameOn(){return !!( $("aipname") && $("aipname").checked )}
+function identNearApt(a, P, j){
+  if(!j||j.lat==null||j.lon==null) return false;
+  const hvnm=(typeof AipIdent!=="undefined"&&AipIdent.hv)?AipIdent.hv:hv;
+  if(a&&hvnm(a.lat,a.lon,j.lat,j.lon)<=45) return true;
+  for(const p of P||[]){
+    if(!p) continue;
+    const lat=p.length>=3?p[2]:p[1], lon=p.length>=3?p[1]:p[0];
+    if(typeof lat==="number"&&hvnm(lat,lon,j.lat,j.lon)<=45) return true;
+  }
+  return false;
+}
+function identLive(a, P){
+  const j=AIP;
+  if(!j||j.error==="no_aip") return null;
+  if(!identNearApt(a,P,j)) return null;
+  if(j.ident_mode!=="cifp"||!(j.procs||[]).length){
+    const terms=j.ident_terms||"No licence-safe SID/STAR coding table for this state. Procedure names are not assigned.";
+    return {
+      status:"unavailable",
+      proc:null,
+      label:"Not identified",
+      hits:[],
+      note: aipNameOn()
+        ? ("Name-only SID/STAR ID (licence-restricted) is on. "+terms+" Names and fixes are never fabricated.")
+        : "Procedure identification needs a licence-safe AIP coding table (FAA CIFP at US airports). Tick “Name-only SID/STAR ID (licence-restricted)” for the licensing assessment. Names are not invented."
+    };
+  }
+  if(typeof AipIdent==="undefined") return null;
+  const track=AipIdent.trackFromPoints(P);
+  if(track.length<4) return Object.assign(AipIdent.nomatch(), {note:"Track too short to identify a SID/STAR. Estimated from the ADS-B track, not the ATC clearance. Not for navigation."});
+  const ev=observedEvents(P,a);
+  let kind=null;
+  if(ev.takeoff&&!ev.landing) kind="dep";
+  else if(ev.landing) kind="arr";
+  else if(a&&a.vs>200) kind="dep";
+  else if(a&&a.vs<-200) kind="arr";
+  if(kind) return AipIdent.identify(track, j.procs, j.lat, j.lon, kind, null);
+  const sid=AipIdent.identify(track, j.procs, j.lat, j.lon, "dep", null);
+  const star=AipIdent.identify(track, j.procs, j.lat, j.lon, "arr", null);
+  return ((sid&&sid.conf)||0)>=((star&&star.conf)||0)?sid:star;
+}
+function sidStarPanelHtml(ident){
+  if(!ident) return "";
+  const phone=typeof isPhone==="function"&&isPhone();
+  const noteP=t=>phone?"":`<p class="mu">${t}</p>`;
+  const hits=(ident.hits||[]).length?`<div class="mu">Matched published fixes: ${ident.hits.map(esc).join(" → ")}</div>`:"";
+  const title=ident.status==="unavailable"?"SID/STAR":"SID/STAR (estimated)";
+  const tag=ident.status==="match"?tg("est","Estimated"):ident.status==="unavailable"?tg("na","Not identified"):tg("na","No match / vectored");
+  const line=esc(ident.label||"No match / vectored");
+  const body=ident.status==="match"
+    ? `<p>${line}</p><div class="scg">${cell("Likely "+esc(String(ident.kind||"").toUpperCase()), esc(ident.proc||"—")+(ident.trans?" ("+esc(ident.trans)+")":"")+" · "+Math.round(ident.conf)+"% match")}</div>`
+    : `<p>${line}</p><div class="scg">${cell("SID/STAR", line)}</div>`;
+  return `<div class="spsec" id="spidstar"><h3>${title} ${tag}</h3>${body}${hits}${noteP(esc(ident.note||"Estimated from the ADS-B track, not the ATC clearance. Not for navigation."))}</div>`;
+}
+function identRepRec(rwy, dir){
+  const rows=((AIP&&AIP.ident&&AIP.ident.rep)||[]);
+  return rows.find(r=>String(r.rwy||"")===String(rwy||"")&&r.dir===dir)||null;
+}
+function identRawRec(i){
+  const rows=((AIP&&AIP.ident&&AIP.ident.raw)||[]);
+  return rows[i]||null;
+}
+function identShareLines(rwy, dir){
+  const block=((AIP&&AIP.ident&&AIP.ident.by_rwy)||[]).find(x=>String(x.id||"")===String(rwy||"")&&x.dir===dir);
+  if(!block||!block.share) return [];
+  return block.share.map(x=>{
+    const pct=Math.round((x.share||0)*100);
+    if(!x.proc) return `No match / vectored: ${x.n}/${block.n} (${pct}%)`;
+    const kind=String(x.kind||"sid").toUpperCase();
+    return `Likely ${kind} ${x.proc}${x.trans?" ("+x.trans+")":""}: ${x.n}/${block.n} (${pct}%) · mean ${Math.round(x.mean_conf||0)}% match · estimated from ADS-B, not ATC clearance`;
+  });
+}
+function histIdentPopup(lngLat, props, raw){
+  if(!map||!lngLat) return;
+  const rec=raw?identRawRec(props.i):identRepRec(props.rwy, props.dir);
+  const identLine=(props.ident||(rec&&rec.label)||"No match / vectored");
+  const cifp=AIP&&AIP.ident_mode==="cifp";
+  const foot=cifp
+    ?"Estimated from the ADS-B track, not the ATC clearance. Kalman subsample, not every 365-day flight. FAA CIFP names only. Not for navigation."
+    :"SID/STAR not identified: no licence-safe coding table for this state. Names are not invented. Not for navigation.";
+  const html=`<b>${esc(props.lab||("RWY "+(props.rwy||"")+" "+(props.dir||"")))}</b><br>${esc(identLine)}<br><i>${esc(foot)}</i>`;
+  const ll=Array.isArray(lngLat)?lngLat:(lngLat.lng!=null?[lngLat.lng,lngLat.lat]:lngLat);
+  new maplibregl.Popup({maxWidth:"320px", closeOnClick:true}).setHTML(`<div style="color:#000;font:12px/1.4 sans-serif">${html}</div>`).setLngLat(ll).addTo(map);
+}
+function aipOn(){return !!( $("aipsid") && $("aipsid").checked )}
+async function aipLoad(id){
+  if(!id||id==="G"){AIP=null;AIP_APT=null;aipPaint();histPaint();return}
+  if(AIP_APT===id&&AIP){aipPaint();histPaint();return}
+  AIP_APT=id;
+  const j=await fetch("/api/aip?apt="+encodeURIComponent(id)).then(r=>r.json()).catch(()=>null);
+  if(AIP_APT!==id) return;
+  AIP=j;
+  aipPaint();
+  histPaint();
+  if(SEL) selUpdate();
+}
+function aipPaint(){
+  if(!map) return;
+  const j=AIP;
+  const draw=j&&j.mode==="draw"&&!j.error;
+  const link=j&&j.mode==="link"&&!j.error;
+  if($("aipsid")) $("aipsid").closest("label").style.display=draw?"":"none";
+  if($("aipall")) $("aipall").closest("label").style.display=draw&&(j.match||[]).length?"":"none";
+  if($("aipname")) $("aipname").closest("label").style.display=link?"":"none";
+  const on=aipOn()&&draw;
+  const matches=j&&j.match||[];
+  const nearestOnly=on&&matches.length&&$("aipall")&&!$("aipall").checked;
+  const wantAll=on&&!nearestOnly;
+  const nearKeys=new Set(matches.map(m=>m.kind+"|"+m.proc+"|"+(m.trans||"")));
+  const feats=[], near=[], labs=[];
+  if(on&&j.procs){
+    for(const p of j.procs){
+      if(!p.path||p.path.length<2) continue;
+      const key=p.kind+"|"+p.id+"|"+(p.trans||"");
+      const isNear=nearKeys.has(key);
+      if(wantAll) feats.push({type:"Feature",properties:{kind:p.kind,id:p.id,trans:p.trans||"",near:isNear?1:0},geometry:{type:"LineString",coordinates:p.path}});
+      if(isNear){
+        near.push({type:"Feature",properties:{kind:p.kind,id:p.id},geometry:{type:"LineString",coordinates:p.path}});
+        const mid=p.path[Math.min(p.path.length-1, Math.floor(p.path.length/2))];
+        labs.push({type:"Feature",properties:{lab:`${p.id}${p.trans?" "+p.trans:""} · ${p.kind.toUpperCase()} · ${j.cycle||"CIFP"} · Not for navigation`},geometry:{type:"Point",coordinates:mid}});
+      }
+    }
+    if(j.lon!=null&&j.lat!=null){
+      labs.push({type:"Feature",properties:{lab:`${j.cycle||"FAA CIFP"} AIRAC ${j.airac||""} · Not for navigation`},geometry:{type:"Point",coordinates:[j.lon,j.lat]}});
+    }
+  }
+  if(map.getSource("aip")) map.getSource("aip").setData({type:"FeatureCollection",features:feats});
+  if(map.getSource("aipnear")) map.getSource("aipnear").setData({type:"FeatureCollection",features:near});
+  if(map.getSource("aiplab")) map.getSource("aiplab").setData({type:"FeatureCollection",features:labs});
+  const vis=on?"visible":"none";
+  for(const id of ["aip-sid","aip-star","aip-near","aip-lab"]) if(map.getLayer(id)) map.setLayoutProperty(id,"visibility",vis);
+  const el=$("aipp");
+  if(el){
+    if(!j||j.error){el.textContent="";}
+    else if(j.mode==="link"){
+      const href=aipEsc(j.ad2_url||j.source_url||"");
+      const lab=aipEsc(j.ad2_label||"official AIP AD 2");
+      const termsHref=aipEsc(j.terms_url||j.source_url||"");
+      let html=`SID/STAR geometry is <b>not redrawn</b> for ${aipEsc(j.icao||j.apt)} (${aipEsc(j.state||"")}). ${aipEsc(j.terms||j.why||"")} Official charts: <a href="${href}" target="_blank" rel="noopener noreferrer">${lab}</a>${termsHref?` · <a href="${termsHref}" target="_blank" rel="noopener noreferrer">terms</a>`:""}. Not for navigation.`;
+      if(aipNameOn()){
+        html+=`<br><br><b>Name-only SID/STAR ID (licence-restricted) is on.</b> ${aipEsc(j.ident_terms||"No licence-safe SID/STAR coding table. Procedure names are not assigned.")} No procedure names or charted fixes are shown because none were ingested from this AIP. Names are never fabricated.`;
+      }else{
+        html+=`<br>SID/STAR not identified (no licence-safe coding table). Tick “Name-only SID/STAR ID (licence-restricted)” to read the assessment — names are not invented.`;
+      }
+      el.innerHTML=html;
+    }else{
+      const href=aipEsc(j.ad2_url||j.source_url||"");
+      const src=aipEsc(j.source||"FAA CIFP");
+      const cycle=aipEsc(j.cycle||"");
+      const airac=aipEsc(j.airac||"");
+      const when=[j.effective_utc,j.until_utc].filter(Boolean).join(" to ");
+      const matchHtml=(matches||[]).map(m=>`Observed RWY ${aipEsc(m.hist_rwy)} ${m.hist_dir==="dep"?"dep":"arr"} ≈ ${aipEsc(m.proc)}${m.trans?" ("+aipEsc(m.trans)+")":""} · mean ${m.mean_nm} nm · not a clearance`).join("<br>");
+      const idn=j.ident||{};
+      const identHtml=`<br>Per-flight ident (Kalman subsample, not every 365-day flight): ${idn.named||0}/${idn.flights||0} named from FAA CIFP. Estimated from the ADS-B track, not the ATC clearance. Below threshold: No match / vectored.`;
+      el.innerHTML=`${src} · ${cycle} · AIRAC ${airac}${when?` (${when} UTC)`:""} · straight lines between published fixes · <b>Not for navigation</b>. Drawn ${j.n_sid||0} SID, ${j.n_star||0} STAR. Official: <a href="${href}" target="_blank" rel="noopener noreferrer">${aipEsc(j.ad2_label||"FAA d-TPP / airport diagram")}</a>. Tick “Published SID/STAR” to overlay.${matchHtml?"<br>Nearest published procedure (licence-safe, vs observed runway path):<br>"+matchHtml:"<br>No nearest-procedure match within the distance gate — observed paths are not labelled as a SID/STAR."}${identHtml}`;
+    }
+  }
 }
 function histPaint(){
   if(!map) return;
@@ -672,16 +859,24 @@ function histPaint(){
         const c=r.clusters[i];
         if(!c||!c.path||c.path.length<2) continue;
         const pct=Math.round((c.share||0)*100);
+        const rec=identRepRec(r.id, r.dir);
+        const identLab=rec&&rec.label?rec.label:"No match / vectored";
         const full=`RWY ${r.id} ${dir} · ${pct}% of ${r.n} flights · observed ADS-B, not published SID/STAR`;
-        feats.push({type:"Feature",properties:{dir:r.dir,sec:i?1:0,lab:full,rwy:r.id,n:r.n,share:c.share||0},geometry:{type:"LineString",coordinates:c.path}});
+        feats.push({type:"Feature",properties:{dir:r.dir,sec:i?1:0,lab:full,rwy:r.id,n:r.n,share:c.share||0,ident:identLab},geometry:{type:"LineString",coordinates:c.path}});
         const labPt=r.dir==="arr"?c.path[Math.max(0,c.path.length-4)]:c.path[Math.min(c.path.length-1,3)];
-        if(labPt&&i===0) labs.push({type:"Feature",properties:{dir:r.dir,lab:`RWY ${r.id} ${r.dir==="dep"?"dep":"arr"} · ${pct}% of ${r.n}`},geometry:{type:"Point",coordinates:labPt}});
+        if(labPt&&i===0){
+          const hint=rec&&rec.status==="match"?` · likely ${rec.proc}`:"";
+          labs.push({type:"Feature",properties:{dir:r.dir,lab:`RWY ${r.id} ${r.dir==="dep"?"dep":"arr"} · ${pct}% of ${r.n}${hint}`},geometry:{type:"Point",coordinates:labPt}});
+        }
       }
     }
     if($("hraw")&&$("hraw").checked){
-      for(const t of j.raw||[]){
-        if(t.seg&&t.seg.length) raws.push({type:"Feature",properties:{dir:t.dir},geometry:{type:"MultiLineString",coordinates:t.seg}});
-      }
+      (j.raw||[]).forEach((t,i)=>{
+        if(t.seg&&t.seg.length){
+          const rec=identRawRec(i);
+          raws.push({type:"Feature",properties:{dir:t.dir,rwy:t.rwy||"",i,ident:rec&&rec.label||"No match / vectored",lab:`RWY ${t.rwy||"?"} ${t.dir||""} · Kalman clip`},geometry:{type:"MultiLineString",coordinates:t.seg}});
+        }
+      });
     }
   }
   if(map.getSource("hist")) map.getSource("hist").setData({type:"FeatureCollection",features:feats});
@@ -695,11 +890,20 @@ function histPaint(){
     }else if(j&&j.rwys&&j.rwys.length){
       const days=(j.geom_days||[]).join(", ");
       const head=`${j.icao||j.apt} representative paths · ${j.n_assigned||0} assigned flights · geometry UTC days ${days} · window ${j.from}–${j.to} UTC · Kalman/RTS + runway cluster · not published SID/STAR`;
+      const cifp=AIP&&AIP.ident_mode==="cifp";
+      const identFoot=cifp
+        ?`<br>Per-flight SID/STAR shares use the stored Kalman subsample (${(AIP.ident&&AIP.ident.flights)||0} clips here), not every 365-day flight. FAA CIFP names only. Estimated from the ADS-B track, not the ATC clearance. Not for navigation.`
+        :(AIP&&AIP.ident_mode==="none"
+          ?(aipNameOn()?`<br><b>Name-only SID/STAR ID (licence-restricted) is on.</b> ${aipEsc(AIP.ident_terms||"No licence-safe coding table.")} Names and fixes are never fabricated.`
+            :`<br>SID/STAR not identified: no licence-safe coding table for this state. Tick “Name-only SID/STAR ID (licence-restricted)” for the assessment. Names are not invented.`)
+          :"");
       el.innerHTML=head+"<br>"+j.rwys.map(r=>{
         const c=r.clusters&&r.clusters[0];
         const pct=c?Math.round((c.share||0)*100):0;
-        return `RWY ${r.id} ${r.dir==="dep"?"departures":"arrivals"} · ${pct}% of ${r.n} flights · observed ADS-B, not published SID/STAR`;
-      }).join("<br>");
+        const shares=identShareLines(r.id, r.dir);
+        const shareHtml=shares.length?"<br>"+shares.map(s=>"&nbsp;&nbsp;"+aipEsc(s)).join("<br>"):"";
+        return `RWY ${r.id} ${r.dir==="dep"?"departures":"arrivals"} · ${pct}% of ${r.n} flights · observed ADS-B, not published SID/STAR${shareHtml}`;
+      }).join("<br>")+identFoot;
     }else el.textContent="";
   }
   applyTrackVis();
