@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { LiveFeed, parseTypes, feedBanner } = require("./live-feed");
+const airports = require("./public/airports.js");
 const PORT = process.env.PORT || 10000;
 const REFRESH_MS = Number(process.env.REFRESH_SECONDS || 90) * 1000;
 // Public hub points (airports), 250 nm radius each.
@@ -62,8 +63,7 @@ async function adsbdb(cs) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Ground view: aircraft on/near the airport surface + held last ground positions.
-const APT = { DOH: [25.2731, 51.6081, "OTHH Hamad International"], DXB: [25.2528, 55.3644, "OMDB Dubai International"] };
+// Ground / local view: surface + nearby airborne from adsb.lol /v2/point at any catalog hub.
 const GHOLD_PATH = path.join(__dirname, "data", "ground-hold.json");
 const GHOLD_MAX_MS = 24 * 3600e3; // expire held markers that never reappear within 24 h
 let ghold = new Map(); // hex -> { apt, cs, al, t, lat, lon, tr, gs, st, seen_utc, held_utc }
@@ -82,43 +82,63 @@ function gholdClearSeen(seenHexes) {
   if (n) gholdSave();
 }
 const gcache = new Map();
+function trailPush(hex, lon, lat, alt, gs, vrate, onG) {
+  const now = Date.now();
+  const t = trails.get(hex) || [];
+  const p = t[t.length - 1];
+  if (!p || p[1] !== lon || p[2] !== lat) t.push([now, lon, lat, alt, gs, vrate, onG]);
+  if (t.length > 360) t.shift();
+  trails.set(hex, t);
+}
 async function ground(id) {
-  const c = gcache.get(id); if (c && Date.now() - c.t < 30000) return c.v;
-  const [la, lo, name] = APT[id];
+  const hub = airports.resolveApt(id);
+  if (!hub) return { error: "unknown airport" };
+  const c = gcache.get(hub.id); if (c && Date.now() - c.t < 30000) return c.v;
+  const la = hub.lat, lo = hub.lon, name = hub.name;
+  const pointNm = airports.POINT_NM, gndNm = airports.GND_NM;
   let ac = [], err = null, src = "adsb.lol /v2/point";
   for (let i = 0; i < 2 && !ac.length; i++) {
-    try { const r = await fetch(`https://api.adsb.lol/v2/point/${la}/${lo}/8`, { headers: { "User-Agent": "airline-adsb-dashboard (github.com/fxams/airline-adsb-dashboard)" }, signal: AbortSignal.timeout(15000) }); if (!r.ok) throw new Error("HTTP " + r.status); ac = (await r.json()).ac || []; err = null; break; } catch (e) { err = String(e.message || e); await sleep(1500); }
+    try { const r = await fetch(`https://api.adsb.lol/v2/point/${la}/${lo}/${pointNm}`, { headers: { "User-Agent": "airline-adsb-dashboard (github.com/fxams/airline-adsb-dashboard)" }, signal: AbortSignal.timeout(15000) }); if (!r.ok) throw new Error("HTTP " + r.status); ac = (await r.json()).ac || []; err = null; break; } catch (e) { err = String(e.message || e); await sleep(1500); }
   }
   if (err) {
     src = "global type feed (fallback, airliner types only, up to ~90 s old)";
     const d2 = (a) => ((a.lat - la) * 60) ** 2 + ((a.lon - lo) * 60 * Math.cos((la * Math.PI) / 180)) ** 2;
-    const m = new Map(); for (const { ac: l } of lastT.values()) for (const a of l) if (typeof a.lat === "number" && d2(a) < 64) m.set(a.hex, a); ac = [...m.values()];
+    const m = new Map(); for (const { ac: l } of lastT.values()) for (const a of l) if (typeof a.lat === "number" && d2(a) < pointNm * pointNm) m.set(a.hex, a); ac = [...m.values()];
   }
   // Drop held markers for any hex currently in the worldwide live feed (airborne or on ground, any airport).
   const liveHex = new Set((live.ac || []).map((r) => r[0]));
   gholdClearSeen(liveHex);
-  const nowIso = new Date().toISOString(), liveRows = [], liveHexHere = new Set();
+  const nowIso = new Date().toISOString(), liveRows = [], airRows = [], liveHexHere = new Set();
+  const nmAt = (a) => airports.hv(la, lo, a.lat, a.lon);
   for (const a of ac) {
-    if (typeof a.lat !== "number" || !a.hex) continue;
+    if (typeof a.lat !== "number" || typeof a.lon !== "number" || !a.hex) continue;
     const onG = a.alt_baro === "ground", gs = a.gs ?? 0, alt = typeof a.alt_baro === "number" ? a.alt_baro : 0;
-    if (!onG && !(alt < 300 && gs < 60)) continue;
-    const cs = (a.flight || "").trim(), st = gs < 1.5 ? "parked" : gs <= 35 ? "taxi" : "runway";
-    const reg = (a.r || "").trim();
-    const row = [a.hex, cs, cs.slice(0, 3), a.t || "", +a.lat.toFixed(5), +a.lon.toFixed(5), Math.round(a.track ?? a.true_heading ?? 0), Math.round(gs), st, Math.round(a.seen_pos ?? a.seen ?? 0), onG ? 1 : 0, "live", null, null, reg, id];
-    liveRows.push(row); liveHexHere.add(a.hex);
-    ghold.set(a.hex, { hex: a.hex, apt: id, cs, al: cs.slice(0, 3), t: a.t || "", lat: row[4], lon: row[5], tr: row[6], gs: row[7], st, seen_utc: nowIso, held_utc: nowIso, reg });
-    gholdDirty = true;
+    const dist = nmAt(a);
+    const lat5 = +a.lat.toFixed(5), lon5 = +a.lon.toFixed(5);
+    const vrate = Math.round(a.baro_rate ?? a.geom_rate ?? 0);
+    trailPush(a.hex, lon5, lat5, alt, Math.round(gs), vrate, onG ? 1 : 0);
+    const cs = (a.flight || "").trim();
+    if (airports.isSurface(onG, alt, gs, dist)) {
+      const st = gs < 1.5 ? "parked" : gs <= 35 ? "taxi" : "runway";
+      const reg = (a.r || "").trim();
+      const row = [a.hex, cs, cs.slice(0, 3), a.t || "", lat5, lon5, Math.round(a.track ?? a.true_heading ?? 0), Math.round(gs), st, Math.round(a.seen_pos ?? a.seen ?? 0), onG ? 1 : 0, "live", null, null, reg, hub.id];
+      liveRows.push(row); liveHexHere.add(a.hex);
+      ghold.set(a.hex, { hex: a.hex, apt: hub.id, cs, al: cs.slice(0, 3), t: a.t || "", lat: lat5, lon: lon5, tr: row[6], gs: row[7], st, seen_utc: nowIso, held_utc: nowIso, reg });
+      gholdDirty = true;
+    } else if (/^[A-Z]{3}\d/.test(cs) && dist <= pointNm) {
+      airRows.push([a.hex, cs, cs.slice(0, 3), a.t || "", lat5, lon5, alt, Math.round(gs), Math.round(a.track ?? a.true_heading ?? a.mag_heading ?? 0), a.r || "", onG ? 1 : 0, Math.round(a.seen_pos ?? a.seen ?? 0), vrate]);
+    }
   }
   // Keep last ground position for aircraft that dropped out of the ground feed at this airport (usually ADS-B off at the gate), until the same hex reappears in the live feed or 24 h pass.
   const heldRows = [];
   for (const r of ghold.values()) {
-    if (r.apt !== id || liveHexHere.has(r.hex) || liveHex.has(r.hex)) continue;
+    if (r.apt !== hub.id || liveHexHere.has(r.hex) || liveHex.has(r.hex)) continue;
     const ageMin = Math.max(0, Math.round((Date.now() - Date.parse(r.held_utc || r.seen_utc)) / 60000));
     heldRows.push([r.hex, r.cs, r.al, r.t, r.lat, r.lon, r.tr, r.gs, r.st, ageMin * 60, 1, "held", ageMin, r.held_utc || r.seen_utc, r.reg || "", r.apt]);
   }
   gholdSave();
-  const v = { airport: id, name, center: [lo, la], radius_nm: 8, time_utc: nowIso, fields: ["hex", "callsign", "airline", "type", "lat", "lon", "track_deg", "gs_kt", "status", "seen_s", "ground_flag", "mode", "held_min", "held_utc", "reg", "apt"], note: "Live = currently in the ground feed (on-ground flag, or under 300 ft and under 60 kt, within 8 nm). Held = last known ground position kept after the aircraft dropped out of the feed (common when ADS-B is switched off at the gate); removed when the same hex reappears anywhere in the live feed, or after 24 h with no reappearance. Status parked/taxi/runway is estimated from ground speed. No gate or stand assignment. Hold store persists across restarts in data/ground-hold.json.", live: liveRows.length, held: heldRows.length, ac: liveRows.concat(heldRows), source: src, error: err };
-  gcache.set(id, { t: Date.now(), v }); return v;
+  const v = { airport: hub.id, icao: hub.icao, iata: hub.iata, name, center: [lo, la], radius_nm: gndNm, air_radius_nm: pointNm, time_utc: nowIso, fields: ["hex", "callsign", "airline", "type", "lat", "lon", "track_deg", "gs_kt", "status", "seen_s", "ground_flag", "mode", "held_min", "held_utc", "reg", "apt"], note: "Observed ADS-B from adsb.lol /v2/point, not published SID/STAR procedures. Surface = on-ground flag, or under 300 ft and under 60 kt, within 8 nm. Air = airline-callsign airborne samples within 40 nm (arrivals/departures). Held = last known ground position kept after the aircraft dropped out of the feed (common when ADS-B is switched off at the gate); removed when the same hex reappears anywhere in the live feed, or after 24 h with no reappearance. Status parked/taxi/runway is estimated from ground speed. No gate or stand assignment. Hold store persists across restarts in data/ground-hold.json.", live: liveRows.length, held: heldRows.length, air: airRows, ac: liveRows.concat(heldRows), source: src, error: err };
+  gcache.set(hub.id, { t: Date.now(), v }); return v;
 }
 const T0 = Date.now();
 const cov = new Map(); // "lat2,lon2" 2-degree cells with at least one position, last seen ms
@@ -188,7 +208,14 @@ const send = (res, code, type, body, cache) => {
 };
 http.createServer(async (req, res) => {
   const u = req.url.split("?")[0]; const q = new URL(req.url, "http://x").searchParams;
-  if (u === "/api/ground") { const id = (q.get("apt") || "").toUpperCase(); if (!APT[id]) return send(res, 400, "application/json", JSON.stringify({ error: "apt must be DOH or DXB" })); return ground(id).then((v) => send(res, 200, "application/json", JSON.stringify(v), "public, max-age=30")); }
+  if (u === "/api/ground") {
+    const id = (q.get("apt") || "").toUpperCase();
+    const hub = airports.resolveApt(id);
+    if (!hub) return send(res, 400, "application/json", JSON.stringify({ error: "unknown airport", hint: "apt is IATA or ICAO from /api/airports (e.g. LHR or EGLL)" }));
+    return ground(hub.id).then((v) => send(res, 200, "application/json", JSON.stringify(v), "public, max-age=30"));
+  }
+  if (u === "/api/airports") return send(res, 200, "application/json", JSON.stringify({ presets: airports.PRESETS, hubs: airports.HUBS, point_nm: airports.POINT_NM, gnd_nm: airports.GND_NM, auto_zoom: airports.AUTO_ZOOM, auto_nm: airports.AUTO_NM, note: "Public ARP coordinates (OurAirports, public domain). Local ADS-B via adsb.lol /v2/point when the map is at a hub. Not SID/STAR procedures." }), "public, max-age=3600");
+  if (u === "/airports.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/airports.js")));
   if (u === "/api/snapshot") return send(res, 200, "application/json", JSON.stringify(snapshot));
   if (u === "/api/tracks") return send(res, 200, "application/json", tracks, "public, max-age=300");
   if (u === "/api/trails") { const o = {}; for (const [h, t] of trails) o[h] = t.slice(-12).map((p) => [p[1], p[2]]); return send(res, 200, "application/json", JSON.stringify(o)); }
