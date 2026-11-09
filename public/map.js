@@ -2,11 +2,21 @@
 let SEL=null,TR={},CSR=null,TK=null,prof=null,lastFrame=0,REG_BY_HEX={},SRCH_GND=[],QHits=[],QIx=-1,QTm=null;
 const TRACK_LAYERS=["trails","tk","tkgc","sel-flown","sel-join","sel-gap","sel-rem"];
 function ageS(){return L&&L.at?Math.min(90,(Date.now()-new Date(L.at))/1000):0}
-function dispLonLat(lat,lon,gs,trk,onG){
+function gndLikePos(onG,gs,alt,posAge){
+  if(onG) return true;
+  if(!(gs>40)) return true;
+  if(alt!=null && Number.isFinite(+alt) && +alt<1000) return true;
+  if(posAge!=null && +posAge>20) return true;
+  return false;
+}
+function dispLonLat(lat,lon,gs,trk,onG,alt,posAge){
   let la=+lat, lo=+lon;
-  if(!onG && gs>40){
-    const d=gs*ageS()/3600/60, t=trk*R2, c=Math.cos(la*R2);
-    la+=d*Math.cos(t); lo+=d*Math.sin(t)/Math.max(Math.abs(c),0.2);
+  if(!gndLikePos(onG,gs,alt,posAge) && gs>40){
+    const age=Math.min(ageS(),20);
+    if(age>0){
+      const d=gs*age/3600/60, t=trk*R2, c=Math.cos(la*R2);
+      la+=d*Math.cos(t); lo+=d*Math.sin(t)/Math.max(Math.abs(c),0.2);
+    }
   }
   if(lo>180)lo-=360; else if(lo<-180)lo+=360;
   return [lo,la];
@@ -32,6 +42,99 @@ function isGapPt(p0,p1){
 function gndLike(p){return p[6]===1 || ((p[3]||0)===0 && (p[4]||0)<40)}
 function airLike(p){return p[6]!==1 && ((p[3]||0)>=400 || ((p[3]||0)>50 && (p[4]||0)>80))}
 function utcClock(ms){const d=new Date(ms);if(isNaN(+d))return null;const i=d.toISOString();return `${i.slice(0,10)}<br>${i.slice(11,16)} UTC`}
+function numOrNull(v){if(v==null||v==="")return null;const n=+v;return Number.isFinite(n)?n:null}
+function meanOf(xs){const a=xs.filter(v=>v!=null&&Number.isFinite(v));if(!a.length)return null;return a.reduce((s,v)=>s+v,0)/a.length}
+function utcHm(ms){const d=new Date(ms);return isNaN(+d)?"n/a":d.toISOString().slice(11,16)}
+function utcStamp(ms){const d=new Date(ms);return isNaN(+d)?"time n/a":d.toISOString().slice(0,19).replace("T"," ")+" UTC"}
+function signedFpm(v){return `${v>=0?"+":"−"}${Math.abs(Math.round(v))} ft/min`}
+let PROF_PTS=[];
+function nearestProf(t){
+  if(t==null||!PROF_PTS.length)return null;
+  let best=PROF_PTS[0], d=Math.abs(best.t-t);
+  for(const p of PROF_PTS){const n=Math.abs(p.t-t); if(n<d){best=p;d=n}}
+  return best;
+}
+function fmtProfPoint(pt){
+  if(!pt) return {text:"", html:""};
+  const fl=pt.fl==null?"FL n/a":`FL${String(Math.round(pt.fl)).padStart(3,"0")}`;
+  const ft=pt.alt==null?"baro n/a":`baro ${fmt(Math.round(pt.alt))} ft`;
+  const gs=pt.gs==null?"GS n/a":`${Math.round(pt.gs)} kt`;
+  const vs=pt.vs==null?"VS n/a":signedFpm(pt.vs);
+  const t=utcStamp(pt.t);
+  const html=`<b>Point</b> ${esc(t)}<br>${esc(fl)} · ${esc(ft)}<br>${esc(gs)} · ${esc(vs)}<div class="mu">This sample, not the chart average. Baro altitude / 100 is not a certified flight level.</div>`;
+  const text=`Point ${t}\n${fl} · ${ft}\n${gs} · ${vs}`;
+  return {t,fl,ft,gs,vs,html,text};
+}
+function showProfPoint(pt){
+  const box=$("profpt"); if(!box)return;
+  if(!pt){box.hidden=true;box.innerHTML="";return}
+  const f=fmtProfPoint(pt);
+  box.hidden=false; box.innerHTML=f.html;
+}
+function bindProfChart(c){
+  if(!c||c._profBound)return;
+  c._profBound=true;
+  const pick=ev=>{
+    let pt=null;
+    if(ev&&ev.data&&ev.data.value) pt=nearestProf(ev.data.value[0]);
+    else if(ev&&ev.value!=null) pt=nearestProf(ev.value);
+    else if(ev&&ev.axesInfo&&ev.axesInfo[0]) pt=nearestProf(ev.axesInfo[0].value);
+    if(pt) showProfPoint(pt);
+  };
+  c.on("click",pick);
+  c.on("updateAxisPointer",pick);
+}
+function drawProf(P){
+  const el=$("prof"), note=$("spn");
+  if(!el)return;
+  PROF_PTS=[];
+  const gsVals=[], vsVals=[];
+  for(const p of P||[]){
+    const alt=numOrNull(p[3]), gs=numOrNull(p[4]), vs=numOrNull(p[5]), t=numOrNull(p[0]);
+    if(t==null||alt==null) continue;
+    PROF_PTS.push({t, alt, fl:alt/100, gs, vs});
+    if(gs!=null) gsVals.push(gs);
+    if(vs!=null) vsVals.push(vs);
+  }
+  if(PROF_PTS.length<2){
+    el.style.display="none";
+    showProfPoint(null);
+    if(note) note.textContent="Vertical profile unavailable: this server has not yet stored two barometric altitudes for this hex.";
+    return;
+  }
+  el.style.display="";
+  const avgGs=meanOf(gsVals), avgVs=meanOf(vsVals);
+  const gsTxt=avgGs==null?"avg GS n/a":`avg ${Math.round(avgGs)} kt`;
+  const vsTxt=avgVs==null?"avg VS n/a":`avg ${signedFpm(avgVs)}`;
+  const t0=PROF_PTS[0].t, t1=PROF_PTS[PROF_PTS.length-1].t;
+  const last=PROF_PTS[PROF_PTS.length-1];
+  const flData=PROF_PTS.map(p=>({value:[p.t,p.fl],gs:p.gs,vs:p.vs,alt:p.alt}));
+  const c=ch("prof",{
+    grid:{left:44,right:10,top:30,bottom:24},
+    legend:{show:false},
+    tooltip:{
+      trigger:"axis",
+      triggerOn:"mousemove|click",
+      confine:true,
+      hideDelay:1800,
+      formatter:ps=>{
+        const raw=ps&&ps[0]; if(!raw)return "";
+        const t=raw.value&&raw.value[0];
+        const pt=nearestProf(t); if(!pt)return "";
+        const f=fmtProfPoint(pt);
+        return `${f.t}<br>${f.fl} · ${f.ft}<br>${f.gs}<br>${f.vs}<br><span style="opacity:.8">This sample, not the average. Not a certified flight level.</span>`;
+      }
+    },
+    axisPointer:{type:"line",snap:true},
+    xAxis:ax({type:"time",axisLabel:{fontSize:9,hideOverlap:true,formatter:v=>{const d=new Date(v);return isNaN(+d)?"":d.toISOString().slice(11,16)}}}),
+    yAxis:ax({type:"value",name:"FL (baro)",nameLocation:"middle",nameGap:30,min:0,nameTextStyle:{color:"#8aa0bf",fontSize:10},axisLabel:{fontSize:9,formatter:v=>Math.round(v)}}),
+    series:[{name:"FL (baro)",type:"line",showSymbol:false,symbol:"circle",symbolSize:8,connectNulls:false,smooth:0.15,areaStyle:{opacity:.18},color:"#ffe14d",data:flData,markPoint:{symbol:"circle",symbolSize:8,label:{show:false},data:[{coord:[last.t,last.fl]}]}}],
+    graphic:[{type:"text",right:8,top:4,z:100,silent:true,style:{text:gsTxt+"\n"+vsTxt,fill:"#cfe3ff",font:"11px Inter,system-ui,sans-serif",textAlign:"right",lineHeight:15}}]
+  });
+  bindProfChart(c);
+  showProfPoint(last);
+  if(note) note.textContent=`Barometric altitude as FL (hundreds of feet), not a certified flight level. Chart averages (${gsTxt}; ${vsTxt}) are means of sourced samples in this server’s displayed history (${PROF_PTS.length} pts, GS ${gsVals.length}/${P.length}, VS ${vsVals.length}/${P.length}, ${utcHm(t0)}–${utcHm(t1)} UTC; max ~3 h). Hover or tap a point for that sample’s FL, GS and VS; missing fields stay n/a and are not filled from the average or zero. Not a full flight history.`;
+}
 function posFresh(a){if(!a||a.held||a.gnd||a.src!=="live")return false; if((a.age||0)>60)return false; if(L&&L.at&&Date.now()-Date.parse(L.at)>120000)return false; return a.gs>120}
 function observedEvents(P,a){
   const ev={takeoff:null,landing:null,since:P[0]?P[0][0]:null};
@@ -74,18 +177,17 @@ const AMB="#ffc400",GND="#8a94a6",ALTC=["interpolate",["linear"],["get","alt"],0
 const R2=Math.PI/180,hv=(a,b,c,d)=>{const x=Math.sin((c-a)*R2/2)**2+Math.cos(a*R2)*Math.cos(c*R2)*Math.sin((d-b)*R2/2)**2;return 2*3440.065*Math.asin(Math.sqrt(Math.min(1,x)))};
 function plane(){const s=48,c=document.createElement("canvas");c.width=c.height=s;const x=c.getContext("2d");x.fillStyle="#fff";x.beginPath();
  const p=[[24,2],[27,8],[27,19],[45,29],[45,33],[27,27],[27,38],[33,43],[33,46],[24,43],[15,46],[15,43],[21,38],[21,27],[3,33],[3,29],[21,19],[21,8]];p.forEach(([a,b],i)=>i?x.lineTo(a,b):x.moveTo(a,b));x.closePath();x.fill();return x.getImageData(0,0,s,s)}
+const WXMET_MINZOOM=9;
 function airportMark(){
-  const s=80,c=document.createElement("canvas");c.width=c.height=s;const x=c.getContext("2d");
+  const s=64,c=document.createElement("canvas");c.width=c.height=s;const x=c.getContext("2d");
   x.fillStyle="#fff";
-  x.fillRect(6,30,68,16);
+  x.beginPath();x.arc(32,32,29,0,Math.PI*2);x.fill();
   x.save();x.globalCompositeOperation="destination-out";
-  for(let i=0;i<4;i++) x.fillRect(10+i*4.2,33,2.2,10);
-  for(let i=0;i<4;i++) x.fillRect(42+i*7,36,4,4);
+  x.beginPath();x.arc(32,32,22,0,Math.PI*2);x.fill();
   x.restore();
-  x.fillRect(16,48,30,18);
-  x.beginPath();x.moveTo(14,48);x.lineTo(31,38);x.lineTo(48,48);x.closePath();x.fill();
-  x.fillRect(50,16,8,32);
-  x.fillRect(47,10,14,10);
+  x.beginPath();
+  const p=[[32,10],[35,16],[35,24],[50,33],[50,37],[35,32],[35,42],[41,47],[41,50],[32,47],[23,50],[23,47],[29,42],[29,32],[14,37],[14,33],[29,24],[29,16]];
+  p.forEach(([a,b],i)=>i?x.lineTo(a,b):x.moveTo(a,b));x.closePath();x.fill();
   return x.getImageData(0,0,s,s);
 }
 function wxAvn(m){
@@ -115,16 +217,92 @@ function wxAvn(m){
   const icao=m&&m.icao||"";
   return {timeZ,wind,tempDew:td,altim,line:[icao,timeZ,wind,td,altim].join(" "),subset:true};
 }
-function acF(){const mf=$("mf").value,ty=$("tyf").value.trim().toUpperCase();
- return (L?L.ac:[]).filter(a=>(mf==="all"||(mf==="other"?!["QTR","UAE"].includes(a[2]):a[2]===mf))&&(!ty||(a[3]||"").toUpperCase().startsWith(ty))).map(a=>{
-  const [lon,lat]=dispLonLat(a[4],a[5],a[7],a[8],a[10]);
+function airSel(){
+  const mf=$("mf"); if(!mf) return [];
+  return [...mf.selectedOptions].map(o=>o.value).filter(v=>v&&v!=="all");
+}
+function airOk(al){
+  const sel=airSel();
+  if(!sel.length) return true;
+  al=al||"";
+  if(sel.includes(al)) return true;
+  if(sel.includes("other")&&!["QTR","UAE"].includes(al)) return true;
+  return false;
+}
+function applyAirSel(sel){
+  const mf=$("mf"); if(!mf) return;
+  const set=new Set((sel||[]).filter(v=>v&&v!=="all"));
+  for(const v of set){
+    if(![...mf.options].some(o=>o.value===v)){
+      const o=document.createElement("option");
+      o.value=v; o.textContent=v==="other"?"Other airlines":v;
+      mf.appendChild(o);
+    }
+  }
+  for(const o of mf.options) o.selected=set.has(o.value);
+}
+function extraAirCodes(){
+  const mf=$("mf"); if(!mf) return [];
+  return [...mf.options].map(o=>o.value).filter(v=>!["QTR","UAE","other","all"].includes(v));
+}
+function syncMfOptions(){
+  const mf=$("mf"); if(!mf||!L) return;
+  const keep=airSel();
+  const live=[...new Set((L.ac||[]).map(a=>a[2]).filter(Boolean))];
+  const extra=[...new Set([...live,...keep])].filter(x=>x!=="QTR"&&x!=="UAE"&&x!=="other"&&x!=="all").sort();
+  const wanted=["QTR","UAE","other",...extra];
+  const cur=[...mf.options].map(o=>o.value);
+  if(wanted.length===cur.length&&wanted.every((v,i)=>v===cur[i])) return;
+  mf.innerHTML=wanted.map(v=>`<option value="${v}">${v==="other"?"Other airlines":v}</option>`).join("");
+  applyAirSel(keep);
+}
+function liveRowOk(a){
+  if(!a) return false;
+  const ty=($("tyf")&&$("tyf").value||"").trim().toUpperCase();
+  if(ty&&!(String(a[3]||"").toUpperCase().startsWith(ty))) return false;
+  return true;
+}
+function airCountOf(code){
+  const rows=(L&&L.ac||[]).filter(liveRowOk);
+  if(code==="other") return rows.filter(a=>!["QTR","UAE"].includes(a[2])).length;
+  if(!code) return rows.length;
+  return rows.filter(a=>a[2]===code).length;
+}
+function syncAirCounts(){
+  const el=$("filn"); if(!el) return;
+  if(!L||!L.ac){el.textContent="";return}
+  const ty=($("tyf")&&$("tyf").value||"").trim().toUpperCase();
+  const sel=airSel();
+  const lab=ty?" "+ty:"";
+  let lines;
+  if(!sel.length){
+    lines=[`${typeof fmt==="function"?fmt(airCountOf()):airCountOf()} live in sample${lab}`];
+  } else {
+    lines=sel.map(code=>{
+      const n=airCountOf(code);
+      const name=code==="other"?"Other":code;
+      return `${name} ${typeof fmt==="function"?fmt(n):n}`;
+    });
+  }
+  el.textContent=lines.join("\n");
+  el.title="Currently loaded live ADS-B aircraft in this sample matching the active filters. Not fleet size. Held last-ground positions are not counted. Not limited to the map viewport.";
+}
+function syncLiveCount(){
+  const el=$("cnt"); if(!el||!L) return;
+  const tot=L.ac.length, n=acF().length;
+  el.textContent=n===tot?`· ${fmt(tot)} live airline aircraft`:`· ${fmt(n)} of ${fmt(tot)} live airline aircraft`;
+  syncAirCounts();
+}
+function acF(){const ty=$("tyf").value.trim().toUpperCase();
+ return (L?L.ac:[]).filter(a=>airOk(a[2])&&(!ty||(a[3]||"").toUpperCase().startsWith(ty))).map(a=>{
+  const [lon,lat]=dispLonLat(a[4],a[5],a[7],a[8],a[10],a[6],a[11]);
   const rg=(a[9]||"").trim(); if(a[0]&&rg)REG_BY_HEX[a[0]]=rg;
   return{type:"Feature",properties:{h:a[0],cs:a[1],a:a[2],t:a[3],alt:a[6],gs:a[7],trk:a[8],g:a[10],hl:["QTR","UAE"].includes(a[2])?1:0,s:a[0]===SEL?1:0,...(rg?{reg:rg}:{})},geometry:{type:"Point",coordinates:[lon,lat]}}})}
 function drawLive(){if(!map||!map.getSource("live")||!L)return;const f=acF();map.getSource("live").setData({type:"FeatureCollection",features:f});
  if($("trl").checked){const tf=[];for(const x of f){const t=TR[x.properties.h];if(t&&t.length>1)tf.push({type:"Feature",properties:{a:x.properties.a},geometry:{type:"LineString",coordinates:[...t.slice(-12),x.geometry.coordinates]}})}map.getSource("trails").setData({type:"FeatureCollection",features:tf})}
- else map.getSource("trails").setData({type:"FeatureCollection",features:[]});applyTrackVis();applyRegLab();if(SEL)selUpdate();refreshQres()}
+ else map.getSource("trails").setData({type:"FeatureCollection",features:[]});applyTrackVis();applyRegLab();if(SEL)selUpdate();refreshQres();syncLiveCount();if(typeof syncFilChips==="function")syncFilChips()}
 function onPoll(){if(!L)return;for(const a of L.ac){const t=TR[a[0]]||(TR[a[0]]=[]),p=t[t.length-1];if(!p||p[0]!==a[5]||p[1]!==a[4])t.push([a[5],a[4]]);if(t.length>14)t.shift();const rg=(a[9]||"").trim();if(a[0]&&rg)REG_BY_HEX[a[0]]=rg}covDraw();
- const al=[...new Set(L.ac.map(a=>a[2]))].sort(),mf=$("mf"),v=mf.value;if(mf.options.length<4+al.length-2){mf.innerHTML=`<option value="all">All airlines</option><option value="QTR">QTR</option><option value="UAE">UAE</option><option value="other">Other airlines</option>`+al.filter(x=>!["QTR","UAE"].includes(x)).map(x=>`<option>${x}</option>`).join("");mf.value=v}drawLive()}
+ syncMfOptions();drawLive()}
 function initMap(){map=new maplibregl.Map({container:"map",style:"https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",center:[35,28],zoom:innerWidth<700?1.1:2,attributionControl:{compact:true}});
  map.addControl(new maplibregl.NavigationControl(),"bottom-right");
  map.on("load",async()=>{map.addImage("plane",plane(),{sdf:true});if(map.hasImage("airport"))map.removeImage("airport");map.addImage("airport",airportMark(),{sdf:true});
@@ -151,7 +329,7 @@ function initMap(){map=new maplibregl.Map({container:"map",style:"https://basema
   map.on("click","sel-ap",e=>{const p=e.features[0].properties;const m=wxFindMetar(p.icao)||wxFindMetar(p.n);if(m)new maplibregl.Popup({maxWidth:"320px"}).setHTML(`<div style="color:#000;font:12px/1.4 sans-serif">${wxMetHtml(wxMetFeat(m))}</div>`).setLngLat(e.lngLat).addTo(map)});
   ["sel-ap"].forEach(l=>{map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",l,()=>map.getCanvas().style.cursor="")});
   map.addSource("live",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-  map.addLayer({id:"live",type:"symbol",source:"live",layout:{"icon-image":"plane","icon-size":["interpolate",["linear"],["zoom"],1,["case",["==",["get","hl"],1],.34,.26],3,["case",["==",["get","hl"],1],.42,.32],8,["case",["==",["get","hl"],1],.7,.55]],"icon-rotate":["get","trk"],"icon-rotation-alignment":"map","icon-allow-overlap":true,"icon-ignore-placement":true,"icon-padding":0,"symbol-sort-key":["get","hl"]},
+  map.addLayer({id:"live",type:"symbol",source:"live",layout:{"icon-image":"plane","icon-size":["interpolate",["linear"],["zoom"],1,["case",["==",["get","hl"],1],.34,.26],3,["case",["==",["get","hl"],1],.42,.32],8,["case",["==",["get","hl"],1],.7,.55]],"icon-rotate":["get","trk"],"icon-rotation-alignment":"map","icon-pitch-alignment":"map","icon-anchor":"center","icon-allow-overlap":true,"icon-ignore-placement":true,"icon-padding":0,"icon-offset":[0,0],"symbol-sort-key":["get","hl"]},
    paint:{"icon-color":AMB,"icon-halo-color":"#000","icon-halo-width":["case",["==",["get","s"],1],0,.6]}});
   map.addLayer({id:"live-reg",type:"symbol",source:"live",minzoom:6.5,filter:["all",["has","reg"],["!=",["get","s"],1]],layout:{visibility:regLabelsOn()?"visible":"none","text-field":["get","reg"],"text-size":11,"text-offset":[0,1.35],"text-anchor":"top","text-font":["Open Sans Regular"],"text-optional":true,"text-padding":4,"text-allow-overlap":false,"text-ignore-placement":false,"symbol-sort-key":["get","hl"]},
    paint:{"text-color":"#e6f1ff","text-halo-color":"#05070d","text-halo-width":1.5,"text-halo-blur":.2}});
@@ -179,6 +357,20 @@ function na(l){return cell(l,"Unavailable","na")}
 function hm(h){h=Math.max(0,h||0);return Math.floor(h)+"h "+Math.round((h%1)*60)+"m"}
 function gRow(h){return GND_AC.find(x=>x[0]===h)}
 function isPhone(){return innerWidth<=700||(innerHeight<=540&&innerWidth<=980)}
+function fillMore(parts){
+  const el=$("spmore"); if(!el) return;
+  if(!isPhone()||!parts||!parts.length){el.innerHTML="";return}
+  el.innerHTML=`<details class="spmore"><summary>Details / sources</summary>${parts.map(t=>`<p class="mu">${t}</p>`).join("")}</details>`;
+}
+function moreAppend(parts){
+  if(!isPhone()||!parts||!parts.length) return;
+  const el=$("spmore"); if(!el) return;
+  let d=el.querySelector("details");
+  if(!d){fillMore(parts);d=el.querySelector("details");if(d)d.dataset.wx="1";return}
+  if(d.dataset.wx==="1") return;
+  d.dataset.wx="1";
+  d.insertAdjacentHTML("beforeend", parts.map(t=>`<p class="mu">${t}</p>`).join(""));
+}
 function padMap(){if(!map||typeof map.loaded!=="function"||!map.loaded())return;const on=$("sp").classList.contains("on")&&!$("sp").classList.contains("min"),w=!isPhone();map.setPadding({top:w?0:52,left:0,bottom:on&&!w?Math.min(280,innerHeight*.42):(w?0:64),right:on&&w?376:0})}
 function openSp(){const el=$("sp");const host=$("mw")||document.body;if(el.parentNode!==host)host.appendChild(el);el.classList.add("on");el.classList.remove("min");el.style.display="flex";el.dataset.hex=SEL||"";const m=$("map");if(m&&m.scrollIntoView)m.scrollIntoView({block:"nearest",inline:"nearest"});padMap();if(map&&map.resize)map.resize()}
 function closeSp(){const el=$("sp");el.classList.remove("on","min");el.style.display="none";el.dataset.hex="";padMap();if(map&&map.resize)map.resize()}
@@ -196,10 +388,10 @@ async function select(h){SEL=h;DB=null;SEL_T=[];openSp();gPaint();wxPanel();cons
  if(cs)fetch("/api/route?cs="+encodeURIComponent(cs)).then(r=>r.json()).then(j=>{if(SEL===h){DB=j;selUpdate();wxPanel()}}).catch(()=>{if(SEL===h){DB={found:false};selUpdate();wxPanel()}});
  const r=await fetch("/api/track?hex="+h+"&t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>({points:[]}));if(SEL!==h)return;SEL_T=r.points||[];selUpdate(true);wxPanel()}
 function selUpdate(first){const a=selAc();if(!a){unsel();return}
- const snap=[a.lon,a.lat], shown=dispLonLat(a.lat,a.lon,a.gs,a.trk,a.gnd||a.held), {db,hi,od,conflict}=routeEnds(a.cs), F=[];
+ const snap=[a.lon,a.lat], shown=dispLonLat(a.lat,a.lon,a.gs,a.trk,a.gnd||a.held,a.gnd||a.held?0:a.alt,a.age), {db,hi,od,conflict}=routeEnds(a.cs), F=[];
  let P=SEL_T.length?SEL_T.slice():[];
  const last=P[P.length-1];
- if(!last||last[1]!==a.lon||last[2]!==a.lat) P.push([L&&L.at?Date.parse(L.at):Date.now(),a.lon,a.lat,a.alt,a.gs,a.vs||0,a.gnd?1:0]);
+ if(!last||last[1]!==a.lon||last[2]!==a.lat) P.push([L&&L.at?Date.parse(L.at):Date.now(),a.lon,a.lat,a.alt,a.gs,a.vs==null?null:a.vs,a.gnd?1:0]);
  let seg=[];
  const flush=()=>{if(seg.length>=2)F.push({type:"Feature",properties:{k:"flown"},geometry:{type:"LineString",coordinates:unwrapLine(seg.map(p=>[p[1],p[2]]))}})};
  for(let i=0;i<P.length;i++){
@@ -212,23 +404,31 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
  flush();
  if(nmLL(snap,shown)>0.03) F.push({type:"Feature",properties:{k:"join"},geometry:{type:"LineString",coordinates:unwrapLine([snap,shown])}});
  let routeHtml="", rm=null, canEta=false, etaMs=null, fl=null, pc=null;
+ const phone=isPhone();
+ const noteP=t=>phone?"":`<p class="mu">${t}</p>`;
+ let more=[];
  if(conflict){
+  const rn=`${srcNote(db,hi)} Origin and destination stay unavailable because the two connected route sources disagree. Remaining route is not drawn from a guessed pair. Not a marketed flight number.`;
+  more.push(rn);
   routeHtml=`<div class="spsec"><h3>Route ${tg("na","Unavailable")}</h3>
-   <div class="od">${apBox(null,"from")}<div class="odarr">→</div>${apBox(null,"to")}</div>
-   <p class="mu">${srcNote(db,hi)} Origin and destination for this flight stay unavailable because the two connected route sources disagree. Remaining route is not drawn from a guessed pair. Not a marketed flight number.</p></div>`
+   <div class="od">${apBox(null,"from")}<div class="odarr">→</div>${apBox(null,"to")}</div>${noteP(rn)}</div>`
  } else if(od&&typeof od.o.lat==="number"&&typeof od.d.lat==="number"){
   F.push({type:"Feature",properties:{k:"rem"},geometry:{type:"LineString",coordinates:gc([shown[1],shown[0]],[od.d.lat,od.d.lon])}});
   F.push({type:"Feature",properties:{k:"ap",n:od.oi,icao:od.o.icao||""},geometry:{type:"Point",coordinates:[od.o.lon,od.o.lat]}},{type:"Feature",properties:{k:"ap",n:od.di,icao:od.d.icao||""},geometry:{type:"Point",coordinates:[od.d.lon,od.d.lat]}});
   fl=hv(od.o.lat,od.o.lon,shown[1],shown[0]); rm=hv(shown[1],shown[0],od.d.lat,od.d.lon); pc=Math.max(0,Math.min(100,100*fl/(fl+rm||1)));
   canEta=posFresh(a)&&rm!=null; if(canEta) etaMs=Date.now()+rm/a.gs*3600e3;
+  const rn=`${srcNote(db,hi)} Remaining route and the selected marker share the same displayed position (dead-reckoned between refreshes, estimate). Distances are great-circle, not the flown path. Not a schedule.`;
+  more.push(rn);
   routeHtml=`<div class="spsec"><h3>Route ${tg("est","Estimated")}</h3>
    <div class="od">${apBox(od.o,"from")}<div class="odarr">→</div>${apBox(od.d,"to")}</div>
    <div class="pg"><span>${esc(od.oi)}<small>origin</small></span><div class="bar"><div style="width:${pc}%"></div><b style="left:${pc}%">✈</b></div><span>${esc(od.di)}<small>destination</small></span></div>
-   <div class="scg">${cell("Progress (GC est.)",Math.round(pc)+"%")}${cell("Flown (GC est.)",fmt(Math.round(fl))+" nm")}${cell("Remaining (GC est.)",fmt(Math.round(rm))+" nm")}${canEta?cell("Remaining time (est.)",hm(rm/a.gs)):na("Remaining time")}</div>
-   <p class="mu">${srcNote(db,hi)} Remaining route and the selected marker share the same displayed position (dead-reckoned between refreshes, estimate). Distances are great-circle, not the flown path. Not a schedule.</p></div>`}
- else routeHtml=`<div class="spsec"><h3>Route ${DB?tg("na","Unavailable"):tg("est","Looking up")}</h3>
-  <div class="od">${apBox(null,"from")}<div class="odarr">→</div>${apBox(null,"to")}</div>
-  <p class="mu">${DB?"Origin and destination unavailable: adsbdb has no route for this callsign and there is no route history for it (history covers QTR/UAE only). ADS-B does not broadcast origin/destination.":"Looking up route in adsbdb…"}</p></div>`;
+   <div class="scg">${cell("Progress (GC est.)",Math.round(pc)+"%")}${cell("Flown (GC est.)",fmt(Math.round(fl))+" nm")}${cell("Remaining (GC est.)",fmt(Math.round(rm))+" nm")}${canEta?cell("Remaining time (est.)",hm(rm/a.gs)):na("Remaining time")}</div>${noteP(rn)}</div>`}
+ else {
+  const rn=DB?"Origin and destination unavailable: adsbdb has no route for this callsign and there is no route history for it (history covers QTR/UAE only). ADS-B does not broadcast origin/destination.":"Looking up route in adsbdb…";
+  more.push(rn);
+  routeHtml=`<div class="spsec"><h3>Route ${DB?tg("na","Unavailable"):tg("est","Looking up")}</h3>
+  <div class="od">${apBox(null,"from")}<div class="odarr">→</div>${apBox(null,"to")}</div>${noteP(rn)}</div>`;
+ }
  if(map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:F});applyTrackVis();gPaint();
  const sk=[a.hex,a.lat,a.lon,a.alt,a.gs,a.trk,a.vs,a.age,a.held,!!(DB&&DB.found),P.length,a.src,canEta&&etaMs?Math.round(etaMs/60000):""].join("|");
  if(!first&&sk===SEL_DRAW&&$("sp").classList.contains("on"))return;SEL_DRAW=sk;
@@ -241,31 +441,33 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
  const vs=a.held||a.src==="ground"?null:a.vs;
  const ev=observedEvents(P,a);
  const toffHtml=ev.takeoff?cell("Observed takeoff",utcClock(ev.takeoff)):ev.since?cell("Tracking since",utcClock(ev.since)):na("Observed takeoff");
- const etaHtml=canEta&&etaMs?cell("Estimated arrival",`${utcClock(etaMs)}<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">Estimated from remaining distance ÷ current ground speed, not schedule</div>`):na("Estimated arrival");
+ const etaHtml=canEta&&etaMs?cell("Estimated arrival",utcClock(etaMs)+(phone?"":`<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">Estimated from remaining distance ÷ current ground speed, not schedule</div>`)):na("Estimated arrival");
  const landHtml=ev.landing?cell("Observed landing",utcClock(ev.landing)):na("Actual arrival");
  const timeNote=(ev.takeoff
   ? "Observed takeoff is the first airborne sample after a ground sample in this server's track (not wheels-up, not a schedule or gate time). Refresh interval is about 90 s."
   : (ev.since?"No ground-to-air transition in this server's track. Tracking since is when this server first stored a position for the hex, not departure.":"No timestamped track yet for this hex."))
   +(ev.landing?" Observed landing is the first ground sample after airborne in this track (not on-blocks or gate).":" Actual arrival stays unavailable until an air-to-ground transition is captured.");
+ const idNote="Callsign is the ADS-B transponder identity from adsb.lol (observed). Flight number means the marketed/ticketed passenger number: none of the connected sources provide a verified current one, so it stays unavailable. An airline prefix conversion (QTR→QR, UAE→EK) is not that number — QTR68M is not QR68, UAE81W is not EK81. adsbdb <code>callsign_iata</code> is the same radio callsign with an IATA prefix and is never shown as a flight number. Codeshares are not resolved.";
+ const coast=!a.held && !gndLikePos(a.gnd||a.held,a.gs,a.gnd||a.held?0:a.alt,a.age) && a.gs>40;
+ const posNote=a.held?"Last ground position kept after the aircraft dropped out of the ADS-B feed. Not a live update."
+  :(coast?"Snapshot is the last adsb.lol position (not interpolated). The map marker and remaining route share that point, dead-reckoned up to 20 s between refreshes for clearly airborne samples (estimate). Heading is ADS-B track. Times UTC."
+  :"Snapshot is the last adsb.lol position. Marker stays on that snapshot (on-ground, below 1000 ft baro, gs ≤ 40 kt, or position older than 20 s) — not dead-reckoned, not snapped to a runway. Heading is ADS-B track. Times UTC.");
+ const tmNote="No airline schedule feed is connected, so scheduled times stay unavailable. Estimated arrival is remaining great-circle distance ÷ current ground speed, UTC, only when the route destination is known and the position is a fresh moving airborne snapshot — not a schedule or airport actual. Actual arrival is shown only after an observed air-to-ground transition in this track. "+timeNote;
+ more.unshift(idNote,posNote); more.push(tmNote,"Barometric altitude as FL (hundreds of feet) is not a certified flight level. Hover or tap a profile point for that sample’s FL, ground speed and vertical speed; missing fields stay n/a. Not a full flight history.","Live lat/lon are stored to 5 decimal degrees (~1.1 m). Markers are not snapped to runway or taxiway centreline. Satellite pavement can sit tens of metres off WGS84. Dead-reckoning between snapshots is airborne-only (baro at least 1000 ft, gs over 40 kt, age under 20 s), capped at 20 s.","Not for operational flight planning. NOAA/NWS Aviation Weather Center. Live positions © adsb.lol contributors (ODbL). Routes: adsbdb.com. Times UTC.");
  $("spb").innerHTML=`<div class="chips">${chips}</div>
+  <p class="spcaveat">Not for operational flight planning</p>
   <div class="spsec"><h3>Identity</h3>
-   <div class="scg">${cell("Callsign",esc(a.cs||"—"))}${na("Flight number")}</div>
-   <p class="mu">Callsign is the ADS-B transponder identity from adsb.lol (observed). Flight number means the marketed/ticketed passenger number: none of the connected sources provide a verified current one, so it stays unavailable. An airline prefix conversion (QTR→QR, UAE→EK) is not that number — QTR68M is not QR68, UAE81W is not EK81. adsbdb <code>callsign_iata</code> is the same radio callsign with an IATA prefix and is never shown as a flight number. Codeshares are not resolved.</p></div>
+   <div class="scg">${cell("Callsign",esc(a.cs||"—"))}${na("Flight number")}</div>${noteP(idNote)}</div>
   <div class="spsec"><h3>Position ${a.held?tg("est","Held"):tg("obs","Observed")}</h3>
-   <div class="scg">${cell("Altitude",alt)}${a.held?na("Ground speed"):cell("Ground speed",a.gs+" kt")}${cell("Heading / track",a.trk+"°")}${vs==null?na("Vertical rate"):cell("Vertical rate",(vs>0?"+":"")+fmt(vs)+" fpm")}${cell("Freshness",esc(fresh))}${cell("Snapshot",a.lat.toFixed(a.src==="ground"?5:3)+" / "+a.lon.toFixed(a.src==="ground"?5:3))}</div>
-   <p class="mu">${a.held?"Last ground position kept after the aircraft dropped out of the ADS-B feed. Not a live update.":"Snapshot is the last adsb.lol position (not interpolated). The map marker and remaining route use the same displayed point, dead-reckoned from that snapshot between refreshes (estimate). Heading is ADS-B track. Times UTC."}</p></div>
+   <div class="scg">${cell("Altitude",alt)}${a.held?na("Ground speed"):cell("Ground speed",a.gs+" kt")}${cell("Heading / track",a.trk+"°")}${vs==null?na("Vertical rate"):cell("Vertical rate",(vs>0?"+":"")+fmt(vs)+" fpm")}${cell("Freshness",esc(fresh))}${cell("Snapshot",a.lat.toFixed(5)+" / "+a.lon.toFixed(5))}</div>${noteP(posNote)}</div>
   ${routeHtml}
   <div class="spsec"><h3>Times</h3>
-   <div class="scg">${na("Scheduled departure")}${na("Scheduled arrival")}${toffHtml}${etaHtml}${landHtml}</div>
-   <p class="mu">No airline schedule feed is connected, so scheduled times stay unavailable. Estimated arrival is remaining great-circle distance ÷ current ground speed, UTC, only when the route destination is known and the position is a fresh moving airborne snapshot — not a schedule or airport actual. Actual arrival is shown only after an observed air-to-ground transition in this track. ${timeNote}</p></div>
+   <div class="scg">${na("Scheduled departure")}${na("Scheduled arrival")}${toffHtml}${etaHtml}${landHtml}</div>${noteP(tmNote)}</div>
   <div class="spsec"><h3>Observed track ${P.length>=2?tg("obs","Observed"):tg("na","Unavailable")}</h3></div>`;
- $("prof").style.display=P.length<2?"none":"";
- if(P.length>=2)ch("prof",{grid:{left:44,right:36,top:12,bottom:46},legend:{bottom:0,itemWidth:12,itemHeight:6,textStyle:{color:"#cfe3ff",fontSize:10},data:["Altitude ft","Ground speed kt","Vertical rate fpm"]},xAxis:ax({type:"time",axisLabel:{fontSize:9,hideOverlap:true}}),yAxis:[ax({type:"value",axisLabel:{fontSize:9}}),ax({type:"value",axisLabel:{fontSize:9},splitLine:{show:false}})],
-  series:[{name:"Altitude ft",type:"line",showSymbol:false,areaStyle:{opacity:.15},color:"#ffe14d",data:P.map(p=>[p[0],p[3]]),markPoint:{symbol:"circle",symbolSize:7,label:{show:false},data:[{coord:[P[P.length-1][0],P[P.length-1][3]]}]}},
-  {name:"Ground speed kt",type:"line",yAxisIndex:1,showSymbol:false,color:C1,data:P.map(p=>[p[0],p[4]])},{name:"Vertical rate fpm",type:"line",yAxisIndex:1,showSymbol:false,color:C2,data:P.map(p=>[p[0],(p[5]||0)/10])}]});
- $("spn").textContent=P.length>=2?`Vertical profile: ${P.length} positions recorded by this server (UTC, since it began tracking this hex; max ~3 h). Not a full flight history. Dashed yellow = dead-reckoning join to the displayed marker; grey dashes = coverage gap, not flown track.`:"Vertical profile unavailable: this server has not yet stored two positions for this hex.";
+ fillMore(more);
+ drawProf(P);
  if(first)map.easeTo({center:shown,zoom:Math.max(map.getZoom(),4),padding:innerWidth>700?{right:376,top:0,left:0,bottom:0}:{top:0,left:0,right:0,bottom:120}})}
-function unsel(){SEL=null;SEL_T=[];DB=null;SEL_DRAW="";closeSp();if(map&&map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:[]});gPaint();const w=$("spwx");if(w)w.innerHTML=""}
+function unsel(){SEL=null;SEL_T=[];DB=null;SEL_DRAW="";closeSp();if(map&&map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:[]});gPaint();const w=$("spwx");if(w)w.innerHTML="";fillMore([])}
 const IATA={QR:"QTR",EK:"UAE",EY:"ETD",BA:"BAW",AA:"AAL",DL:"DAL",UA:"UAL",LH:"DLH",AF:"AFR",KL:"KLM",VS:"VIR",SQ:"SIA",CX:"CPA",QF:"QFA",TK:"THY",SV:"SVA",MS:"MSR",AC:"ACA",NH:"ANA",JL:"JAL",KE:"KAL",CZ:"CSN",MU:"CES",CA:"CCA",NZ:"ANZ",AY:"FIN",SK:"SAS",LX:"SWR",OS:"AUA",IB:"IBE",AZ:"AZA",TP:"TAP",EI:"EIN",FR:"RYR",WN:"SWA",B6:"JBU",AS:"ASA",NK:"NKS",F9:"FFT",HA:"HAL",AM:"AMX",LA:"LAN",AV:"AVA",CM:"CMP",AR:"ARG",G3:"GLO",AD:"AZU",AI:"AIC",MH:"MAS",GA:"GIA",PR:"PAL",VA:"VOZ",AK:"AXM",JQ:"JST",SA:"SAA",ET:"ETH",KQ:"KQA",AT:"RAM",GF:"GFA",WY:"OMA",RJ:"RJA",ME:"MEA",KU:"KAC",PK:"PIA",UL:"ALK",TG:"THA",VN:"HVN",OZ:"AAR",BR:"EVA",CI:"CAL",HU:"CHH",LY:"ELY",DY:"NAX",W6:"WZZ",VY:"VLG",A3:"AEE",LO:"LOT",RO:"ROT",BT:"BTI",FI:"ICE",PC:"PGT",SU:"AFL",S7:"SBI",U6:"SVR",WS:"WJA",TS:"TSC",FJ:"FJI",HR:"CTN",OU:"CTN",OK:"CSA",SN:"BEL",U2:"EZY"};
 function normQ(s){return String(s||"").toUpperCase().replace(/[\s\-]/g,"")}
 function icaoAlias(q){const m=String(q).match(/^([A-Z]{2})([0-9A-Z]{1,6})$/);return m&&IATA[m[1]]?IATA[m[1]]+m[2]:null}
@@ -307,10 +509,12 @@ function renderQres(){
 function refreshQres(){const box=$("qres");if(!box||box.hidden||!$("qs").value.trim())return;QHits=findMatches($("qs").value);if(QIx>=QHits.length)QIx=QHits.length?0:-1;renderQres()}
 function revealFor(a){
   const notes=[];
-  const mf=$("mf").value, ty=$("tyf").value.trim().toUpperCase();
-  const hideAl=mf!=="all"&&((mf==="other"&&["QTR","UAE"].includes(a.al))||(mf!=="other"&&a.al!==mf));
+  if(!airOk(a.al)){
+    const add=(!a.al||a.al==="QTR"||a.al==="UAE")?(a.al||""):"other";
+    if(add){applyAirSel(airSel().concat(add));notes.push("Airline filter expanded so this aircraft is visible.")}
+  }
+  const ty=$("tyf").value.trim().toUpperCase();
   const hideTy=ty&&!(a.typ||"").toUpperCase().startsWith(ty);
-  if(hideAl){$("mf").value="all";notes.push("Airline filter set to All so this aircraft is visible.")}
   if(hideTy){$("tyf").value="";notes.push("Type filter cleared so this aircraft is visible.")}
   return notes;
 }
@@ -357,7 +561,7 @@ function gSetup(){if(map.getSource("sat"))return;const b=map.getStyle().layers.f
  map.addSource("sat",{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,maxzoom:19,attribution:"Imagery © Esri, Maxar, Earthstar Geographics"});
  map.addLayer({id:"sat",type:"raster",source:"sat",minzoom:10,layout:{visibility:"none"},paint:{"raster-opacity":.75,"raster-brightness-max":.7,"raster-saturation":-.3}},b&&b.id);
  map.addImage("gac",gIcon(),{sdf:true});map.addSource("gnd",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
- map.addLayer({id:"gnd",type:"symbol",source:"gnd",layout:{"icon-image":"gac","icon-size":.6,"icon-rotate":["get","tr"],"icon-rotation-alignment":"map","icon-allow-overlap":true,"text-field":["get","cs"],"text-size":11,"text-offset":[0,1.3],"text-allow-overlap":false,"text-optional":true,"text-font":["Open Sans Regular"],visibility:"none"},paint:{"icon-color":["case",["==",["get","s"],1],"#ffffff",["match",["get","st"],"parked","#9aa6b8","taxi","#ffc400","#ff4d6d"]],"icon-opacity":["match",["get","mode"],"held",.4,1],"icon-halo-color":"#000","icon-halo-width":["case",["==",["get","s"],1],2.6,1],"text-color":["match",["get","mode"],"held","#9aa6b8","#fff"],"text-opacity":["match",["get","mode"],"held",.7,1],"text-halo-color":"#000","text-halo-width":1.2}});
+ map.addLayer({id:"gnd",type:"symbol",source:"gnd",layout:{"icon-image":"gac","icon-size":.6,"icon-rotate":["get","tr"],"icon-rotation-alignment":"map","icon-pitch-alignment":"map","icon-anchor":"center","icon-offset":[0,0],"icon-allow-overlap":true,"text-field":["get","cs"],"text-size":11,"text-offset":[0,1.3],"text-allow-overlap":false,"text-optional":true,"text-font":["Open Sans Regular"],visibility:"none"},paint:{"icon-color":["case",["==",["get","s"],1],"#ffffff",["match",["get","st"],"parked","#9aa6b8","taxi","#ffc400","#ff4d6d"]],"icon-opacity":["match",["get","mode"],"held",.4,1],"icon-halo-color":"#000","icon-halo-width":["case",["==",["get","s"],1],2.6,1],"text-color":["match",["get","mode"],"held","#9aa6b8","#fff"],"text-opacity":["match",["get","mode"],"held",.7,1],"text-halo-color":"#000","text-halo-width":1.2}});
  map.addLayer({id:"gnd-reg",type:"symbol",source:"gnd",minzoom:11,filter:["all",["has","reg"],["!=",["get","s"],1]],layout:{visibility:"none","text-field":["get","reg"],"text-size":11,"text-offset":[1.25,0],"text-anchor":"left","text-font":["Open Sans Regular"],"text-optional":true,"text-allow-overlap":false,"text-ignore-placement":false},paint:{"text-color":"#e6f1ff","text-halo-color":"#05070d","text-halo-width":1.5}});
  map.addLayer({id:"gnd-reg-sel",type:"symbol",source:"gnd",minzoom:11,filter:["all",["has","reg"],["==",["get","s"],1]],layout:{visibility:"none","text-field":["get","reg"],"text-size":12,"text-offset":[1.3,0],"text-anchor":"left","text-font":["Open Sans Regular"],"text-allow-overlap":true,"text-ignore-placement":true},paint:{"text-color":"#fff","text-halo-color":"#05070d","text-halo-width":1.8}});
  map.on("click","gnd",e=>{const h=e.features[0].properties.h;if(h)select(h)});
@@ -437,8 +641,8 @@ function wxSetup(){
   map.addLayer({id:"wxwnd-lab",type:"symbol",source:"wxwnd",minzoom:4.5,layout:{visibility:"none","text-field":["to-string",["get","kt"]],"text-size":9,"text-offset":[0,1.1],"text-font":["Open Sans Regular"],"text-optional":true},paint:{"text-color":"#e6f1ff","text-halo-color":"#05070d","text-halo-width":1}});
   if(map.hasImage("airport"))map.removeImage("airport");map.addImage("airport",airportMark(),{sdf:true});
   map.addSource("wxmet",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-  map.addLayer({id:"wxmet",type:"symbol",source:"wxmet",minzoom:0,layout:{visibility:wxOn("met")?"visible":"none","icon-image":"airport","icon-size":["interpolate",["linear"],["zoom"],0,.58,2,.72,5,.9,8,1.05],"icon-anchor":"center","icon-allow-overlap":true,"icon-ignore-placement":true,"icon-padding":0},paint:{"icon-color":["case",["==",["get","stale"],1],"#d6c48a","#e8eef8"],"icon-halo-color":"#05070d","icon-halo-width":1.6}});
-  map.addLayer({id:"wxmet-lab",type:"symbol",source:"wxmet",minzoom:2.4,layout:{visibility:wxOn("met")?"visible":"none","text-field":["step",["zoom"],["get","labShort"],4.4,["get","lab"]],"text-size":["interpolate",["linear"],["zoom"],2.4,10,4.4,11,7,12.5],"text-font":["Open Sans Regular"],"text-optional":true,"text-allow-overlap":false,"text-ignore-placement":false,"text-padding":2,"text-line-height":1.05,"text-max-width":18,"text-variable-anchor":["left","right","bottom","top"],"text-radial-offset":1.2,"text-justify":"auto"},paint:{"text-color":["case",["==",["get","stale"],1],"#ffb020","#e6f1ff"],"text-halo-color":"#05070d","text-halo-width":1.6}});
+  map.addLayer({id:"wxmet",type:"symbol",source:"wxmet",minzoom:WXMET_MINZOOM,layout:{visibility:wxOn("met")?"visible":"none","icon-image":"airport","icon-size":["interpolate",["linear"],["zoom"],9,.88,11,1.05,13,1.18],"icon-anchor":"center","icon-allow-overlap":true,"icon-ignore-placement":true,"icon-padding":0,"icon-rotation-alignment":"viewport"},paint:{"icon-color":["case",["==",["get","stale"],1],"#d6c48a","#c5e4ff"],"icon-halo-color":"#05070d","icon-halo-width":2}});
+  map.addLayer({id:"wxmet-lab",type:"symbol",source:"wxmet",minzoom:WXMET_MINZOOM,layout:{visibility:wxOn("met")?"visible":"none","text-field":["step",["zoom"],["get","labShort"],10,["get","lab"]],"text-size":["interpolate",["linear"],["zoom"],9,11,11,12.5],"text-font":["Open Sans Regular"],"text-optional":true,"text-allow-overlap":false,"text-ignore-placement":false,"text-padding":2,"text-line-height":1.05,"text-max-width":18,"text-variable-anchor":["left","right","bottom","top"],"text-radial-offset":1.45,"text-justify":"auto"},paint:{"text-color":["case",["==",["get","stale"],1],"#ffb020","#e6f1ff"],"text-halo-color":"#05070d","text-halo-width":1.6}});
   const pop=html=>new maplibregl.Popup({maxWidth:"320px"}).setHTML(`<div style="color:#000;font:12px/1.4 sans-serif">${html}</div>`);
   map.on("click","wxhaz-fill",e=>{const p=e.features[0].properties;pop(wxHazHtml(p)).setLngLat(e.lngLat).addTo(map)});
   map.on("click","wxhaz-line",e=>{const p=e.features[0].properties;pop(wxHazHtml(p)).setLngLat(e.lngLat).addTo(map)});
@@ -509,7 +713,7 @@ function wxStatus(msg,err){
     else {bits.push("Forecast winds aloft unavailable: "+(w.reason||"no GFS grid").split(". ")[0]+".");chip.push("GFS unavailable")}
   }
   if(btn){btn.classList.toggle("on",wxOn("haz")||wxOn("met")||wxOn("wnd"));btn.classList.toggle("err",isErr);btn.setAttribute("aria-pressed",(wxOn("haz")||wxOn("met")||wxOn("wnd"))?"true":"false")}
-  if(full) full.textContent=bits.length?bits.join(" · ")+" Not for operational flight planning. NOAA/NWS AWC. Times UTC. Upstream errors are not “no hazards”.":"Weather overlays off. Enable Airport METAR/TAF for runway icons with measured temp, wind and QNH in Pa. Not for operational flight planning. NOAA/NWS AWC. Times UTC.";
+  if(full) full.textContent=bits.length?bits.join(" · ")+" Not for operational flight planning. NOAA/NWS AWC. Times UTC. Upstream errors are not “no hazards”.":"Weather overlays off. Enable Airport METAR/TAF for circled-aircraft station icons (close airport zoom) with measured temp, wind and QNH in Pa. Not for operational flight planning. NOAA/NWS AWC. Times UTC.";
   if(!el)return;
   if(!chip.length){el.hidden=true;el.textContent="";el.classList.remove("err");return}
   el.hidden=false;el.classList.toggle("err",isErr);
@@ -601,7 +805,7 @@ function wxPanel(){
   const el=$("spwx");if(!el)return;
   if(!SEL){el.innerHTML="";return}
   const a=selAc();if(!a){el.innerHTML="";return}
-  const [lon,lat]=dispLonLat(a.lat,a.lon,a.gs,a.trk,a.gnd||a.held);
+  const [lon,lat]=dispLonLat(a.lat,a.lon,a.gs,a.trk,a.gnd||a.held,a.gnd||a.held?0:a.alt,a.age);
   const {od}=routeEnds(a.cs);
   let rem=null;
   if(od&&typeof od.d.lat==="number") rem=typeof gc==="function"?gc([lat,lon],[od.d.lat,od.d.lon]):null;
@@ -610,6 +814,7 @@ function wxPanel(){
   if(needSt&&!WX.st&&!WX.load.st)wxLoad("st");
   if(wxOn("wnd")&&!WX.wnd&&!WX.load.wnd)wxLoad("wnd");
   const h=WX.haz, st=WX.st, wnd=WX.wnd;
+  const phone=isPhone();
   let body="";
   body+=`<div class="spsec"><h3>En-route weather ${tg("na","Not operational")}</h3>`;
   if(!h) body+=`<p class="mu">Loading hazard advisories…</p>`;
@@ -619,9 +824,9 @@ function wxPanel(){
     const near=hit.at.slice(0,4);
     const route=hit.along.filter(f=>!hit.at.includes(f)).slice(0,4);
     if(h.stale) body+=`<p class="mu">Hazard cache is stale. ${esc(h.error||"")}</p>`;
-    if(near.length) body+=`<p><b>Advisories at displayed position</b> (SIGMET/G-AIRMET polygons, not live turbulence)</p>`+near.map(f=>wxAdvLine(f)).join("");
+    if(near.length) body+=`<p><b>${phone?"At position":"Advisories at displayed position"}</b>${phone?"":" (SIGMET/G-AIRMET polygons, not live turbulence)"}</p>`+near.map(f=>wxAdvLine(f)).join("");
     else body+=`<p class="mu">No current SIGMET/G-AIRMET polygon in this overlay contains the displayed position. That is not a clearance and is not “no weather”.</p>`;
-    if(route.length) body+=`<p><b>Provisional remaining-route intersections</b> (estimated great-circle to destination, <em>not</em> a filed plan)</p>`+route.map(f=>wxAdvLine(f)).join("");
+    if(route.length) body+=`<p><b>${phone?"On remaining GC":"Provisional remaining-route intersections"}</b>${phone?"":" (estimated great-circle to destination, <em>not</em> a filed plan)"}</p>`+route.map(f=>wxAdvLine(f)).join("");
     else if(rem) body+=`<p class="mu">No current advisory polygon in this overlay intersects the estimated remaining great-circle. Intersections are provisional because the remaining route is not a filed flight plan.</p>`;
     else body+=`<p class="mu">Remaining-route intersection unavailable: destination is unknown, so there is no estimated great-circle.</p>`;
     if(h.counts) body+=`<p class="mu">${h.counts.current} current advisories in overlay · ${h.expiredOmitted||0} expired omitted · ${h.at?("fetched "+h.at.replace("T"," ").slice(0,16)+" UTC"):""}</p>`;
@@ -630,6 +835,11 @@ function wxPanel(){
   body+=wxWindBlock(wnd,a,lat,lon);
   body+=`<p class="mu">Not for operational flight planning. NOAA/NWS Aviation Weather Center; origin meteorological authorities. Hide tracks does not change weather layers. Times UTC.</p></div>`;
   el.innerHTML=body;
+  moreAppend([
+    "SIGMET/G-AIRMET polygons are not live turbulence and not a clearance. Remaining-route intersections are provisional because the remaining route is not a filed flight plan.",
+    "METAR pressure in Pa is converted from hPa or inHg, not a METAR Q group. TAF is a forecast. NOAA GFS winds are forecast, not WAFS and not live turbulence.",
+    "Not for operational flight planning. NOAA/NWS Aviation Weather Center; origin meteorological authorities. Hide tracks does not change weather layers. Times UTC."
+  ]);
 }
 function wxAdvLine(f){
   const p=f.properties||{};
@@ -673,7 +883,9 @@ function wxStationBlock(st,od,lat,lon,a){
     const m=rows.find(x=>x.icao===id), t=(st.taf||[]).find(x=>x.icao===id);
     const f=m?wxMetFeat(m):null;
     const press=m?(m.pressPa==null?"pressure n/a":m.pressPa+" Pa"+(m.pressRef?" ("+m.pressRef+")":"")):"pressure n/a";
-    const obs=m?cell(lab+" METAR (measured)",`${esc(id)} · ${esc(m.fltCat||"cat n/a")}<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">Summary (subset): <code>${esc(f.avnLine||"")}</code><br>${esc(press)} — Pa is converted, not a METAR Q group<br>Full raw: ${esc(m.raw||"raw METAR unavailable")}<br>${utcShort(m.obsTime)}${f.stale?" · stale":""} · not a live minute reading</div>`):na(lab+" METAR (measured)");
+    const avn=f&&f.avnLine?`<br><code>${esc(f.avnLine)}</code>`:"";
+    const stale=f&&f.stale?' <span class="tg est">Stale</span>':"";
+    const obs=m?cell(lab+" METAR (measured)",`${esc(id)} · ${esc(m.fltCat||"cat n/a")}${stale}${avn}<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">${esc(press)} — Pa is converted, not a METAR Q group<br>Full raw: ${esc(m.raw||"raw METAR unavailable")}<br>${utcShort(m.obsTime)} · not a live minute reading</div>`):na(lab+" METAR (measured)");
     const fc=t?cell(lab+" TAF (forecast)",`${esc(id)}<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">${esc(t.raw||"")}<br>Valid ${utcShort(t.validFrom)} → ${utcShort(t.validTo)}</div>`):na(lab+" TAF (forecast)");
     return `<div class="scg">${obs}${fc}</div>`;
   }).join("");

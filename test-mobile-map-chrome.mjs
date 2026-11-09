@@ -90,6 +90,9 @@ async function layout(page) {
       rlb: box(document.getElementById("rlb")),
       mfsb: box(document.getElementById("mfsb")),
       fbtn: box(document.getElementById("fbtn")),
+      filbar: box(document.getElementById("filbar")),
+      filn: box(document.getElementById("filn")),
+      mfl: box(document.getElementById("mfl")),
       qs: box(document.getElementById("qs")),
       aps: box(document.getElementById("aps")),
       wxst: box(document.getElementById("wxst")),
@@ -161,10 +164,13 @@ ok(lay.wxbtn.h >= 44 && lay.wxbtn.w >= 44, "Weather tap target at least 44px");
 ok(lay.infobtn && lay.infobtn.vis && /Info/i.test(lay.infobtn.t), "Info button visible");
 ok(lay.htb && lay.htb.vis && lay.rlb && lay.rlb.vis, "tracks and registration on the mobile bar");
 ok(lay.mfsb && lay.mfsb.vis && lay.fbtn && lay.fbtn.vis && lay.qs && lay.qs.vis, "filters, search, fullscreen reachable");
+ok(lay.filbar && lay.filbar.vis, "mobile airline chips are on the map");
+ok(lay.fbtn.h >= 44 && lay.fbtn.w >= 44, "Filters tap target at least 44px");
+ok(lay.filn && lay.filn.vis, "left-side live counts are on the map");
 ok(lay.firstWxId === "wxmet", "Airport METAR is the first weather checkbox");
 ok(!lay.metDefault && !lay.hazDefault, "METAR and hazards default off");
-ok(lay.wxmetMin === 0, "airport icons draw from zoom 0");
-ok(lay.wxlabelMin <= 2.4, "compact METAR labels from regional zoom");
+ok(lay.wxmetMin >= 8.5 && lay.wxmetMin <= 10, "airport icons start at close airport zoom");
+ok(lay.wxlabelMin >= 8.5, "METAR labels also wait for close airport zoom");
 ok(!lay.clustered && (!lay.clusterSrc || !lay.clusterSrc.length), "no clustering");
 ok(!overlap(lay.wxbtn, lay.attrib) && !overlap(lay.wxbtn, lay.zoom), "Weather does not overlap zoom/attribution");
 ok(!overlap(lay.wxbtn, lay.mfsnote), "Weather does not sit under the fullscreen note");
@@ -185,14 +191,14 @@ const dock = await mobile.evaluate(() => {
   };
 });
 ok(dock.open && dock.expanded === "true", "Weather sheet opens from the bar button");
-ok(/Airport METAR/i.test(dock.metText) && /runway|pictogram|terminal/i.test(dock.lead), "sheet explains terminal/runway METAR labels");
+ok(/Airport METAR/i.test(dock.metText) && /circled|circle|encircled/i.test(dock.lead) && /zoom 9/i.test(dock.lead), "sheet explains circled-aircraft METAR at close zoom");
 evidence.dock = dock;
 await shot(mobile, "mobile-weather-sheet-390");
 
 await enableMetar(mobile);
 const world = await rendered(mobile, 1.15, [35, 28]);
 ok(world.vis === "visible" && world.nSrc > 0, "METAR source populated after toggle");
-ok(world.nIcon > 0, "runway icons visible at world zoom");
+ok(world.nIcon === 0 && world.nLab === 0, "no airport station icons or labels at world zoom");
 ok(world.api.icao, "station identity is sourced");
 ok(world.api.pressPa == null || Number.isInteger(world.api.pressPa), "Pa is integer or omitted");
 ok(world.p.pressPa === "" || /^\d+$/.test(world.p.pressPa), "marker does not invent pressure");
@@ -200,21 +206,38 @@ evidence.world = { nIcon: world.nIcon, nSrc: world.nSrc, icao: world.api.icao, p
 await shot(mobile, "mobile-metar-world-390");
 
 const gulf = await rendered(mobile, 6.8);
-ok(gulf.nIcon > 0, "Gulf zoom still shows airport icons");
-ok(gulf.nLab > 0, "METAR labels render at useful regional zoom");
-ok(gulf.shortHasIcao && gulf.shortAvn, "compact label is METAR-style ICAO/time/wind/Q");
-ok(gulf.labHasPa && gulf.paNotInQ, "Pa stays on the expanded label, not in the Q group");
-ok(!/ff5a36|ff2fd6/.test(gulf.iconColor || ""), "airport icon is not hazard red/magenta");
-ok(gulf.api.windText && gulf.api.tempC != null, "sourced temp and wind on the station");
-ok(!/live minute/i.test(gulf.p.lab || ""), "labels do not claim live-minute readings");
-evidence.gulf = { nIcon: gulf.nIcon, nLab: gulf.nLab, lab: gulf.p.lab, labShort: gulf.p.labShort, api: gulf.api };
+ok(gulf.nIcon === 0 && gulf.nLab === 0, "no airport station icons at regional Gulf zoom");
+evidence.gulf = { nIcon: gulf.nIcon, nLab: gulf.nLab, zoom: gulf.zoom };
 await shot(mobile, "mobile-metar-gulf-390");
-await mobile.evaluate(() => map.jumpTo({ center: [55.36, 25.25], zoom: 11.2 }));
+
+const apt = await rendered(mobile, 10.4);
+ok(apt.nIcon > 0, "circled-aircraft icons visible at airport zoom");
+ok(apt.nLab > 0, "METAR labels render at close airport zoom");
+ok(apt.shortHasIcao && apt.shortAvn, "compact label is METAR-style ICAO/time/wind/Q");
+ok(apt.labHasPa && apt.paNotInQ, "Pa stays on the expanded label, not in the Q group");
+ok(!/ff5a36|ff2fd6/.test(apt.iconColor || ""), "airport icon is not hazard red/magenta");
+ok(apt.api.windText && apt.api.tempC != null, "sourced temp and wind on the station");
+ok(!/live minute/i.test(apt.p.lab || ""), "labels do not claim live-minute readings");
+evidence.apt = { nIcon: apt.nIcon, nLab: apt.nLab, lab: apt.p.lab, labShort: apt.p.labShort, api: apt.api, zoom: apt.zoom };
+await shot(mobile, "mobile-metar-airport-390");
+await mobile.evaluate(() => map.jumpTo({ center: [55.36, 25.25], zoom: 11.6 }));
 await new Promise((r) => setTimeout(r, 700));
+const hit = await mobile.evaluate(() => {
+  const feats = map.queryRenderedFeatures({ layers: ["wxmet"] });
+  const omdb = feats.find((f) => f.properties.icao === "OMDB") || feats[0];
+  if (!omdb) return { n: feats.length };
+  const pt = map.project(omdb.geometry.coordinates);
+  const around = map.queryRenderedFeatures(pt, { layers: ["wxmet"] });
+  return { n: feats.length, hit: around.some((f) => f.properties.icao === omdb.properties.icao), icao: omdb.properties.icao };
+});
+ok(hit.n > 0 && hit.hit, "airport icon is queryable at the station point");
+evidence.hit = hit;
 await shot(mobile, "mobile-airport-icon-closeup-390");
 await mobile.evaluate(() => setHideTracks(true));
-const hid = await rendered(mobile, 6.8);
+const hid = await rendered(mobile, 10.4);
 ok(hid.nIcon > 0 && hid.nLab > 0, "Hide tracks does not hide airport METAR");
+const hidWorld = await rendered(mobile, 2.2, [35, 28]);
+ok(hidWorld.nIcon === 0, "zooming back out hides airport stations again");
 await mobile.evaluate(() => setHideTracks(false));
 
 await mobile.click("#infobtn");
@@ -246,11 +269,13 @@ await mobile.evaluate(() => {
 await mobile.click("#mfsb");
 await new Promise((r) => setTimeout(r, 400));
 const fsLay = await layout(mobile);
-const fsMet = await rendered(mobile, 6.8);
+const fsFar = await rendered(mobile, 6.8);
+const fsMet = await rendered(mobile, 10.4);
 ok(await mobile.evaluate(() => document.body.classList.contains("map-fs")), "mobile map-only fullscreen fallback");
 ok(fsLay.wxbtn && fsLay.wxbtn.vis && /Weather/.test(fsLay.wxbtnText), "Weather remains in map-only fullscreen");
 ok(!overlap(fsLay.wxbtn, fsLay.attrib) && !overlap(fsLay.wxbtn, fsLay.zoom), "fullscreen Weather clear of zoom/attribution");
-ok(fsMet.nIcon > 0 && fsMet.nLab > 0, "airport METAR markers remain in map-only fullscreen");
+ok(fsFar.nIcon === 0, "fullscreen still hides airport stations at regional zoom");
+ok(fsMet.nIcon > 0 && fsMet.nLab > 0, "airport METAR markers in map-only fullscreen at airport zoom");
 ok(!(fsLay.mfsnote && fsLay.mfsnote.vis), "persistent fullscreen notes are hidden on mobile map-fs");
 ok(!(fsLay.wxst && fsLay.wxst.vis && /Not for operational/i.test(fsLay.wxst.t || "")), "verbose weather notes are not a map-fs banner");
 const fsHaz = await mobile.evaluate(async () => {
@@ -276,10 +301,13 @@ const n320 = await open(320, 568);
 const lay320 = await layout(n320);
 ok(lay320.wxbtn && lay320.wxbtn.vis && lay320.wxbtn.h >= 44, "Weather visible at 320");
 ok(lay320.mfsb && lay320.mfsb.vis && lay320.qs && lay320.qs.vis, "search and fullscreen still on 320");
+ok(lay320.filbar && lay320.filbar.vis && lay320.fbtn && lay320.fbtn.vis, "320 airline chips and Filters button");
 ok(!overlap(lay320.wxbtn, lay320.zoom), "320 Weather clear of zoom");
 await enableMetar(n320);
-const g320 = await rendered(n320, 5.4);
-ok(g320.nIcon > 0, "airport icons at 320");
+const g320far = await rendered(n320, 5.4);
+ok(g320far.nIcon === 0, "320 hides airport stations at regional zoom");
+const g320 = await rendered(n320, 10.4);
+ok(g320.nIcon > 0, "airport icons at 320 when zoomed on the field");
 evidence.n320 = { wx: lay320.wxbtn, nIcon: g320.nIcon, nLab: g320.nLab };
 await shot(n320, "mobile-chrome-320");
 await shot(n320, "mobile-metar-320");
@@ -288,19 +316,23 @@ await n320.close();
 const n430 = await open(430, 932);
 const lay430 = await layout(n430);
 ok(lay430.wxbtn && lay430.wxbtn.vis, "Weather visible at 430");
+ok(lay430.filbar && lay430.filbar.vis, "430 airline chips visible");
 await enableMetar(n430);
-await rendered(n430, 6.2);
+await rendered(n430, 10.4);
 await shot(n430, "mobile-metar-430");
 await n430.close();
 
 const land = await open(390, 844, { wxmet: "1" }, true);
 const layL = await layout(land);
 ok(layL.wxbtn && layL.wxbtn.vis, "Weather visible in landscape");
+ok(layL.fbtn && layL.fbtn.vis, "Filters button remains in landscape");
 ok(!overlap(layL.wxbtn, layL.zoom), "landscape Weather clear of zoom");
 await land.waitForFunction(() => WX.st && WX.st.metar && WX.st.metar.length > 0, { timeout: 45000 }).catch(() => {});
 if (!(await land.evaluate(() => WX.st && WX.st.metar && WX.st.metar.length))) await enableMetar(land);
-const gL = await rendered(land, 6.4);
-ok(gL.nIcon > 0, "landscape airport icons");
+const gLfar = await rendered(land, 6.4);
+ok(gLfar.nIcon === 0, "landscape hides airport stations at regional zoom");
+const gL = await rendered(land, 10.4);
+ok(gL.nIcon > 0, "landscape airport icons when zoomed on the field");
 evidence.land = { inner: layL.inner, nIcon: gL.nIcon };
 await shot(land, "mobile-metar-landscape-390");
 await land.close();
@@ -308,17 +340,20 @@ await land.close();
 const desk = await open(1280, 860);
 const dLay = await layout(desk);
 ok(dLay.mfsb && dLay.mfsb.vis, "desktop map fullscreen remains");
-ok(await desk.evaluate(() => document.getElementById("wxctl") && document.getElementById("mw").contains(document.getElementById("wxctl"))), "desktop weather control still in the map");
+ok(dLay.fbtn && dLay.fbtn.vis, "desktop Filters button is in the map chrome");
+ok(await desk.evaluate(() => document.getElementById("wxctl") && document.getElementById("mw").contains(document.getElementById("wxctl")) && document.getElementById("mw").contains(document.getElementById("mfl"))), "desktop weather and filters still in the map");
 ok(!dLay.clustered, "desktop still has no clustering");
 await enableMetar(desk);
-const dG = await rendered(desk, 7.0);
-ok(dG.nIcon > 0 && dG.nLab > 0 && dG.labHasPa, "desktop METAR icons and Pa labels");
+const dFar = await rendered(desk, 7.0);
+ok(dFar.nIcon === 0, "desktop hides airport stations at regional zoom");
+const dG = await rendered(desk, 10.4);
+ok(dG.nIcon > 0 && dG.nLab > 0 && dG.labHasPa, "desktop METAR icons and Pa labels at airport zoom");
 await shot(desk, "desktop-metar-1280");
 await desk.evaluate(() => { if (typeof unsel === "function") unsel(); });
 await desk.click("#mfsb");
 await new Promise((r) => setTimeout(r, 500));
-const dFs = await rendered(desk, 7.0);
-ok(dFs.nIcon > 0, "desktop map-only fullscreen still shows airport METAR");
+const dFs = await rendered(desk, 10.4);
+ok(dFs.nIcon > 0, "desktop map-only fullscreen still shows airport METAR at airport zoom");
 await shot(desk, "desktop-metar-fs-1280");
 if (await desk.evaluate(() => document.body.classList.contains("map-fs") || document.fullscreenElement)) {
   await desk.keyboard.press("Escape");

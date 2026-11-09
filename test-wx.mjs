@@ -224,6 +224,14 @@ await shot(desk, "wx-hazards-1280");
 
 await desk.click("#wxmet");
 await desk.waitForFunction(() => WX.st && WX.st.metar && WX.st.metar.length > 0, { timeout: 30000 });
+const metFar = await desk.evaluate(() => ({
+  zoom: map.getZoom(),
+  nIcon: map.queryRenderedFeatures({ layers: ["wxmet"] }).length,
+  min: map.getLayer("wxmet").minzoom,
+}));
+ok(metFar.min >= 8.5 && metFar.nIcon === 0, "METAR icons hidden until close airport zoom, got zoom " + metFar.zoom + " n=" + metFar.nIcon);
+await desk.evaluate(() => map.jumpTo({ center: [55.36, 25.25], zoom: 10.4 }));
+await new Promise((r) => setTimeout(r, 800));
 const metUi = await desk.evaluate(() => {
   const src = (id) => { const s = map.getSource(id); return (s && s._data) || (s && s.serialize && s.serialize().data) || { features: [] }; };
   const n = src("wxmet").features.length;
@@ -231,8 +239,9 @@ const metUi = await desk.evaluate(() => {
   const st = document.getElementById("wxst").textContent;
   const p = src("wxmet").features.find((f) => f.properties.icao === "OMDB") || src("wxmet").features[0];
   const type = map.getLayer("wxmet") && map.getLayer("wxmet").type;
-  return { n, vis, st, persist: localStorage.wxmet, sample: p && p.properties, err: document.getElementById("wxst").classList.contains("err"), type };
+  return { n, vis, st, persist: localStorage.wxmet, sample: p && p.properties, err: document.getElementById("wxst").classList.contains("err"), type, nIcon: map.queryRenderedFeatures({ layers: ["wxmet"] }).length };
 });
+ok(metUi.nIcon > 0, "METAR icons render at airport zoom");
 ok(metUi.vis === "visible" && metUi.n > 10, "METAR airport features");
 ok(metUi.type === "symbol", "airport layer is symbol icon not circle");
 ok(metUi.sample && / Pa\b|Pa n\/a/.test(metUi.sample.lab || ""), "expanded METAR label has Pa or Pa n/a");
@@ -358,6 +367,8 @@ await new Promise((r) => setTimeout(r, 800));
 await shot(mob, "wx-hazards-390");
 await mob.evaluate(() => setWx("met", true));
 await mob.waitForFunction(() => WX.st && WX.st.metar && WX.st.metar.length > 0, { timeout: 30000 });
+await mob.evaluate(() => map.flyTo({ center: [55.36, 25.25], zoom: 10.4, duration: 0 }));
+await new Promise((r) => setTimeout(r, 800));
 await shot(mob, "wx-metar-390");
 await mob.evaluate(() => setWx("wnd", true));
 await mob.waitForFunction(() => WX.wnd && (WX.wnd.available === true || WX.wnd.available === false), { timeout: 90000 });
