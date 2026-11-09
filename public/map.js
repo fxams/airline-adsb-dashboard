@@ -449,7 +449,8 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
   <div class="od">${apBox(null,"from")}<div class="odarr">→</div>${apBox(null,"to")}</div>${noteP(rn)}</div>`;
  }
  if(map.getSource("sel"))map.getSource("sel").setData({type:"FeatureCollection",features:F});applyTrackVis();gPaint();
- const sk=[a.hex,a.lat,a.lon,a.alt,a.gs,a.trk,a.vs,a.age,a.held,!!(DB&&DB.found),P.length,a.src,canEta&&etaMs?Math.round(etaMs/60000):"",od&&od.oi||"",od&&od.di||"",unverified?1:0,conflict?1:0,src||""].join("|");
+ const fn=(typeof acceptMarketedFlight==="function")?acceptMarketedFlight({callsign:a.cs,lookup:DB&&DB.flight_number_lookup,route:{od,unverified,conflict,src}}):{found:false,note:"Flight-number resolver unavailable."};
+ const sk=[a.hex,a.lat,a.lon,a.alt,a.gs,a.trk,a.vs,a.age,a.held,!!(DB&&DB.found),P.length,a.src,canEta&&etaMs?Math.round(etaMs/60000):"",od&&od.oi||"",od&&od.di||"",unverified?1:0,conflict?1:0,src||"",fn.found?fn.number:""].join("|");
  if(!first&&sk===SEL_DRAW&&$("sp").classList.contains("on"))return;SEL_DRAW=sk;
  const name=alName(a.al,DB&&DB.airline),fresh=a.held?`Held last ground position, ${a.heldMin>=60?(a.heldMin/60).toFixed(1)+" h":a.heldMin+" min"} ago (ADS-B off / dropped)`:a.gnd?`Observed · on ground · ${a.age} s ago`:`Observed · ${a.age} s ago`;
  $("spcs").textContent=a.cs||"—";$("spal").textContent=name?name+(a.al?" · "+a.al:""):(a.al||"Airline unavailable");
@@ -466,17 +467,21 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
   ? "Observed takeoff is the first airborne sample after a ground sample in this server's track (not wheels-up, not a schedule or gate time). Refresh interval is about 90 s."
   : (ev.since?"No ground-to-air transition in this server's track. Tracking since is when this server first stored a position for the hex, not departure.":"No timestamped track yet for this hex."))
   +(ev.landing?" Observed landing is the first ground sample after airborne in this track (not on-blocks or gate).":" Actual arrival stays unavailable until an air-to-ground transition is captured.");
- const idNote="Callsign is the ADS-B transponder identity from adsb.lol (observed). Flight number means the marketed/ticketed passenger number: none of the connected sources provide a verified current one, so it stays unavailable. An airline prefix conversion (QTR→QR, UAE→EK) is not that number — QTR68M is not QR68, UAE81W is not EK81. adsbdb <code>callsign_iata</code> is the same radio callsign with an IATA prefix and is never shown as a flight number. Codeshares are not resolved.";
+ const idNote=fn.found
+  ? `Callsign is the ADS-B transponder identity from adsb.lol (observed). Flight number ${esc(fn.number)} is the marketed/ticketed passenger number from ${esc(fn.source)}, consistent with the plausibility-checked ${esc((od&&od.oi)||"?")}–${esc((od&&od.di)||"?")} pair. Not derived by prefix conversion. Codeshares are not resolved.`
+  : "Callsign is the ADS-B transponder identity from adsb.lol (observed). Flight number means the marketed/ticketed passenger number: none of the connected free sources provide a verified current one, so it stays unavailable. An airline prefix conversion (QTR→QR, UAE→EK) is not that number — QTR68M is not QR68, UAE81W is not EK81. adsbdb <code>callsign_iata</code> is the same radio callsign with an IATA prefix and is never shown as a flight number. Codeshares are not resolved.";
+ const fnCatalog=typeof catalogNote==="function"?catalogNote(DB&&DB.flight_number_lookup):"";
+ const fnNote=fn.found?fn.note:(fn.note||idNote)+(fnCatalog?" "+fnCatalog:"");
  const coast=!a.held && !gndLikePos(a.gnd||a.held,a.gs,a.gnd||a.held?0:a.alt,a.age) && a.gs>40;
  const posNote=a.held?"Last ground position kept after the aircraft dropped out of the ADS-B feed. Not a live update."
   :(coast?"Snapshot is the last adsb.lol position (not interpolated). The map marker and remaining route share that point, dead-reckoned up to 20 s between refreshes for clearly airborne samples (estimate). Heading is ADS-B track. Times UTC."
   :"Snapshot is the last adsb.lol position. Marker stays on that snapshot (on-ground, below 1000 ft baro, gs ≤ 40 kt, or position older than 20 s) — not dead-reckoned, not snapped to a runway. Heading is ADS-B track. Times UTC.");
  const tmNote="No airline schedule feed is connected, so scheduled times stay unavailable. Estimated arrival is remaining great-circle distance ÷ current ground speed, UTC, only when the route destination is known and the position is a fresh moving airborne snapshot — not a schedule or airport actual. Actual arrival is shown only after an observed air-to-ground transition in this track. "+timeNote;
- more.unshift(idNote,posNote); more.push(tmNote,"Barometric altitude as FL (hundreds of feet) is not a certified flight level. Hover or tap a profile point for that sample’s FL, ground speed and vertical speed; missing fields stay n/a. Not a full flight history.","Live lat/lon are stored to 5 decimal degrees (~1.1 m). Markers are not snapped to runway or taxiway centreline. Satellite pavement can sit tens of metres off WGS84. Dead-reckoning between snapshots is airborne-only (baro at least 1000 ft, gs over 40 kt, age under 20 s), capped at 20 s.","Not for operational flight planning. NOAA/NWS Aviation Weather Center. Live positions © adsb.lol contributors (ODbL). Routes: adsbdb.com. Times UTC.");
+ more.unshift(idNote,fnNote,posNote); more.push(tmNote,"Barometric altitude as FL (hundreds of feet) is not a certified flight level. Hover or tap a profile point for that sample’s FL, ground speed and vertical speed; missing fields stay n/a. Not a full flight history.","Live lat/lon are stored to 5 decimal degrees (~1.1 m). Markers are not snapped to runway or taxiway centreline. Satellite pavement can sit tens of metres off WGS84. Dead-reckoning between snapshots is airborne-only (baro at least 1000 ft, gs over 40 kt, age under 20 s), capped at 20 s.","Not for operational flight planning. NOAA/NWS Aviation Weather Center. Live positions © adsb.lol contributors (ODbL). Routes: adsbdb.com. Times UTC.");
  $("spb").innerHTML=`<div class="chips">${chips}</div>
   <p class="spcaveat">Not for operational flight planning</p>
   <div class="spsec"><h3>Identity</h3>
-   <div class="scg">${cell("Callsign",esc(a.cs||"—"))}${na("Flight number")}</div>${noteP(idNote)}</div>
+   <div class="scg">${cell("Callsign",esc(a.cs||"—"))}${fn.found?cell("Flight number",esc(fn.number)):na("Flight number")}</div>${noteP(idNote)}</div>
   <div class="spsec"><h3>Position ${a.held?tg("est","Held"):tg("obs","Observed")}</h3>
    <div class="scg">${cell("Altitude",alt)}${a.held?na("Ground speed"):cell("Ground speed",a.gs+" kt")}${cell("Heading / track",a.trk+"°")}${vs==null?na("Vertical rate"):cell("Vertical rate",(vs>0?"+":"")+fmt(vs)+" fpm")}${cell("Freshness",esc(fresh))}${cell("Snapshot",a.lat.toFixed(5)+" / "+a.lon.toFixed(5))}</div>${noteP(posNote)}</div>
   ${routeHtml}
