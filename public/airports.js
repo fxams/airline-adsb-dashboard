@@ -88,5 +88,31 @@
     if (onG) return true;
     return alt < 300 && gs < 60;
   }
-  return { HUBS, PRESETS, POINT_NM, GND_NM, AUTO_ZOOM, AUTO_NM, resolveApt, nearestApt, isSurface, hv, byId, alias };
+  function merge(list) {
+    if (!list || !list.length) return 0;
+    let n = 0;
+    for (const h of list) {
+      if (!h || !h.id) continue;
+      const id = String(h.id).trim().toUpperCase();
+      if (!id) continue;
+      const icao = (h.icao || id).toUpperCase();
+      const iata = (h.iata || id).toUpperCase();
+      if (byId[id]) {
+        alias[icao] = id;
+        alias[iata] = id;
+        continue;
+      }
+      const lat = Number(h.lat), lon = Number(h.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const rec = { id, icao, iata, lat, lon, name: h.name || id };
+      HUBS.push(rec);
+      byId[id] = rec;
+      alias[id] = id;
+      alias[icao] = id;
+      alias[iata] = id;
+      n++;
+    }
+    return n;
+  }
+  return { HUBS, PRESETS, POINT_NM, GND_NM, AUTO_ZOOM, AUTO_NM, resolveApt, nearestApt, isSurface, hv, byId, alias, merge };
 });
