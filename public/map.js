@@ -226,6 +226,7 @@ function airSel(){
 }
 function airOk(al){
   const sel=airSel();
+  if(sel.includes("_none")) return false;
   if(!sel.length) return true;
   al=al||"";
   if(sel.includes(al)) return true;
@@ -246,13 +247,13 @@ function applyAirSel(sel){
 }
 function extraAirCodes(){
   const mf=$("mf"); if(!mf) return [];
-  return [...mf.options].map(o=>o.value).filter(v=>!["QTR","UAE","other","all"].includes(v));
+  return [...mf.options].map(o=>o.value).filter(v=>!["QTR","UAE","other","all","_none"].includes(v));
 }
 function syncMfOptions(){
   const mf=$("mf"); if(!mf||!L) return;
   const keep=airSel();
   const live=[...new Set((L.ac||[]).map(a=>a[2]).filter(Boolean))];
-  const extra=[...new Set([...live,...keep])].filter(x=>x!=="QTR"&&x!=="UAE"&&x!=="other"&&x!=="all").sort();
+  const extra=[...new Set([...live,...keep])].filter(x=>x!=="QTR"&&x!=="UAE"&&x!=="other"&&x!=="all"&&x!=="_none").sort();
   const wanted=["QTR","UAE","other",...extra];
   const cur=[...mf.options].map(o=>o.value);
   if(wanted.length===cur.length&&wanted.every((v,i)=>v===cur[i])) return;
@@ -278,10 +279,12 @@ function syncAirCounts(){
   const sel=airSel();
   const lab=ty?" "+ty:"";
   let lines;
-  if(!sel.length){
+  if(sel.includes("_none")){
+    lines=[`0 live in sample${lab}`];
+  } else if(!sel.length){
     lines=[`${typeof fmt==="function"?fmt(airCountOf()):airCountOf()} live in sample${lab}`];
   } else {
-    lines=sel.map(code=>{
+    lines=sel.filter(code=>code!=="_none").map(code=>{
       const n=airCountOf(code);
       const name=code==="other"?"Other":code;
       return `${name} ${typeof fmt==="function"?fmt(n):n}`;

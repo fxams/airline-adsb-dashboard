@@ -173,6 +173,47 @@ async function exerciseFilters(page, tag, { useBar = false, fallback = false } =
   out.opened = await filState(page);
   ok(out.opened.open && out.opened.expanded === "true" && out.opened.mfl.vis, `${tag}: Filters sheet opens`);
   ok(out.opened.dragPan === false, `${tag}: map drag disabled while sheet open`);
+  const look = await page.evaluate(() => {
+    const mfl = document.getElementById("mfl");
+    const mf = document.getElementById("mf");
+    const mw = document.getElementById("mw");
+    const mfr = mf.getBoundingClientRect();
+    const sheet = mfl.getBoundingClientRect();
+    const wrap = mw.getBoundingClientRect();
+    const cs = getComputedStyle(mf);
+    const boxes = [...mfl.querySelectorAll("input[type=checkbox]")].map((el) => {
+      const s = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return { id: el.id, app: s.webkitAppearance || s.appearance, w: r.width, h: r.height, bg: s.backgroundColor };
+    });
+    const qtr = mfl.querySelector('#filair [data-mf="QTR"]');
+    const none = mfl.querySelector('#filair [data-mf="_none"]');
+    return {
+      mfVis: cs.display !== "none" && cs.visibility !== "hidden" && mfr.width > 8 && mfr.height > 8 && cs.opacity !== "0" && cs.clipPath !== "inset(50%)",
+      mfApp: cs.webkitAppearance || cs.appearance,
+      sheetH: sheet.height,
+      sheetW: sheet.width,
+      sheetY: sheet.y,
+      wrapH: wrap.height,
+      wrapW: wrap.width,
+      qtrText: (qtr && qtr.innerText || "").replace(/\s+/g, " ").trim(),
+      noneText: none && none.textContent.trim(),
+      boxes,
+      display: getComputedStyle(mfl).display,
+    };
+  });
+  ok(look.display === "flex", `${tag}: sheet is a flex column (${look.display})`);
+  ok(!look.mfVis, `${tag}: native multiple-select is not painted`);
+  ok(look.qtrText.includes("QTR") && /Qatar/i.test(look.qtrText) && /\d/.test(look.qtrText), `${tag}: QTR chip has code, name, count (${look.qtrText})`);
+  ok(look.noneText === "None", `${tag}: None quick action`);
+  const mobile = tag.startsWith("mob") || tag.startsWith("land");
+  ok(look.sheetH > 40 && look.sheetH <= look.wrapH * (mobile ? 0.52 : 0.88), `${tag}: sheet leaves map visible h=${Math.round(look.sheetH)} wrap=${Math.round(look.wrapH)}`);
+  ok(look.boxes.every((b) => (b.app || "none").includes("none") && b.w <= 24 && b.h <= 24), `${tag}: filter checkboxes are custom, not native (${JSON.stringify(look.boxes)})`);
+  if (mobile) {
+    ok(look.sheetY >= look.wrapH * 0.32, `${tag}: mobile sheet sits in the lower map (${Math.round(look.sheetY)} of ${Math.round(look.wrapH)})`);
+  } else {
+    ok(look.sheetW <= look.wrapW * 0.5, `${tag}: desktop sheet does not span the map w=${Math.round(look.sheetW)} wrap=${Math.round(look.wrapW)}`);
+  }
   await shot(page, `filters-open-${tag}`);
 
   await page.click('#filair [data-mf="QTR"]');
