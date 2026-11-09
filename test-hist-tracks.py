@@ -18,6 +18,8 @@ from hist_lib import (  # noqa: E402
     load_ourairports,
     observed_qtr_airports,
     parse_trace,
+    roll_and_airborne,
+    rwy_frame,
 )
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -62,13 +64,84 @@ for k in range(20):
     if k == 10:
         lat += 0.02  # ~2 km north spike
     raw.append({"t": 1000 + k * 4, "lat": lat, "lon": lon, "alt": 4000 - k * 180, "gs": 200, "trk": 270, "gnd": False, "leg": False, "stale": False})
+for k in range(5):
+    along = 0.6 + k * 0.25
+    rad = math.radians(270)
+    e = along * math.sin(rad) * 1852
+    n = along * math.cos(rad) * 1852
+    lat, lon = enu_ll(rwy["lat"], rwy["lon"], e, n)
+    raw.append({"t": 1080 + k * 2, "lat": lat, "lon": lon, "alt": 0, "gs": 120 - k * 15, "trk": 270, "gnd": True, "leg": False, "stale": False})
 sm = [p for p in kalman_rts(raw, apt["lat"], apt["lon"]) if p]
-ok(len(sm) == 20, "RTS keeps samples (no gap split)")
+ok(len(sm) == 25, f"RTS keeps airborne samples and copies the roll ({len(sm)})")
 # spike should be pulled toward the line
 ok(abs(sm[10]["lat"] - rwy["lat"]) < abs(raw[10]["lat"] - rwy["lat"]) * 0.6, "Kalman pulls outlier toward the track")
 
 asg = assign_runway(sm, apt)
 ok(asg and asg[0] == "arr" and asg[1] in ("27L", "27R"), f"smoothed arrival assigns a 27-end, got {asg}")
+
+# Ground-roll samples stay as observed (constant-velocity RTS is not applied on the pavement).
+gnd_raw = []
+for k in range(8):
+    along = 0.15 + k * 0.22
+    rad = math.radians(270)
+    e = along * math.sin(rad) * 1852
+    n = along * math.cos(rad) * 1852
+    lat, lon = enu_ll(rwy["lat"], rwy["lon"], e, n)
+    gnd_raw.append({"t": 2000 + k * 2, "lat": lat, "lon": lon, "alt": 0, "gs": 50 + k * 14, "trk": 270, "gnd": True, "leg": False, "stale": False})
+air_raw = []
+for k in range(12):
+    along = 1.9 + k * 0.9
+    rad = math.radians(270)
+    e = along * math.sin(rad) * 1852
+    n = along * math.cos(rad) * 1852
+    lat, lon = enu_ll(rwy["lat"], rwy["lon"], e, n)
+    air_raw.append({"t": 2020 + k * 4, "lat": lat, "lon": lon, "alt": 200 + k * 400, "gs": 170, "trk": 270, "gnd": False, "leg": False, "stale": False})
+sm_roll = kalman_rts(gnd_raw + air_raw, apt["lat"], apt["lon"])
+sm_body = [p for p in sm_roll if p]
+ok(len(sm_body) == 20, f"surface+air keeps samples, got {len(sm_body)}")
+for i, p in enumerate(gnd_raw):
+    ok(abs(sm_body[i]["lat"] - p["lat"]) < 1e-12 and abs(sm_body[i]["lon"] - p["lon"]) < 1e-12, f"ground sample {i} not RTS'd")
+asg_roll = assign_runway(sm_roll, apt)
+ok(asg_roll == ("dep", "27L"), f"ground-roll heading+offset assigns 27L dep, got {asg_roll}")
+
+# Parallel uniqueness: a 27L-centreline roll is not 27R.
+rwy_r = next(r for r in apt["rwys"] if r["id"] == "27R")
+asg_rwy = assign_runway(sm_roll, apt)
+ok(asg_rwy[1] != "27R", "27L roll is not labelled 27R")
+# A 27R-centreline track assigns 27R, not 27L.
+rwy_pts = []
+for k in range(8):
+    along = 0.15 + k * 0.22
+    rad = math.radians(rwy_r["hdg"])
+    e = along * math.sin(rad) * 1852
+    n = along * math.cos(rad) * 1852
+    lat, lon = enu_ll(rwy_r["lat"], rwy_r["lon"], e, n)
+    rwy_pts.append({"t": 3000 + k * 2, "lat": lat, "lon": lon, "alt": 0, "gs": 55 + k * 12, "trk": rwy_r["hdg"], "gnd": True, "leg": False, "stale": False})
+for k in range(12):
+    along = 1.9 + k * 0.9
+    rad = math.radians(rwy_r["hdg"])
+    e = along * math.sin(rad) * 1852
+    n = along * math.cos(rad) * 1852
+    lat, lon = enu_ll(rwy_r["lat"], rwy_r["lon"], e, n)
+    rwy_pts.append({"t": 3020 + k * 4, "lat": lat, "lon": lon, "alt": 200 + k * 400, "gs": 170, "trk": rwy_r["hdg"], "gnd": False, "leg": False, "stale": False})
+ok(assign_runway(rwy_pts, apt) == ("dep", "27R"), f"27R centreline assigns 27R, got {assign_runway(rwy_pts, apt)}")
+# A single unique on-runway sample is enough (many clips only have one airborne-over-strip point).
+one = [rwy_pts[3]] + rwy_pts[8:]
+ok(assign_runway(one, apt) == ("dep", "27R"), f"single 27R hit still assigns, got {assign_runway(one, apt)}")
+
+# Taxi is not used as the representative start.
+taxi = []
+for k in range(5):
+    along, cross = -0.1, 0.14
+    rad = math.radians(270)
+    e = (along * math.sin(rad) + cross * math.cos(rad)) * 1852
+    n = (along * math.cos(rad) - cross * math.sin(rad)) * 1852
+    lat, lon = enu_ll(rwy["lat"], rwy["lon"], e, n)
+    taxi.append({"t": 1990 + k, "lat": lat, "lon": lon, "alt": 0, "gs": 6, "trk": 311, "gnd": True, "leg": False, "stale": False})
+body_drop = roll_and_airborne(taxi + gnd_raw + air_raw, rwy, "dep")
+ok(body_drop[0]["gs"] >= 40, "representative starts at the roll, not taxi")
+_, x0 = rwy_frame(rwy, body_drop[0]["lat"], body_drop[0]["lon"])
+ok(abs(x0) * 1852 < 40, f"roll start |cross| {abs(x0)*1852:.1f} m")
 
 ok(airline_of("A7-ALH", "QTR17", "06a123") == "QTR", "A7- / QTR")
 ok(airline_of("A6-EEA", "UAE12", "896abc") == "UAE", "A6-E / UAE")
@@ -102,12 +175,22 @@ fl = buckets[("LHR", "arr", "27L")][0]
 got = assign_runway(fl["pts"], apt)
 ok(got and got[0] == "arr" and got[1] == "27L", f"fixture 27L arr still assigns 27L after Kalman, got {got}")
 
-cls = cluster_group(buckets[("LHR", "arr", "27L")], apt, "arr")
+cls = cluster_group(buckets[("LHR", "arr", "27L")], apt, "arr", rwy=rwy)
 ok(cls and cls[0]["n"] >= 10, f"dominant 27L arr cluster {cls[:1]}")
 ok(cls[0]["path"] and len(cls[0]["path"][0]) == 2, "path is lon,lat pairs")
 # path should approach EGLL
 last = cls[0]["path"][-1]
 ok(hv_nm(last[1], last[0], apt["lat"], apt["lon"]) < 6, "arrival representative ends near EGLL")
+_, x_arr = rwy_frame(rwy, last[1], last[0])
+ok(abs(x_arr) * 1852 < 80, f"27L arr end |cross| {abs(x_arr)*1852:.1f} m vs centreline")
+
+cls_dep = cluster_group(buckets[("LHR", "dep", "27L")], apt, "dep", rwy=rwy)
+ok(cls_dep and cls_dep[0]["path"], "27L dep cluster")
+first = cls_dep[0]["path"][0]
+_, x_dep = rwy_frame(rwy, first[1], first[0])
+ok(abs(x_dep) * 1852 < 80, f"27L dep start |cross| {abs(x_dep)*1852:.1f} m vs centreline")
+# Anchor is an observed sample, not the OurAirports threshold snapped.
+ok(hv_nm(first[1], first[0], rwy["lat"], rwy["lon"]) > 0.02, "dep start is observed on the roll, not snapped to the threshold")
 
 with tempfile.TemporaryDirectory() as td:
     idx = bht.write_tiles(td, apts, qtr, buckets, ["fixture"], ("2025-11-04", "2026-11-03"))

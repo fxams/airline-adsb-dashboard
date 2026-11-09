@@ -30,6 +30,8 @@ ok(/not navigraph/i.test(JSON.stringify(idxFile)) && /not jeppesen/i.test(JSON.s
 
 const html = fs.readFileSync("public/index.html", "utf8");
 ok(html.includes("id=\"aipsid\""), "SID/STAR toggle");
+ok(html.includes("id=\"aipsidf\"") && html.includes("id=\"rwy\""), "filter-sheet Runway paths and SID/STAR toggles");
+ok(html.includes("id=\"rwyb\""), "map toolbar Runway paths button");
 ok(html.includes("id=\"aipp\""), "AIP panel");
 ok(html.includes("id=\"aipname\""), "name-only licence-restricted toggle");
 ok(/licence-restricted/i.test(html), "toggle labelled licence-restricted");

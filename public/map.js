@@ -1,6 +1,7 @@
 // Live map: FR24-style aircraft layer, trails, selection panel, real flown tracks. Data: adsb.lol (ODbL).
 let SEL=null,TR={},CSR=null,TK=null,prof=null,lastFrame=0,REG_BY_HEX={},SRCH_GND=[],QHits=[],QIx=-1,QTm=null;
-const TRACK_LAYERS=["trails","tk","tkgc","sel-flown","sel-join","sel-gap","sel-rem","hist-rep","hist-cor","hist-lab"];
+const TRACK_LAYERS=["trails","tk","tkgc","sel-flown","sel-join","sel-gap","sel-rem"];
+const HIST_LAB_MINZOOM=10.2;
 let HI=null,HIST=null,HIST_APT=null,AIPI=null,AIP=null,AIP_APT=null;
 function ageS(){return L&&L.at?Math.min(90,(Date.now()-new Date(L.at))/1000):0}
 function gndLikePos(onG,gs,alt,posAge){
@@ -153,14 +154,28 @@ function observedEvents(P,a){
   return ev;
 }
 function hideTracksOn(){return localStorage.hidet==="1"}
+function runwayPathsOn(){return localStorage.rwy!=="0"}
 function applyTrackVis(){
   if(!map)return;
   const hide=hideTracksOn(),vis=on=>on?"visible":"none";
   for(const id of TRACK_LAYERS)if(map.getLayer(id))map.setLayoutProperty(id,"visibility",vis(!hide));
   if(map.getLayer("arcs"))map.setLayoutProperty("arcs","visibility",vis(!hide&&$("arcs")&&$("arcs").checked));
-  const histOn=!hide&&APT&&APT!=="G"&&HIST&&!HIST.error;
-  for(const id of ["hist-rep","hist-cor","hist-lab"]) if(map.getLayer(id)) map.setLayoutProperty(id,"visibility",vis(histOn));
+  const histOn=runwayPathsOn()&&HIST&&!HIST.error;
+  const z=map.getZoom?map.getZoom():0;
+  if(map.getLayer("hist-rep")) map.setLayoutProperty("hist-rep","visibility",vis(histOn));
+  if(map.getLayer("hist-cor")) map.setLayoutProperty("hist-cor","visibility",vis(histOn&&z>=9.5));
+  if(map.getLayer("hist-lab")) map.setLayoutProperty("hist-lab","visibility",vis(histOn&&z>=HIST_LAB_MINZOOM));
   if(map.getLayer("hist-raw")) map.setLayoutProperty("hist-raw","visibility",vis(histOn&&$("hraw")&&$("hraw").checked));
+  if(map.getLayer("aip-lab")){
+    const aipLines=map.getLayer("aip-sid")&&map.getLayoutProperty("aip-sid","visibility")==="visible";
+    map.setLayoutProperty("aip-lab","visibility",vis(aipLines&&z>=10.4));
+  }
+}
+function setRunwayPaths(on){
+  localStorage.rwy=on?"1":"0";
+  const el=$("rwy");if(el)el.checked=!!on;
+  const b=$("rwyb");if(b){b.classList.toggle("on",!!on);b.setAttribute("aria-pressed",on?"true":"false");const t=b.querySelector("[data-role=label]");if(t)t.textContent=on?"RWY paths":"Paths off";else b.textContent=on?"RWY paths":"Paths off"}
+  applyTrackVis();
 }
 function setHideTracks(on){
   localStorage.hidet=on?"1":"0";
@@ -384,6 +399,7 @@ function initMap(){map=new maplibregl.Map({container:"map",style:"https://basema
   ["live","arcs"].forEach(l=>{map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",l,()=>map.getCanvas().style.cursor="")});
   CSR=await fetch("/api/csroute").then(r=>r.json()).catch(()=>null);
   map.on("moveend",onAptMove);
+  map.on("zoom",applyTrackVis);
   const tick=()=>{if(Date.now()-lastFrame>1000){lastFrame=Date.now();drawLive()}requestAnimationFrame(tick)};tick();onPoll();covDraw();setApt(localStorage.apt||"G");applyTrackVis();applyRegLab();syncWx()})}
 function colorMode(){if(!map.getLayer("live"))return;const m=$("cm").value;
  map.setPaintProperty("live","icon-color",["case",["==",["get","s"],1],"#ffffff",["==",["get","g"],1],GND,m==="alt"?ALTC:["match",["get","a"],"QTR",C1,"UAE",C2,AMB]]);
@@ -650,7 +666,7 @@ function gSetup(){if(map.getSource("sat"))return;const b=map.getStyle().layers.f
     map.addSource("histraw",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
     map.addLayer({id:"hist-raw",type:"line",source:"histraw",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","dir"],"dep","#8befff","#ffd19a"],"line-width":1.05,"line-opacity":0.28}});
     map.addSource("hist",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    map.addLayer({id:"hist-rep",type:"line",source:"hist",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","dir"],"dep","#4ee0ff","#ff9f43"],"line-width":["case",["==",["get","sec"],1],2.1,3.2],"line-opacity":["case",["==",["get","sec"],1],0.7,0.95]}});
+    map.addLayer({id:"hist-rep",type:"line",source:"hist",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","dir"],"dep","#4ee0ff","#ff9f43"],"line-width":["interpolate",["linear"],["zoom"],3,["case",["==",["get","sec"],1],2.2,3.4],7,["case",["==",["get","sec"],1],2.4,3.6],12,["case",["==",["get","sec"],1],2.1,3.2]],"line-opacity":["case",["==",["get","sec"],1],0.75,0.95]}});
     map.addSource("histlab",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
     map.addLayer({id:"hist-lab",type:"symbol",source:"histlab",minzoom:10.2,layout:{visibility:"none","text-field":["get","lab"],"text-size":11,"text-font":["Open Sans Regular"],"text-anchor":"left","text-offset":[0.5,0],"text-optional":true,"text-allow-overlap":true,"text-ignore-placement":true,"text-padding":2},paint:{"text-color":"#e6f1ff","text-halo-color":"#05070d","text-halo-width":1.4}});
     const histClick=(e, raw)=>{
@@ -664,14 +680,14 @@ function gSetup(){if(map.getSource("sat"))return;const b=map.getStyle().layers.f
   if($("hraw")&&!$("hraw").dataset.bound){$("hraw").dataset.bound="1";$("hraw").onchange=()=>histPaint()}
   if(!map.getSource("aip")){
     map.addSource("aip",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    map.addLayer({id:"aip-sid",type:"line",source:"aip",filter:["==",["get","kind"],"sid"],minzoom:9.8,layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":"#7CFFB2","line-width":1.35,"line-opacity":0.45,"line-dasharray":[2.2,1.6]}});
-    map.addLayer({id:"aip-star",type:"line",source:"aip",filter:["==",["get","kind"],"star"],minzoom:9.8,layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":"#e08cff","line-width":1.35,"line-opacity":0.45,"line-dasharray":[2.2,1.6]}});
+    map.addLayer({id:"aip-sid",type:"line",source:"aip",filter:["==",["get","kind"],"sid"],layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":"#7CFFB2","line-width":["interpolate",["linear"],["zoom"],2,0.7,8,1.1,12,1.35],"line-opacity":0.45,"line-dasharray":[2.2,1.6]}});
+    map.addLayer({id:"aip-star",type:"line",source:"aip",filter:["==",["get","kind"],"star"],layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":"#e08cff","line-width":["interpolate",["linear"],["zoom"],2,0.7,8,1.1,12,1.35],"line-opacity":0.45,"line-dasharray":[2.2,1.6]}});
     map.addSource("aipnear",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    map.addLayer({id:"aip-near",type:"line",source:"aipnear",minzoom:9.8,layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","kind"],"sid","#b6ffd4","#f3c4ff"],"line-width":2.6,"line-opacity":0.92}});
+    map.addLayer({id:"aip-near",type:"line",source:"aipnear",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","kind"],"sid","#b6ffd4","#f3c4ff"],"line-width":["interpolate",["linear"],["zoom"],2,1.2,8,1.8,12,2.6],"line-opacity":0.92}});
     map.addSource("aiplab",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
     map.addLayer({id:"aip-lab",type:"symbol",source:"aiplab",minzoom:10.4,layout:{visibility:"none","text-field":["get","lab"],"text-size":11,"text-font":["Open Sans Regular"],"text-anchor":"left","text-offset":[0.45,0],"text-optional":true,"text-allow-overlap":false,"text-padding":2},paint:{"text-color":"#d8ffe8","text-halo-color":"#05070d","text-halo-width":1.4}});
   }
-  if($("aipsid")&&!$("aipsid").dataset.bound){$("aipsid").dataset.bound="1";$("aipsid").onchange=()=>{localStorage.aipsid=$("aipsid").checked?"1":"0";aipPaint()}}
+  if($("aipsid")&&!$("aipsid").dataset.bound){$("aipsid").dataset.bound="1";$("aipsid").onchange=()=>setAipOn($("aipsid").checked)}
   if($("aipall")&&!$("aipall").dataset.bound){$("aipall").dataset.bound="1";$("aipall").onchange=()=>{localStorage.aipall=$("aipall").checked?"1":"0";aipPaint()}}
   if($("aipname")&&!$("aipname").dataset.bound){$("aipname").dataset.bound="1";$("aipname").onchange=()=>{localStorage.aipname=$("aipname").checked?"1":"0";aipPaint();histPaint();if(SEL)selUpdate()}}
 }
@@ -693,7 +709,12 @@ function setApt(a,opts){
   if(g){
     if(fly){APT_FLY=true;map.flyTo({center:[hub.lon,hub.lat],zoom:innerWidth<700?12.6:13.4,speed:2});map.once("moveend",afterFly)}
     gLoad();GT=setInterval(gLoad,30000);histLoad(id);aipLoad(id)
-  }else {histLoad("G");aipLoad("G");if(fly){APT_FLY=true;map.flyTo({center:[35,28],zoom:innerWidth<700?1.1:2,speed:2});map.once("moveend",afterFly)}}
+  }else {
+    // Keep the last loaded airport's paths when their toggles are on. Do not fetch every tile.
+    if(!runwayPathsOn()) histLoad("G"); else histPaint();
+    if(!aipOn()) aipLoad("G"); else aipPaint();
+    if(fly){APT_FLY=true;map.flyTo({center:[35,28],zoom:innerWidth<700?1.1:2,speed:2});map.once("moveend",afterFly)}
+  }
   applyTrackVis();applyRegLab()
 }
 async function histLoad(id){
@@ -791,7 +812,13 @@ function histIdentPopup(lngLat, props, raw){
   const ll=Array.isArray(lngLat)?lngLat:(lngLat.lng!=null?[lngLat.lng,lngLat.lat]:lngLat);
   new maplibregl.Popup({maxWidth:"320px", closeOnClick:true}).setHTML(`<div style="color:#000;font:12px/1.4 sans-serif">${html}</div>`).setLngLat(ll).addTo(map);
 }
-function aipOn(){return !!( $("aipsid") && $("aipsid").checked )}
+function aipOn(){return localStorage.aipsid==="1"}
+function setAipOn(on){
+  localStorage.aipsid=on?"1":"0";
+  ["aipsid","aipsidf"].forEach(id=>{const el=$(id);if(el)el.checked=!!on});
+  const b=$("sidb");if(b){b.classList.toggle("on",!!on);b.setAttribute("aria-pressed",on?"true":"false");const t=b.querySelector("[data-role=label]");if(t)t.textContent=on?"SID/STAR":"SID off";else b.textContent=on?"SID/STAR":"SID off"}
+  aipPaint();
+}
 async function aipLoad(id){
   if(!id||id==="G"){AIP=null;AIP_APT=null;aipPaint();histPaint();return}
   if(AIP_APT===id&&AIP){aipPaint();histPaint();return}
@@ -837,7 +864,8 @@ function aipPaint(){
   if(map.getSource("aipnear")) map.getSource("aipnear").setData({type:"FeatureCollection",features:near});
   if(map.getSource("aiplab")) map.getSource("aiplab").setData({type:"FeatureCollection",features:labs});
   const vis=on?"visible":"none";
-  for(const id of ["aip-sid","aip-star","aip-near","aip-lab"]) if(map.getLayer(id)) map.setLayoutProperty(id,"visibility",vis);
+  for(const id of ["aip-sid","aip-star","aip-near"]) if(map.getLayer(id)) map.setLayoutProperty(id,"visibility",vis);
+  applyTrackVis();
   const el=$("aipp");
   if(el){
     if(!j||j.error){el.textContent="";}
@@ -906,7 +934,7 @@ function histPaint(){
       el.textContent=`No terminal-area geometry in the sampled UTC days (${((HI&&HI.geom_days)||[]).join(", ")||"none"}). 365-day observed QTR city-pair count: ${j&&j.h2h_n!=null?j.h2h_n:"n/a"} flights (${j&&j.h2h_inf||0} one-end-inferred). adsb.lol had no assignable QTR/UAE traces here, or coverage was too thin. Observed ADS-B, not published SID/STAR.`;
     }else if(j&&j.rwys&&j.rwys.length){
       const days=(j.geom_days||[]).join(", ");
-      const head=`${j.icao||j.apt} representative paths · ${j.n_assigned||0} assigned flights · geometry UTC days ${days} · window ${j.from}–${j.to} UTC · Kalman/RTS + runway cluster · not published SID/STAR`;
+      const head=`${j.icao||j.apt} representative paths · ${j.n_assigned||0} assigned flights · geometry UTC days ${days} · window ${j.from}–${j.to} UTC · ground-roll unsmoothed · heading+offset per runway end · not published SID/STAR`;
       const cifp=AIP&&AIP.ident_mode==="cifp";
       const identFoot=cifp
         ?`<br>Per-flight SID/STAR shares use the stored Kalman subsample (${(AIP.ident&&AIP.ident.flights)||0} clips here), not every 365-day flight. FAA CIFP names only. Estimated from the ADS-B track, not the ATC clearance. Not for navigation.`

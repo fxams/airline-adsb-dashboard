@@ -150,7 +150,7 @@ evidence.jfkOnShot = await shot(desk, "aip-jfk-sidstar");
 }
 
 await goApt(desk, "LAX", 11.4);
-await desk.evaluate(() => { const el = document.getElementById("aipsid"); el.checked = true; aipPaint(); });
+await desk.evaluate(() => { setAipOn(true); });
 await new Promise((r) => setTimeout(r, 500));
 const lax = await info(desk);
 ok(lax.nProc >= 4, `LAX procedures ${lax.nProc}`);
@@ -202,7 +202,7 @@ await desk.close();
 
 const mob = await open(390, 844, true);
 await goApt(mob, "JFK", 11.8);
-await mob.evaluate(() => { const el = document.getElementById("aipsid"); if (el) { el.checked = true; aipPaint(); } });
+await mob.evaluate(() => { setAipOn(true); });
 await new Promise((r) => setTimeout(r, 500));
 const jfkM = await info(mob);
 ok(jfkM.nProc >= 2, "mobile JFK procedures");

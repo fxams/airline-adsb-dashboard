@@ -21,11 +21,15 @@ CLIP_NM = 55.0
 CORE_NM = 8.0
 CORRIDOR_NM = 14.0
 HALF_W_NM = 0.55
-ON_RWY_NM = 0.22
-HDG_TOL = 28.0
+ON_RWY_NM = 0.05  # ~93 m: tighter than EGLL 27L/27R spacing (~350 m)
+HDG_TOL = 22.0
+ROLL_GS = 40.0
+ROLL_ALT_FT = 400.0
 GAP_SPLIT_S = 180.0
 MIN_PTS = 8
 RESAMPLE_N = 28
+NEAR_M = 4500.0
+NEAR_STATIONS = 12
 RAW_CAP = 16
 CLUSTER_EPS_NM = 1.35
 HEX_QTR_UAE = re.compile(r"trace_full_(06a|896)([0-9a-f]*)\.json", re.I)
@@ -62,6 +66,12 @@ def rr(x, n=5):
     return round(float(x), n)
 
 
+def rr_near(lon, lat, apt, n_near=6, n_far=5, near_nm=8.0):
+    """Keep ~0.1 m precision near the airport; 5 dp (~1 m) farther out."""
+    n = n_near if hv_nm(lat, lon, apt["lat"], apt["lon"]) <= near_nm else n_far
+    return [rr(lon, n), rr(lat, n)]
+
+
 # --- Kalman CV + RTS ---------------------------------------------------------
 
 def kalman_rts(pts, lat0, lon0):
@@ -81,12 +91,48 @@ def kalman_rts(pts, lat0, lon0):
         cur.append(p)
     if len(cur) >= 3:
         segs.append(cur)
+    elif cur and len(cur) >= 1:
+        # short leftover (often a ground-roll stub): keep observed, do not drop
+        segs.append(cur)
     out = []
     for seg in segs:
-        out.extend(_rts_seg(seg, lat0, lon0))
+        out.extend(_rts_maybe_split_surface(seg, lat0, lon0))
         out.append(None)
     if out and out[-1] is None:
         out.pop()
+    return out
+
+
+def _is_surface(p):
+    """Taxi / ground-roll / flare: constant-velocity RTS cuts corners here."""
+    if p.get("gnd"):
+        return True
+    gs = p.get("gs")
+    if _alt(p) <= 50 and (gs is None or gs < 80):
+        return True
+    return False
+
+
+def _rts_maybe_split_surface(seg, lat0, lon0):
+    """Do not RTS through the ground roll. Surface samples stay as observed."""
+    if len(seg) < 3:
+        return [dict(p) for p in seg]
+    runs, cur, flag = [], [], _is_surface(seg[0])
+    for p in seg:
+        f = _is_surface(p)
+        if cur and f != flag:
+            runs.append((flag, cur))
+            cur = []
+            flag = f
+        cur.append(p)
+    if cur:
+        runs.append((flag, cur))
+    out = []
+    for surface, run in runs:
+        if surface or len(run) < 3:
+            out.extend(dict(p) for p in run)
+        else:
+            out.extend(_rts_seg(run, lat0, lon0))
     return out
 
 
@@ -201,6 +247,11 @@ def load_ourairports(airports_csv, runways_csv, iata_wanted):
                     length_ft = float(row.get("length_ft") or 0)
                 except (TypeError, ValueError):
                     continue
+                try:
+                    width_ft = float(row.get("width_ft") or 0)
+                except (TypeError, ValueError):
+                    width_ft = 0.0
+                width_m = max(30.0, width_ft * 0.3048) if width_ft else 45.0
                 ends.append({
                     "id": rid,
                     "lat": lat,
@@ -209,25 +260,129 @@ def load_ourairports(airports_csv, runways_csv, iata_wanted):
                     "end_lat": olat,
                     "end_lon": olon,
                     "length_nm": max(0.5, length_ft * 0.3048 / NM_M),
+                    "width_m": width_m,
                 })
             by_iata[iata]["rwys"].extend(ends)
     return by_iata
 
 
+def reassign_buckets(buckets, apts):
+    """Re-run assign_runway on cached clips. Does not invent tracks or snap to thresholds."""
+    new = defaultdict(list)
+    n_ok = n_drop = 0
+    for (apt_id, _kind, _rid), fls in buckets.items():
+        apt = apts.get(apt_id)
+        if not apt:
+            continue
+        for fl in fls:
+            asg = assign_runway(fl.get("pts") or [], apt)
+            if not asg:
+                new[(apt_id, None, None)].append(fl)
+                n_drop += 1
+                continue
+            new[(apt_id, asg[0], asg[1])].append(fl)
+            n_ok += 1
+        if (n_ok + n_drop) and (n_ok + n_drop) % 400 == 0:
+            print("  reassign", n_ok, "drop", n_drop, apt_id, flush=True)
+    return new, n_ok, n_drop
+
+
 def rwy_frame(rwy, lat, lon):
-    """Along (nm, + along heading from threshold) and cross (nm, + right)."""
+    """Along (nm, + toward the far end) and cross (nm, + right of the pavement).
+
+    Lateral offset uses the OurAirports threshold→far-end vector, not the
+    rounded published heading, so a 2° heading residual cannot look like 60 m
+    of cross-track at mid-runway.
+    """
     e, n = enu_m(rwy["lat"], rwy["lon"], lat, lon)
-    rad = math.radians(rwy["hdg"])
-    along = (n * math.cos(rad) + e * math.sin(rad)) / NM_M
-    cross = (e * math.cos(rad) - n * math.sin(rad)) / NM_M
+    ee, nn = enu_m(rwy["lat"], rwy["lon"], rwy["end_lat"], rwy["end_lon"])
+    axis = math.hypot(ee, nn)
+    if axis >= 200.0:
+        ue, un = ee / axis, nn / axis
+    else:
+        rad = math.radians(rwy["hdg"])
+        ue, un = math.sin(rad), math.cos(rad)
+    along = (e * ue + n * un) / NM_M
+    cross = (e * un - n * ue) / NM_M
     return along, cross
+
+
+def _max_cross_nm(rwy):
+    """Lateral gate: inside ~one runway width plus ADS-B noise, below half parallel spacing."""
+    w = float(rwy.get("width_m") or 45.0)
+    return min(ON_RWY_NM, max(0.035, (0.5 * w + 40.0) / NM_M))
+
+
+def on_runway_hits(pts, rwy):
+    """Observed samples on this exact runway end: heading + lateral offset, not taxi.
+
+    Ground-roll (gs ≥ 40 kt on the pavement) preferred; low airborne over the
+    strip is accepted when the takeoff/landing roll itself was not received.
+    Taxi (slow, parked) is ignored.
+    """
+    hits = []
+    max_c = _max_cross_nm(rwy)
+    L = rwy["length_nm"]
+    for p in pts:
+        if not p:
+            continue
+        gs = p.get("gs")
+        if gs is None:
+            gs = 0.0
+        alt = _alt(p)
+        airborne_low = (not p.get("gnd")) and alt <= ROLL_ALT_FT and gs >= 80
+        rolling = gs >= ROLL_GS and (p.get("gnd") or alt <= ROLL_ALT_FT)
+        if not (rolling or airborne_low):
+            continue
+        trk = p.get("trk")
+        if trk is None or hdg_err(trk, rwy["hdg"]) > HDG_TOL:
+            continue
+        along, cross = rwy_frame(rwy, p["lat"], p["lon"])
+        if along < -0.08 or along > L + 0.12:
+            continue
+        if abs(cross) > max_c:
+            continue
+        hits.append({"p": p, "along": along, "cross": cross, "gs": gs, "alt": alt})
+    return hits
+
+
+def _kind_from_body(body, hits):
+    """Climb after the roll = dep; descend into the roll = arr. Along-track
+    increases on the same runway heading for both, so it is not used here.
+    """
+    alt0, alt1 = _alt(body[0]), _alt(body[-1])
+    if hits:
+        try:
+            i0 = body.index(hits[0]["p"])
+            i1 = body.index(hits[-1]["p"])
+        except ValueError:
+            i0, i1 = 0, len(body) - 1
+        pre = [_alt(p) for p in body[max(0, i0 - 12):i0]]
+        post = [_alt(p) for p in body[i1 + 1:i1 + 16]]
+        pre_m = sum(pre) / len(pre) if pre else _alt(hits[0]["p"])
+        post_m = sum(post) / len(post) if post else _alt(hits[-1]["p"])
+        if post_m - pre_m > 300:
+            return "dep"
+        if pre_m - post_m > 300:
+            return "arr"
+        g0, g1 = hits[0]["gs"], hits[-1]["gs"]
+        if g1 - g0 > 25:
+            return "dep"
+        if g0 - g1 > 25:
+            return "arr"
+    if alt1 - alt0 > 400:
+        return "dep"
+    if alt0 - alt1 > 400:
+        return "arr"
+    return None
 
 
 def assign_runway(pts, apt):
     """Return (dir, rwy_id) or None. dir is 'arr' or 'dep'.
 
-    Uses first/last low samples vs OurAirports runway ends: heading + position
-    in a departure/arrival corridor. Ambiguous tracks are discarded.
+    Assign from ground-roll heading and lateral offset to an OurAirports
+    runway end. Parallel runways (27L vs 27R) must be uniquely closer.
+    Tracks with no on-runway evidence are discarded, not guessed.
     """
     if not apt.get("rwys") or len(pts) < MIN_PTS:
         return None
@@ -238,48 +393,52 @@ def assign_runway(pts, apt):
     near = [p for p in body if hv_nm(p["lat"], p["lon"], lat0, lon0) <= CORE_NM + 6]
     if len(near) < 3:
         return None
-    alts = [p["alt"] for p in body if p.get("alt") is not None and p["alt"] != "ground"]
-    if not alts:
-        return None
-    first, last = body[0], body[-1]
-    d0 = hv_nm(first["lat"], first["lon"], lat0, lon0)
-    d1 = hv_nm(last["lat"], last["lon"], lat0, lon0)
-    alt0 = _alt(first)
-    alt1 = _alt(last)
-    climbing = alt1 - alt0 > 400 or (d1 - d0 > 4 and alt1 > alt0)
-    descending = alt0 - alt1 > 400 or (d0 - d1 > 4 and alt0 > alt1)
-    if climbing and not descending:
-        kind = "dep"
-        probe = body[: max(4, len(body) // 5)]
-    elif descending and not climbing:
-        kind = "arr"
-        probe = body[-max(4, len(body) // 5) :]
-    else:
-        if d1 + 1.5 < d0:
-            kind, probe = "arr", body[-max(4, len(body) // 5) :]
-        elif d0 + 1.5 < d1:
-            kind, probe = "dep", body[: max(4, len(body) // 5)]
-        else:
-            return None
-    best, best_s = None, None
+    scored = []
     for rwy in apt["rwys"]:
-        score = _corridor_score(probe, rwy, kind)
-        if score is None:
+        hits = on_runway_hits(body, rwy)
+        if len(hits) < 1:
             continue
-        if best_s is None or score < best_s:
-            best, best_s = rwy, score
-    if best is None or best_s > 2.4:
+        med_c = sorted(abs(h["cross"]) for h in hits)[len(hits) // 2]
+        hdg = sum(hdg_err(h["p"].get("trk"), rwy["hdg"]) for h in hits) / len(hits)
+        scored.append((med_c + hdg / 800.0, med_c, rwy, hits))
+    if not scored:
         return None
-    second = None
-    for rwy in apt["rwys"]:
-        if rwy is best:
-            continue
-        s = _corridor_score(probe, rwy, kind)
-        if s is not None and (second is None or s < second):
-            second = s
-    if second is not None and abs(best_s - second) < 0.06:
-        return None  # parallel runways, not closer to either centreline
+    scored.sort(key=lambda x: x[0])
+    best_s, best_c, best, hits = scored[0]
+    if best_c > ON_RWY_NM:
+        return None
+    if len(scored) > 1 and (scored[1][1] - best_c) < 0.02:
+        # Next runway is within ~37 m of being as close: ambiguous parallel.
+        return None
+    kind = _kind_from_body(body, hits)
+    if not kind:
+        return None
     return kind, best["id"]
+
+
+def roll_and_airborne(pts, rwy, kind):
+    """Drop taxi. Keep observed on-runway roll + the airborne continuation.
+
+    Does not snap to the published threshold. If there is no roll, the first
+    (dep) or last (arr) low airborne sample over the strip is the anchor.
+    """
+    body = [p for p in pts if p]
+    if not body or not rwy:
+        return body
+    hits = on_runway_hits(body, rwy)
+    if hits:
+        i0 = body.index(hits[0]["p"])
+        i1 = body.index(hits[-1]["p"])
+        if kind == "dep":
+            return body[i0:]
+        return body[: i1 + 1]
+    # No roll received: still drop slow taxi at the ends.
+    lo, hi = 0, len(body)
+    while lo < hi and _is_surface(body[lo]) and (body[lo].get("gs") or 0) < ROLL_GS:
+        lo += 1
+    while hi > lo and _is_surface(body[hi - 1]) and (body[hi - 1].get("gs") or 0) < ROLL_GS:
+        hi -= 1
+    return body[lo:hi] if hi - lo >= 3 else body
 
 
 def _alt(p):
@@ -316,8 +475,23 @@ def _corridor_score(probe, rwy, kind):
 
 # --- Clustering --------------------------------------------------------------
 
-def resample_xy(pts, apt, kind, n=RESAMPLE_N):
-    body = [p for p in pts if p]
+def _stations(total, n=RESAMPLE_N, near=NEAR_M, n_near=NEAR_STATIONS):
+    """More samples in the first `near` metres (runway / rotation), then the rest."""
+    if n < 4:
+        return [total * k / max(1, n - 1) for k in range(n)]
+    n_near = min(n - 3, max(4, n_near))
+    n_far = n - n_near
+    near = min(near, total * 0.45)
+    out = [near * k / (n_near - 1) for k in range(n_near)]
+    rest = total - near
+    for k in range(1, n_far + 1):
+        out.append(near + rest * k / n_far)
+    return out
+
+
+def resample_xy(pts, apt, kind, n=RESAMPLE_N, rwy=None):
+    body = roll_and_airborne(pts, rwy, kind) if rwy else [p for p in pts if p]
+    body = [p for p in body if p]
     if len(body) < 3:
         return None
     lat0, lon0 = apt["lat"], apt["lon"]
@@ -333,8 +507,7 @@ def resample_xy(pts, apt, kind, n=RESAMPLE_N):
         return None
     out = []
     j = 0
-    for k in range(n):
-        t = total * k / (n - 1)
+    for t in _stations(total, n):
         while j + 1 < len(dist) and dist[j + 1] < t:
             j += 1
         if j + 1 >= len(dist):
@@ -382,11 +555,11 @@ def dbscan(X, eps, min_samples):
     return labels
 
 
-def cluster_group(flights, apt, kind):
+def cluster_group(flights, apt, kind, rwy=None):
     """flights: list of {pts, ...}. Returns clusters with path, p25, p75, n, share."""
     vecs, keep = [], []
     for i, fl in enumerate(flights):
-        v = resample_xy(fl["pts"], apt, kind)
+        v = resample_xy(fl["pts"], apt, kind, rwy=rwy)
         if v is None:
             continue
         vecs.append(v)
@@ -421,14 +594,17 @@ def cluster_group(flights, apt, kind):
         med = sub[int(np.argmin(dsum))]
         mean = sub.mean(axis=0)
         p25, p75 = (med, med) if len(sub) < 4 else _cross_track_band(med, sub)
+        path = _vec_to_ll(med, apt, kind)
+        members = [keep[i] for i in idx]
+        path = _anchor_observed(path, [flights[i] for i in members], apt, kind, rwy)
         clusters.append({
             "n": int(cnt),
             "share": round(cnt / len(flights), 3),
-            "path": _vec_to_ll(med, apt, kind),
+            "path": path,
             "mean": _vec_to_ll(mean, apt, kind),
             "p25": _vec_to_ll(p25, apt, kind),
             "p75": _vec_to_ll(p75, apt, kind),
-            "members": [keep[i] for i in idx],
+            "members": members,
         })
         if len(clusters) >= 2:
             break
@@ -462,10 +638,41 @@ def _vec_to_ll(vec, apt, kind):
     pts = []
     for i in range(0, len(vec), 2):
         lat, lon = enu_ll(apt["lat"], apt["lon"], float(vec[i]), float(vec[i + 1]))
-        pts.append([rr(lon), rr(lat)])
+        pts.append(rr_near(lon, lat, apt))
     if kind == "arr":
         pts.reverse()
     return pts
+
+
+def _anchor_observed(path, flights, apt, kind, rwy):
+    """Replace the airport-end vertex with the median of observed roll positions.
+
+    True ADS-B samples, not a synthetic snap to the OurAirports threshold.
+    """
+    if not path or not flights:
+        return path
+    pts = []
+    for fl in flights:
+        body = roll_and_airborne(fl["pts"], rwy, kind) if rwy else [p for p in fl["pts"] if p]
+        body = [p for p in body if p]
+        if not body:
+            continue
+        p = body[0] if kind == "dep" else body[-1]
+        pts.append((p["lat"], p["lon"]))
+    if not pts:
+        return path
+    slat = sorted(p[0] for p in pts)
+    slon = sorted(p[1] for p in pts)
+    mlat, mlon = slat[len(pts) // 2], slon[len(pts) // 2]
+    # Medoid of observed samples — an actual ADS-B point, not a mean or snap.
+    best = min(pts, key=lambda p: (p[0] - mlat) ** 2 + ((p[1] - mlon) * math.cos(math.radians(mlat))) ** 2)
+    vertex = rr_near(best[1], best[0], apt)
+    out = [list(x) for x in path]
+    if kind == "dep":
+        out[0] = vertex
+    else:
+        out[-1] = vertex
+    return out
 
 
 # --- Trace parsing -----------------------------------------------------------
@@ -613,7 +820,10 @@ def pack_tile(apt, flights_by_key, geom_days, h2h_n, h2h_inf, window):
                 dayset.add(dt.datetime.utcfromtimestamp(fl["t0"]).strftime("%Y-%m-%d"))
         if not usable:
             continue
-        clusters = cluster_group(usable, apt, kind)
+        rwy = next((r for r in apt.get("rwys") or [] if r["id"] == rid), None)
+        clusters = cluster_group(usable, apt, kind, rwy=rwy)
+        if not clusters:
+            continue
         n_ok += len(usable)
         rwys.append({
             "id": rid,
@@ -628,12 +838,12 @@ def pack_tile(apt, flights_by_key, geom_days, h2h_n, h2h_inf, window):
             for p in fl["pts"]:
                 if p is None:
                     if len(cur) >= 2:
-                        seg.append([[rr(x["lon"]), rr(x["lat"])] for x in cur])
+                        seg.append([rr_near(x["lon"], x["lat"], apt) for x in cur])
                     cur = []
                     continue
                 cur.append(p)
             if len(cur) >= 2:
-                seg.append([[rr(x["lon"]), rr(x["lat"])] for x in cur])
+                seg.append([rr_near(x["lon"], x["lat"], apt) for x in cur])
             if seg:
                 raw.append({"a": fl.get("al") or "QTR", "dir": kind, "rwy": rid, "seg": seg})
     return {
@@ -652,5 +862,5 @@ def pack_tile(apt, flights_by_key, geom_days, h2h_n, h2h_inf, window):
         "discarded": discarded,
         "rwys": rwys,
         "raw": raw,
-        "note": "Observed ADS-B terminal-area tracks (adsb.lol, ODbL), Kalman/RTS-smoothed, clustered per runway and direction. Representative paths are the medoid of the dominant cluster. Not published SID/STAR procedures.",
+        "note": "Observed ADS-B terminal-area tracks (adsb.lol, ODbL). Ground-roll samples are not Kalman-smoothed. Assigned by heading and lateral offset to one OurAirports runway end (parallels are not merged). Representative paths are the medoid of the dominant cluster, anchored at the median observed on-runway position — not snapped to the published threshold. Not published SID/STAR procedures.",
     }
