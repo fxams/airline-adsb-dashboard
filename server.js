@@ -3,11 +3,14 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
+const { LiveFeed, parseTypes, feedBanner } = require("./live-feed");
 const PORT = process.env.PORT || 10000;
 const REFRESH_MS = Number(process.env.REFRESH_SECONDS || 90) * 1000;
 // Public hub points (airports), 250 nm radius each.
 // Global feed: adsb.lol has no "whole world" endpoint, so we query every common airliner type globally (/v2/type).
-const TYPES = (process.env.TYPES || "A20N,A21N,A319,A320,A321,A318,BCS1,BCS3,B737,B738,B739,B38M,B39M,B3XM,B752,B753,B763,B764,B772,B77L,B77W,B788,B789,B78X,B744,B748,A306,A332,A333,A338,A339,A343,A346,A359,A35K,A388,E170,E75L,E75S,E190,E195,E290,E295,CRJ7,CRJ9,CRJX,AT75,AT76,DH8D,MD11,B712,C919,A21N").split(",");
+const TYPES = parseTypes(process.env.TYPES);
+const liveFeed = new LiveFeed({ types: TYPES });
+const lastT = liveFeed.lastT;
 const traced = JSON.parse(fs.readFileSync(path.join(__dirname, "data/traced.json"), "utf8"));
 const map = JSON.parse(fs.readFileSync(path.join(__dirname, "data/map.json"), "utf8"));
 const h2h = fs.readFileSync(path.join(__dirname, "data/h2h.json"), "utf8");
@@ -50,12 +53,7 @@ async function adsbdb(cs) {
   return v;
 } // [iso, total aircraft] last 60 refreshes
 
-async function fetchType(t) {
-  const r = await fetch(`https://api.adsb.lol/v2/type/${t}`, { headers: { "User-Agent": "airline-adsb-dashboard (github.com/fxams/airline-adsb-dashboard)" }, signal: AbortSignal.timeout(25000) });
-  if (!r.ok) throw new Error(`adsb.lol ${r.status}`);
-  return (await r.json()).ac || [];
-}
-const lastT = new Map(); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Ground view: aircraft on/near the airport surface + held last ground positions.
 const APT = { DOH: [25.2731, 51.6081, "OTHH Hamad International"], DXB: [25.2528, 55.3644, "OMDB Dubai International"] };
@@ -120,16 +118,9 @@ const cov = new Map(); // "lat2,lon2" 2-degree cells with at least one position,
 let busy = false;
 async function refresh() {
   if (busy) return; busy = true;
+  const t0 = Date.now();
   try {
-    const seen = new Map();
-    const T = [...new Set(TYPES)];
-    for (const t of T) { // serial + spaced to stay under adsb.lol rate limits; reuse last good result (<5 min) on failure
-      let ac = null;
-      for (let k = 0; k < 2 && !ac; k++) { try { ac = await fetchType(t); } catch (e) { await sleep(3000); } }
-      if (ac) lastT.set(t, { ts: Date.now(), ac }); else { const o = lastT.get(t); if (o && Date.now() - o.ts < 300e3) ac = o.ac; else console.error(t, "failed"); }
-      for (const a of ac || []) { const p = seen.get(a.hex); if (!p || (a.seen_pos ?? 99) < (p.seen_pos ?? 99)) seen.set(a.hex, a); }
-      await sleep(800);
-    }
+    const { seen, feed: f } = await liveFeed.refresh();
     const nowc = Date.now();
     for (const a of seen.values()) if (typeof a.lat === "number" && (a.seen_pos ?? 0) <= 60) cov.set(`${Math.floor(a.lat / 2) * 2},${Math.floor(a.lon / 2) * 2}`, nowc);
     for (const [k, t] of cov) if (nowc - t > 24 * 3600e3) cov.delete(k);
@@ -150,25 +141,36 @@ async function refresh() {
       avgAlt: s.air ? Math.round(s.altSum / s.air) : null, avgGs: s.gsN ? Math.round(s.gsSum / s.gsN) : null,
       types: Object.entries(s.types).sort((a, b) => b[1] - a[1]).slice(0, 5),
     })).sort((a, b) => b.n - a.n);
+    const banner = feedBanner(f);
+    // Publish whatever groups succeeded or are still within the stale window. Do not
+    // drop the whole snapshot because some type fetches failed.
     if (seen.size) {
       const at = new Date().toISOString();
-      snapshot = { at, error: null, airlines, total: seen.size };
+      snapshot = { at, error: (f.n_ok || f.n_stale) ? null : (banner || null), airlines, total: seen.size, feed: f };
       gholdClearSeen([...seen.keys()]);
       const ac = [...seen.values()].filter((a) => typeof a.lat === "number" && typeof a.lon === "number" && (a.seen_pos ?? 0) <= 60 && /^[A-Z]{3}\d/.test((a.flight || "").trim()))
         .map((a) => [a.hex, a.flight.trim(), a.flight.trim().slice(0, 3), a.t || "", +a.lat.toFixed(5), +a.lon.toFixed(5), typeof a.alt_baro === "number" ? a.alt_baro : 0, Math.round(a.gs || 0), Math.round(a.track ?? a.true_heading ?? a.mag_heading ?? 0), a.r || "", a.alt_baro === "ground" ? 1 : 0, Math.round(a.seen_pos ?? 0), Math.round(a.baro_rate ?? a.geom_rate ?? 0)]);
       const nm = {};
       for (const r of ac) { const c = r[2]; if (c && names[c] && !nm[c]) nm[c] = names[c]; }
-      live = { at, fields: live.fields, ac, nm };
+      live = { at, fields: live.fields, ac, nm, feed: f };
       const now = Date.now();
       for (const r of live.ac) { const t = trails.get(r[0]) || []; const p = t[t.length - 1]; if (!p || p[1] !== r[5] || p[2] !== r[4]) t.push([now, r[5], r[4], r[6], r[7], r[12], r[10]]); if (t.length > 360) t.shift(); trails.set(r[0], t); }
       for (const [h, t] of trails) if (now - t[t.length - 1][0] > 20 * 60000) trails.delete(h);
       hist.push([at, seen.size, live.ac.length]); if (hist.length > 60) hist.shift();
+    } else {
+      snapshot = { ...snapshot, error: banner || snapshot.error || "no type groups loaded", feed: f };
+      live = { ...live, feed: f };
     }
-  } catch (e) { snapshot.error = e.message; }
+    console.log("refresh", "n=" + seen.size, "ok=" + f.n_ok, "stale=" + f.n_stale, "failed=" + f.n_failed, "ms=" + (Date.now() - t0), banner || "all type groups ok");
+  } catch (e) { snapshot.error = e.message; console.error("refresh", e.message); }
   busy = false;
 }
-refresh();
-setInterval(refresh, REFRESH_MS);
+function scheduleRefresh() {
+  const elapsed = liveFeed.lastCycleMs || 0;
+  const wait = Math.max(8000, REFRESH_MS - elapsed);
+  setTimeout(() => { refresh().finally(scheduleRefresh); }, wait);
+}
+refresh().finally(scheduleRefresh);
 
 const wx = require("./wx");
 const zlib = require("zlib");
@@ -200,6 +202,7 @@ http.createServer(async (req, res) => {
   if (u === "/api/wx/stations") return send(res, 200, "application/json", JSON.stringify(await wx.stations(q.get("ids") || "")), "public, max-age=60");
   if (u === "/api/wx/winds") return send(res, 200, "application/json", JSON.stringify(await wx.winds()), "public, max-age=120");
   if (u === "/api/live") return send(res, 200, "application/json", JSON.stringify({ ...live, history: hist, refreshSeconds: REFRESH_MS / 1000 }));
+  if (u === "/api/feed") return send(res, 200, "application/json", JSON.stringify(liveFeed.summary()));
   if (u === "/api/map") return send(res, 200, "application/json", JSON.stringify(map));
   if (u === "/healthz") return send(res, 200, "text/plain", "ok");
   if (u === "/map.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/map.js")));
