@@ -17,7 +17,7 @@ async function open(w, h, mobile) {
   const page = await browser.newPage();
   await page.setViewport({ width: w, height: h, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile });
   await page.setCacheEnabled(false);
-  await page.evaluateOnNewDocument(() => { localStorage.clear(); localStorage.hidet = "0"; localStorage.apt = "G"; });
+  await page.evaluateOnNewDocument(() => { localStorage.clear(); localStorage.hidet = "0"; localStorage.apt = "G"; localStorage.rwy = "1"; });
   await page.goto(BASE + "/#overview", { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.waitForFunction(() => typeof setApt === "function" && map && map.loaded && map.loaded(), { timeout: 90000 });
   await new Promise((r) => setTimeout(r, 500));
@@ -79,6 +79,44 @@ ok(/not published SID\/STAR/i.test(lhr.hpt), "panel says not SID/STAR");
 ok(!lhr.sid, "does not claim published SID/STAR");
 evidence.lhr = lhr;
 evidence.egllDesk = await shot(desk, "hist-egll-desk");
+{
+  await desk.evaluate(() => { APT_FLY = false; map.jumpTo({ center: map.getCenter(), zoom: 7.4 }); });
+  await new Promise((r) => setTimeout(r, 800));
+  const zOut = await desk.evaluate(() => ({
+    apt: APT,
+    zoom: map.getZoom(),
+    hist: map.getLayer("hist-rep") && map.getLayoutProperty("hist-rep", "visibility"),
+    lab: map.getLayer("hist-lab") && map.getLayoutProperty("hist-lab", "visibility"),
+    rwy: typeof runwayPathsOn === "function" && runwayPathsOn(),
+    rwyb: !!(document.getElementById("rwyb")),
+  }));
+  ok(zOut.rwyb, "RWY paths toolbar button");
+  ok(zOut.rwy === true, "Runway paths default on");
+  ok(zOut.hist === "visible", `hist-rep stays visible zoomed out (apt=${zOut.apt} z=${zOut.zoom})`);
+  ok(zOut.lab === "none", "hist labels hidden at low zoom");
+  evidence.zoomOut = zOut;
+  evidence.egllZoomOut = await shot(desk, "hist-egll-zoomout");
+  await desk.evaluate(() => { setHideTracks(true); });
+  const hide = await desk.evaluate(() => ({
+    hist: map.getLayer("hist-rep") && map.getLayoutProperty("hist-rep", "visibility"),
+    trails: map.getLayer("trails") && map.getLayoutProperty("trails", "visibility"),
+  }));
+  ok(hide.hist === "visible", "Hide tracks does not hide runway paths");
+  ok(hide.trails === "none", "Hide tracks still hides live trails");
+  evidence.hideVsRwy = hide;
+  await desk.evaluate(() => { setHideTracks(false); setRunwayPaths(false); });
+  const off = await desk.evaluate(() => map.getLayer("hist-rep") && map.getLayoutProperty("hist-rep", "visibility"));
+  ok(off === "none", "Runway paths toggle off hides hist-rep");
+  await desk.evaluate(() => { setRunwayPaths(true); });
+  const back = await desk.evaluate(() => map.getLayer("hist-rep") && map.getLayoutProperty("hist-rep", "visibility"));
+  ok(back === "visible", "Runway paths toggle on restores hist-rep");
+  await desk.evaluate(() => {
+    const h = AirportHubs.resolveApt("LHR");
+    APT_FLY = false;
+    map.jumpTo({ center: [h.lon, h.lat], zoom: 12.15 });
+  });
+  await new Promise((r) => setTimeout(r, 400));
+}
 {
   const gp = await desk.$("#gp");
   if (gp) evidence.egllPanel = await gp.screenshot({ path: `${OUT}/hist-egll-panel.png` });

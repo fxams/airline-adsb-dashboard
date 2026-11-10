@@ -42,6 +42,7 @@ from hist_lib import (
     observed_qtr_airports,
     pack_tile,
     parse_trace,
+    reassign_buckets,
     split_legs,
 )
 
@@ -235,10 +236,13 @@ def write_tiles(out_dir, apts, qtr_counts, buckets, geom_days, window):
         "note": (
             "Airport list = IATA codes that appear as a QTR origin or destination in the 365-day "
             "adsb.lol globe_history aggregates (h2h.json). Geometry is terminal-area clips from "
-            f"{len(geom_days)} sampled UTC day(s) of globe_history traces, Kalman/RTS-smoothed and "
-            "clustered per OurAirports runway end. Representative paths are observed ADS-B, not "
-            "published SID/STAR. Gaps: dumps with no file, thin receiver coverage, and tracks that "
-            "could not be assigned a runway are omitted rather than invented."
+            f"{len(geom_days)} sampled UTC day(s) of globe_history traces. Ground-roll samples are "
+            "not Kalman-smoothed. Each clip is assigned to one OurAirports runway end by heading "
+            "and lateral offset (parallel runways are not mixed). Representative paths are the "
+            "medoid of the dominant cluster, anchored at an observed on-runway ADS-B sample — not "
+            "snapped to the published threshold and not published SID/STAR. Gaps: dumps with no "
+            "file, thin receiver coverage, and tracks that could not be assigned a runway are "
+            "omitted rather than invented."
         ),
         "airports": airports_idx,
     }
@@ -246,6 +250,11 @@ def write_tiles(out_dir, apts, qtr_counts, buckets, geom_days, window):
         json.dump(index, f, indent=2)
     with open(os.path.join(out_dir, "airports.json"), "w", encoding="utf-8") as f:
         json.dump([{k: a[k] for k in ("id", "icao", "iata", "lat", "lon", "name")} for a in airports_idx], f)
+    keep = {f"{a['id']}.json.gz" for a in airports_idx if a.get("tile")}
+    for name in os.listdir(out_dir):
+        if name.endswith(".json.gz") and name not in keep:
+            os.remove(os.path.join(out_dir, name))
+            print("removed stale tile", name, flush=True)
     print("wrote", out_dir, "airports", len(airports_idx), "with_geom", n_geom, flush=True)
     return index
 
@@ -254,25 +263,52 @@ def _synth_track(rwy, kind, i, n, alts, hdg, npts=16):
     import math
     from hist_lib import enu_ll
     pts = []
-    jitter = (i - n / 2) * 0.04  # nm cross-track
+    jitter = (i - n / 2) * 0.004  # nm far-field; ~a few metres on the strip
     rad = math.radians(rwy["hdg"])
-    for k in range(npts):
-        frac = k / (npts - 1)
-        along = (-12.0 + frac * 12.2) if kind == "arr" else (0.4 + frac * 12.0)
-        # piecewise-linear altitude from the provided samples
-        u = frac * (len(alts) - 1)
-        j0 = min(len(alts) - 2, int(u))
-        t = u - j0
-        alt = alts[j0] * (1 - t) + alts[j0 + 1] * t
-        cross = jitter * (0.2 + 0.8 * min(1.0, abs(along) / 10.0))
+    t0 = 1_700_000_000 + i * 80
+    L = rwy["length_nm"]
+    k = 0
+
+    def add(along, cross, alt, gs, trk, gnd):
+        nonlocal k
         e = (along * math.sin(rad) + cross * math.cos(rad)) * 1852.0
         n_m = (along * math.cos(rad) - cross * math.sin(rad)) * 1852.0
         lat, lon = enu_ll(rwy["lat"], rwy["lon"], e, n_m)
         pts.append({
-            "t": 1_700_000_000 + i * 80 + k * 8,
-            "lat": lat, "lon": lon, "alt": alt, "gs": 180, "trk": hdg,
-            "gnd": alt < 20, "leg": False, "stale": False, "flight": "QTR17",
+            "t": t0 + k * 4, "lat": lat, "lon": lon, "alt": alt, "gs": gs, "trk": trk,
+            "gnd": gnd, "leg": False, "stale": False, "flight": "QTR17",
         })
+        k += 1
+
+    on_cross = jitter * 0.2
+    if kind == "dep":
+        for j in range(3):
+            add(-0.12 + j * 0.02, 0.14, 0, 8, (hdg + 40) % 360, True)
+        for j, gs in enumerate((45, 70, 100, 130, 155)):
+            add(0.12 + j * 0.28, on_cross, 0, gs, hdg, True)
+        for m in range(npts):
+            frac = m / (npts - 1)
+            along = 1.24 + frac * 12.0
+            u = frac * (len(alts) - 1)
+            j0 = min(len(alts) - 2, int(u))
+            t = u - j0
+            alt = alts[j0] * (1 - t) + alts[j0 + 1] * t
+            cross = jitter * (0.2 + 0.8 * min(1.0, abs(along) / 10.0))
+            add(along, cross, max(alt, 80), 180, hdg, False)
+    else:
+        for m in range(npts):
+            frac = m / (npts - 1)
+            along = -12.0 + frac * 12.0
+            u = frac * (len(alts) - 1)
+            j0 = min(len(alts) - 2, int(u))
+            t = u - j0
+            alt = alts[j0] * (1 - t) + alts[j0 + 1] * t
+            cross = jitter * (0.2 + 0.8 * min(1.0, abs(along) / 10.0))
+            add(along, cross, alt, 180, hdg, False)
+        for j, gs in enumerate((140, 110, 80, 55, 42)):
+            add(0.15 + j * 0.28, on_cross, 0, gs, hdg, True)
+        for j in range(3):
+            add(L + 0.08 + j * 0.03, 0.14, 0, 8, (hdg + 50) % 360, True)
     return pts
 
 
@@ -317,6 +353,7 @@ def main():
     p.add_argument("--cache", default="/tmp/hist/days")
     p.add_argument("--fixture", action="store_true", help="Write synthetic tiles (tests / layout)")
     p.add_argument("--incremental", action="store_true", help="Merge with existing index geom_days")
+    p.add_argument("--from-cache", action="store_true", help="Re-assign cached clips with current runway logic and rewrite tiles (no tar ingest)")
     args = p.parse_args()
     root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     os.chdir(root)
@@ -348,6 +385,22 @@ def main():
                 kk = (apt_id, None if kind == "" else kind, None if rid == "" else rid)
                 buckets[kk].extend(fls)
             print("incremental: loaded", sum(len(v) for v in buckets.values()), "cached flights", flush=True)
+    if args.from_cache:
+        if not os.path.exists(cache_flights):
+            sys.exit("no cached flights at " + cache_flights)
+        if not buckets:
+            prev_b = json.loads(gzip.open(cache_flights, "rt", encoding="utf-8").read())
+            for k, fls in prev_b.items():
+                apt_id, kind, rid = (k.split("|") + ["", ""])[:3]
+                kk = (apt_id, None if kind == "" else kind, None if rid == "" else rid)
+                buckets[kk].extend(fls)
+            print("from-cache: loaded", sum(len(v) for v in buckets.values()), "cached flights", flush=True)
+        buckets, n_ok, n_drop = reassign_buckets(buckets, apts)
+        print("from-cache: reassigned", n_ok, "dropped", n_drop, flush=True)
+        idx_path = os.path.join(args.out, "index.json")
+        if os.path.exists(idx_path) and not geom_days:
+            prev = json.load(open(idx_path, encoding="utf-8"))
+            geom_days = list(prev.get("geom_days") or [])
     if args.fixture:
         buckets = synthetic_fixture(apts)
         if "fixture" not in geom_days:

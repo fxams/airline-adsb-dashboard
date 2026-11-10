@@ -14,13 +14,13 @@
     "2025-11-04"
   ],
   "n_airports": 193,
-  "n_with_geom": 131,
+  "n_with_geom": 103,
   "missing_dump_days": [
     "2026-05-06"
   ],
   "license": "ADS-B traces \u00a9 adsb.lol contributors, ODbL 1.0. Airport/runway coordinates: OurAirports, public domain.",
   "not_sid_star": true,
-  "note": "Airport list = IATA codes that appear as a QTR origin or destination in the 365-day adsb.lol globe_history aggregates (h2h.json). Geometry is terminal-area clips from 6 sampled UTC day(s) of globe_history traces, Kalman/RTS-smoothed and clustered per OurAirports runway end. Representative paths are observed ADS-B, not published SID/STAR. Gaps: dumps with no file, thin receiver coverage, and tracks that could not be assigned a runway are omitted rather than invented.",
+  "note": "Airport list = IATA codes that appear as a QTR origin or destination in the 365-day adsb.lol globe_history aggregates (h2h.json). Geometry is terminal-area clips from 6 sampled UTC day(s) of globe_history traces. Ground-roll samples are not Kalman-smoothed. Each clip is assigned to one OurAirports runway end by heading and lateral offset (parallel runways are not mixed). Representative paths are the medoid of the dominant cluster, anchored at an observed on-runway ADS-B sample \u2014 not snapped to the published threshold and not published SID/STAR. Gaps: dumps with no file, thin receiver coverage, and tracks that could not be assigned a runway are omitted rather than invented.",
   "airports": [
     {
       "id": "AAC",
@@ -45,9 +45,9 @@
       "name": "Adelaide International Airport",
       "h2h_n": 762,
       "h2h_inf": 298,
-      "geom_flights": 6,
-      "geom_days": 5,
-      "n_rwys": 2,
+      "geom_flights": 23,
+      "geom_days": 6,
+      "n_rwys": 4,
       "tile": "ADL.json.gz"
     },
     {
@@ -73,9 +73,9 @@
       "name": "M\u00e1laga-Costa del Sol Airport",
       "h2h_n": 333,
       "h2h_inf": 180,
-      "geom_flights": 8,
+      "geom_flights": 4,
       "geom_days": 3,
-      "n_rwys": 4,
+      "n_rwys": 3,
       "tile": "AGP.json.gz"
     },
     {
@@ -87,9 +87,9 @@
       "name": "Auckland International Airport",
       "h2h_n": 510,
       "h2h_inf": 181,
-      "geom_flights": 5,
-      "geom_days": 4,
-      "n_rwys": 3,
+      "geom_flights": 19,
+      "geom_days": 6,
+      "n_rwys": 4,
       "tile": "AKL.json.gz"
     },
     {
@@ -101,10 +101,10 @@
       "name": "Almaty International Airport",
       "h2h_n": 162,
       "h2h_inf": 61,
-      "geom_flights": 35,
-      "geom_days": 5,
-      "n_rwys": 2,
-      "tile": "ALA.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "ALG",
@@ -115,10 +115,10 @@
       "name": "Houari Boumediene Airport",
       "h2h_n": 112,
       "h2h_inf": 48,
-      "geom_flights": 1,
-      "geom_days": 1,
-      "n_rwys": 1,
-      "tile": "ALG.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "AMM",
@@ -129,10 +129,10 @@
       "name": "Queen Alia International Airport",
       "h2h_n": 731,
       "h2h_inf": 251,
-      "geom_flights": 61,
-      "geom_days": 6,
-      "n_rwys": 6,
-      "tile": "AMM.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "AMS",
@@ -143,7 +143,7 @@
       "name": "Amsterdam Airport Schiphol",
       "h2h_n": 2939,
       "h2h_inf": 1760,
-      "geom_flights": 41,
+      "geom_flights": 108,
       "geom_days": 6,
       "n_rwys": 11,
       "tile": "AMS.json.gz"
@@ -157,9 +157,9 @@
       "name": "Stockholm-Arlanda Airport",
       "h2h_n": 512,
       "h2h_inf": 294,
-      "geom_flights": 20,
-      "geom_days": 6,
-      "n_rwys": 6,
+      "geom_flights": 2,
+      "geom_days": 2,
+      "n_rwys": 2,
       "tile": "ARN.json.gz"
     },
     {
@@ -171,10 +171,10 @@
       "name": "Athens Eleftherios Venizelos International Airport",
       "h2h_n": 1268,
       "h2h_inf": 585,
-      "geom_flights": 71,
-      "geom_days": 6,
-      "n_rwys": 8,
-      "tile": "ATH.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "ATL",
@@ -185,9 +185,9 @@
       "name": "Hartsfield Jackson Atlanta International Airport",
       "h2h_n": 551,
       "h2h_inf": 239,
-      "geom_flights": 7,
-      "geom_days": 4,
-      "n_rwys": 3,
+      "geom_flights": 18,
+      "geom_days": 6,
+      "n_rwys": 5,
       "tile": "ATL.json.gz"
     },
     {
@@ -199,10 +199,10 @@
       "name": "Sri Guru Ram Das Ji International Airport",
       "h2h_n": 16,
       "h2h_inf": 11,
-      "geom_flights": 1,
-      "geom_days": 1,
-      "n_rwys": 1,
-      "tile": "ATQ.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "AUH",
@@ -213,7 +213,7 @@
       "name": "Zayed International Airport",
       "h2h_n": 909,
       "h2h_inf": 0,
-      "geom_flights": 1069,
+      "geom_flights": 1440,
       "geom_days": 6,
       "n_rwys": 8,
       "tile": "AUH.json.gz"
@@ -227,10 +227,10 @@
       "name": "Austin Bergstrom International Airport",
       "h2h_n": 24,
       "h2h_inf": 7,
-      "geom_flights": 0,
-      "geom_days": 0,
-      "n_rwys": 0,
-      "tile": null
+      "geom_flights": 2,
+      "geom_days": 1,
+      "n_rwys": 2,
+      "tile": "AUS.json.gz"
     },
     {
       "id": "AVV",
@@ -241,10 +241,10 @@
       "name": "Melbourne Avalon International Airport",
       "h2h_n": 28,
       "h2h_inf": 14,
-      "geom_flights": 0,
-      "geom_days": 0,
-      "n_rwys": 0,
-      "tile": null
+      "geom_flights": 5,
+      "geom_days": 1,
+      "n_rwys": 4,
+      "tile": "AVV.json.gz"
     },
     {
       "id": "AYT",
@@ -255,8 +255,8 @@
       "name": "Antalya International Airport",
       "h2h_n": 93,
       "h2h_inf": 45,
-      "geom_flights": 4,
-      "geom_days": 2,
+      "geom_flights": 2,
+      "geom_days": 1,
       "n_rwys": 1,
       "tile": "AYT.json.gz"
     },
@@ -269,9 +269,9 @@
       "name": "Josep Tarradellas Barcelona-El Prat Airport",
       "h2h_n": 1688,
       "h2h_inf": 954,
-      "geom_flights": 36,
+      "geom_flights": 78,
       "geom_days": 6,
-      "n_rwys": 8,
+      "n_rwys": 6,
       "tile": "BCN.json.gz"
     },
     {
@@ -297,9 +297,9 @@
       "name": "Berlin Brandenburg Airport",
       "h2h_n": 1417,
       "h2h_inf": 835,
-      "geom_flights": 17,
-      "geom_days": 5,
-      "n_rwys": 6,
+      "geom_flights": 27,
+      "geom_days": 6,
+      "n_rwys": 5,
       "tile": "BER.json.gz"
     },
     {
@@ -311,9 +311,9 @@
       "name": "Beirut Rafic Hariri International Airport",
       "h2h_n": 628,
       "h2h_inf": 333,
-      "geom_flights": 36,
-      "geom_days": 3,
-      "n_rwys": 5,
+      "geom_flights": 16,
+      "geom_days": 2,
+      "n_rwys": 3,
       "tile": "BEY.json.gz"
     },
     {
@@ -339,7 +339,7 @@
       "name": "Birmingham Airport",
       "h2h_n": 576,
       "h2h_inf": 312,
-      "geom_flights": 20,
+      "geom_flights": 23,
       "geom_days": 6,
       "n_rwys": 4,
       "tile": "BHX.json.gz"
@@ -353,7 +353,7 @@
       "name": "Suvarnabhumi Airport",
       "h2h_n": 3292,
       "h2h_inf": 2249,
-      "geom_flights": 103,
+      "geom_flights": 141,
       "geom_days": 6,
       "n_rwys": 11,
       "tile": "BKK.json.gz"
@@ -367,8 +367,8 @@
       "name": "Kempegowda International Airport Bengaluru",
       "h2h_n": 659,
       "h2h_inf": 397,
-      "geom_flights": 24,
-      "geom_days": 6,
+      "geom_flights": 15,
+      "geom_days": 4,
       "n_rwys": 4,
       "tile": "BLR.json.gz"
     },
@@ -381,9 +381,9 @@
       "name": "Brisbane International Airport",
       "h2h_n": 524,
       "h2h_inf": 358,
-      "geom_flights": 22,
+      "geom_flights": 30,
       "geom_days": 6,
-      "n_rwys": 2,
+      "n_rwys": 7,
       "tile": "BNE.json.gz"
     },
     {
@@ -395,9 +395,9 @@
       "name": "Chhatrapati Shivaji Maharaj International Airport",
       "h2h_n": 867,
       "h2h_inf": 625,
-      "geom_flights": 108,
-      "geom_days": 6,
-      "n_rwys": 7,
+      "geom_flights": 33,
+      "geom_days": 5,
+      "n_rwys": 2,
       "tile": "BOM.json.gz"
     },
     {
@@ -409,8 +409,8 @@
       "name": "Boston Logan International Airport",
       "h2h_n": 390,
       "h2h_inf": 201,
-      "geom_flights": 12,
-      "geom_days": 5,
+      "geom_flights": 23,
+      "geom_days": 6,
       "n_rwys": 8,
       "tile": "BOS.json.gz"
     },
@@ -423,9 +423,9 @@
       "name": "Brussels Airport",
       "h2h_n": 1221,
       "h2h_inf": 621,
-      "geom_flights": 7,
-      "geom_days": 5,
-      "n_rwys": 4,
+      "geom_flights": 54,
+      "geom_days": 6,
+      "n_rwys": 7,
       "tile": "BRU.json.gz"
     },
     {
@@ -465,9 +465,9 @@
       "name": "Budapest Liszt Ferenc International Airport",
       "h2h_n": 1054,
       "h2h_inf": 526,
-      "geom_flights": 26,
-      "geom_days": 6,
-      "n_rwys": 6,
+      "geom_flights": 18,
+      "geom_days": 5,
+      "n_rwys": 5,
       "tile": "BUD.json.gz"
     },
     {
@@ -493,10 +493,10 @@
       "name": "Cairo International Airport",
       "h2h_n": 526,
       "h2h_inf": 254,
-      "geom_flights": 58,
-      "geom_days": 3,
-      "n_rwys": 5,
-      "tile": "CAI.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "CBR",
@@ -507,9 +507,9 @@
       "name": "Canberra Airport",
       "h2h_n": 161,
       "h2h_inf": 0,
-      "geom_flights": 2,
+      "geom_flights": 1,
       "geom_days": 1,
-      "n_rwys": 2,
+      "n_rwys": 1,
       "tile": "CBR.json.gz"
     },
     {
@@ -535,10 +535,10 @@
       "name": "Netaji Subhash Chandra Bose International Airport",
       "h2h_n": 553,
       "h2h_inf": 295,
-      "geom_flights": 6,
-      "geom_days": 3,
-      "n_rwys": 4,
-      "tile": "CCU.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "CDG",
@@ -549,9 +549,9 @@
       "name": "Charles de Gaulle International Airport",
       "h2h_n": 2166,
       "h2h_inf": 1189,
-      "geom_flights": 80,
-      "geom_days": 6,
-      "n_rwys": 8,
+      "geom_flights": 2,
+      "geom_days": 1,
+      "n_rwys": 2,
       "tile": "CDG.json.gz"
     },
     {
@@ -577,9 +577,9 @@
       "name": "Mactan Cebu International Airport",
       "h2h_n": 13,
       "h2h_inf": 5,
-      "geom_flights": 1,
-      "geom_days": 1,
-      "n_rwys": 1,
+      "geom_flights": 6,
+      "geom_days": 3,
+      "n_rwys": 5,
       "tile": "CEB.json.gz"
     },
     {
@@ -605,10 +605,10 @@
       "name": "Soekarno-Hatta International Airport",
       "h2h_n": 1166,
       "h2h_inf": 669,
-      "geom_flights": 48,
-      "geom_days": 5,
-      "n_rwys": 7,
-      "tile": "CGK.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "CHC",
@@ -619,9 +619,9 @@
       "name": "Christchurch International Airport",
       "h2h_n": 2,
       "h2h_inf": 0,
-      "geom_flights": 5,
-      "geom_days": 4,
-      "n_rwys": 3,
+      "geom_flights": 10,
+      "geom_days": 6,
+      "n_rwys": 4,
       "tile": "CHC.json.gz"
     },
     {
@@ -647,9 +647,9 @@
       "name": "Charlotte Douglas International Airport",
       "h2h_n": 1,
       "h2h_inf": 1,
-      "geom_flights": 5,
-      "geom_days": 3,
-      "n_rwys": 4,
+      "geom_flights": 1,
+      "geom_days": 1,
+      "n_rwys": 1,
       "tile": "CLT.json.gz"
     },
     {
@@ -675,10 +675,10 @@
       "name": "Cochin International Airport",
       "h2h_n": 549,
       "h2h_inf": 330,
-      "geom_flights": 75,
-      "geom_days": 4,
-      "n_rwys": 4,
-      "tile": "COK.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "CPH",
@@ -690,7 +690,7 @@
       "h2h_n": 983,
       "h2h_inf": 600,
       "geom_flights": 29,
-      "geom_days": 5,
+      "geom_days": 6,
       "n_rwys": 6,
       "tile": "CPH.json.gz"
     },
@@ -703,7 +703,7 @@
       "name": "Cape Town International Airport",
       "h2h_n": 787,
       "h2h_inf": 489,
-      "geom_flights": 32,
+      "geom_flights": 29,
       "geom_days": 6,
       "n_rwys": 4,
       "tile": "CPT.json.gz"
@@ -717,10 +717,10 @@
       "name": "Clark International Airport / Clark Air Base",
       "h2h_n": 16,
       "h2h_inf": 5,
-      "geom_flights": 2,
-      "geom_days": 1,
-      "n_rwys": 2,
-      "tile": "CRK.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "DAC",
@@ -731,9 +731,9 @@
       "name": "Hazrat Shahjalal International Airport",
       "h2h_n": 530,
       "h2h_inf": 440,
-      "geom_flights": 37,
+      "geom_flights": 23,
       "geom_days": 2,
-      "n_rwys": 4,
+      "n_rwys": 2,
       "tile": "DAC.json.gz"
     },
     {
@@ -745,10 +745,10 @@
       "name": "Damascus International Airport",
       "h2h_n": 1,
       "h2h_inf": 1,
-      "geom_flights": 2,
-      "geom_days": 1,
-      "n_rwys": 1,
-      "tile": "DAM.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "DEL",
@@ -759,10 +759,10 @@
       "name": "Indira Gandhi International Airport",
       "h2h_n": 577,
       "h2h_inf": 382,
-      "geom_flights": 28,
-      "geom_days": 4,
-      "n_rwys": 9,
-      "tile": "DEL.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "DFW",
@@ -773,9 +773,9 @@
       "name": "Dallas Fort Worth International Airport",
       "h2h_n": 1209,
       "h2h_inf": 562,
-      "geom_flights": 30,
+      "geom_flights": 31,
       "geom_days": 6,
-      "n_rwys": 11,
+      "n_rwys": 7,
       "tile": "DFW.json.gz"
     },
     {
@@ -787,9 +787,9 @@
       "name": "Don Mueang International Airport",
       "h2h_n": 2,
       "h2h_inf": 0,
-      "geom_flights": 14,
-      "geom_days": 5,
-      "n_rwys": 4,
+      "geom_flights": 4,
+      "geom_days": 4,
+      "n_rwys": 2,
       "tile": "DMK.json.gz"
     },
     {
@@ -801,10 +801,10 @@
       "name": "King Fahd International Airport",
       "h2h_n": 378,
       "h2h_inf": 0,
-      "geom_flights": 41,
-      "geom_days": 3,
-      "n_rwys": 5,
-      "tile": "DMM.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "DOH",
@@ -815,9 +815,9 @@
       "name": "Hamad International Airport",
       "h2h_n": 86534,
       "h2h_inf": 50759,
-      "geom_flights": 1164,
-      "geom_days": 6,
-      "n_rwys": 8,
+      "geom_flights": 292,
+      "geom_days": 4,
+      "n_rwys": 7,
       "tile": "DOH.json.gz"
     },
     {
@@ -829,9 +829,9 @@
       "name": "Denpasar I Gusti Ngurah Rai International Airport",
       "h2h_n": 761,
       "h2h_inf": 639,
-      "geom_flights": 19,
-      "geom_days": 2,
-      "n_rwys": 4,
+      "geom_flights": 1,
+      "geom_days": 1,
+      "n_rwys": 1,
       "tile": "DPS.json.gz"
     },
     {
@@ -843,9 +843,9 @@
       "name": "Dublin Airport",
       "h2h_n": 1303,
       "h2h_inf": 719,
-      "geom_flights": 23,
+      "geom_flights": 70,
       "geom_days": 6,
-      "n_rwys": 3,
+      "n_rwys": 5,
       "tile": "DUB.json.gz"
     },
     {
@@ -857,9 +857,9 @@
       "name": "D\u00fcsseldorf Airport",
       "h2h_n": 574,
       "h2h_inf": 341,
-      "geom_flights": 45,
-      "geom_days": 6,
-      "n_rwys": 4,
+      "geom_flights": 16,
+      "geom_days": 4,
+      "n_rwys": 3,
       "tile": "DUS.json.gz"
     },
     {
@@ -885,7 +885,7 @@
       "name": "Al Maktoum International Airport",
       "h2h_n": 59,
       "h2h_inf": 0,
-      "geom_flights": 389,
+      "geom_flights": 281,
       "geom_days": 6,
       "n_rwys": 8,
       "tile": "DWC.json.gz"
@@ -899,9 +899,9 @@
       "name": "Dubai International Airport",
       "h2h_n": 887,
       "h2h_inf": 0,
-      "geom_flights": 2448,
+      "geom_flights": 1755,
       "geom_days": 6,
-      "n_rwys": 8,
+      "n_rwys": 6,
       "tile": "DXB.json.gz"
     },
     {
@@ -913,9 +913,9 @@
       "name": "Edinburgh Airport",
       "h2h_n": 1039,
       "h2h_inf": 536,
-      "geom_flights": 17,
-      "geom_days": 5,
-      "n_rwys": 3,
+      "geom_flights": 27,
+      "geom_days": 6,
+      "n_rwys": 4,
       "tile": "EDI.json.gz"
     },
     {
@@ -927,9 +927,9 @@
       "name": "East Midlands Airport",
       "h2h_n": 5,
       "h2h_inf": 1,
-      "geom_flights": 1,
+      "geom_flights": 2,
       "geom_days": 1,
-      "n_rwys": 1,
+      "n_rwys": 2,
       "tile": "EMA.json.gz"
     },
     {
@@ -941,7 +941,7 @@
       "name": "Zvartnots International Airport",
       "h2h_n": 79,
       "h2h_inf": 31,
-      "geom_flights": 12,
+      "geom_flights": 24,
       "geom_days": 3,
       "n_rwys": 3,
       "tile": "EVN.json.gz"
@@ -955,9 +955,9 @@
       "name": "Ezeiza International Airport - Ministro Pistarini",
       "h2h_n": 9,
       "h2h_inf": 2,
-      "geom_flights": 9,
+      "geom_flights": 8,
       "geom_days": 5,
-      "n_rwys": 3,
+      "n_rwys": 2,
       "tile": "EZE.json.gz"
     },
     {
@@ -969,9 +969,9 @@
       "name": "Rome\u2013Fiumicino Leonardo da Vinci International Airport",
       "h2h_n": 1304,
       "h2h_inf": 673,
-      "geom_flights": 48,
-      "geom_days": 6,
-      "n_rwys": 7,
+      "geom_flights": 13,
+      "geom_days": 3,
+      "n_rwys": 4,
       "tile": "FCO.json.gz"
     },
     {
@@ -983,9 +983,9 @@
       "name": "Frankfurt Main Airport",
       "h2h_n": 2420,
       "h2h_inf": 1245,
-      "geom_flights": 73,
+      "geom_flights": 77,
       "geom_days": 6,
-      "n_rwys": 9,
+      "n_rwys": 6,
       "tile": "FRA.json.gz"
     },
     {
@@ -1011,10 +1011,10 @@
       "name": "Rio de Janeiro Gale\u00e3o \u2013 Tom Jobim International Airport",
       "h2h_n": 2,
       "h2h_inf": 0,
-      "geom_flights": 3,
-      "geom_days": 1,
-      "n_rwys": 2,
-      "tile": "GIG.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "GMP",
@@ -1067,9 +1067,9 @@
       "name": "S\u00e3o Paulo/Guarulhos\u2013Governor Andr\u00e9 Franco Montoro International Airport",
       "h2h_n": 1773,
       "h2h_inf": 1018,
-      "geom_flights": 27,
+      "geom_flights": 29,
       "geom_days": 6,
-      "n_rwys": 7,
+      "n_rwys": 5,
       "tile": "GRU.json.gz"
     },
     {
@@ -1081,9 +1081,9 @@
       "name": "Geneva International Airport",
       "h2h_n": 517,
       "h2h_inf": 329,
-      "geom_flights": 36,
-      "geom_days": 6,
-      "n_rwys": 4,
+      "geom_flights": 5,
+      "geom_days": 3,
+      "n_rwys": 2,
       "tile": "GVA.json.gz"
     },
     {
@@ -1095,9 +1095,9 @@
       "name": "Hamburg Helmut Schmidt Airport",
       "h2h_n": 154,
       "h2h_inf": 94,
-      "geom_flights": 5,
-      "geom_days": 3,
-      "n_rwys": 2,
+      "geom_flights": 21,
+      "geom_days": 6,
+      "n_rwys": 6,
       "tile": "HAM.json.gz"
     },
     {
@@ -1109,9 +1109,9 @@
       "name": "Noi Bai International Airport",
       "h2h_n": 517,
       "h2h_inf": 237,
-      "geom_flights": 28,
-      "geom_days": 4,
-      "n_rwys": 5,
+      "geom_flights": 21,
+      "geom_days": 2,
+      "n_rwys": 2,
       "tile": "HAN.json.gz"
     },
     {
@@ -1123,9 +1123,9 @@
       "name": "Alexandria International Airport",
       "h2h_n": 122,
       "h2h_inf": 38,
-      "geom_flights": 26,
-      "geom_days": 3,
-      "n_rwys": 3,
+      "geom_flights": 1,
+      "geom_days": 1,
+      "n_rwys": 1,
       "tile": "HBE.json.gz"
     },
     {
@@ -1151,9 +1151,9 @@
       "name": "Helsinki Vantaa Airport",
       "h2h_n": 225,
       "h2h_inf": 62,
-      "geom_flights": 2,
-      "geom_days": 2,
-      "n_rwys": 1,
+      "geom_flights": 10,
+      "geom_days": 4,
+      "n_rwys": 6,
       "tile": "HEL.json.gz"
     },
     {
@@ -1179,8 +1179,8 @@
       "name": "Hong Kong International Airport",
       "h2h_n": 3572,
       "h2h_inf": 2319,
-      "geom_flights": 131,
-      "geom_days": 6,
+      "geom_flights": 121,
+      "geom_days": 4,
       "n_rwys": 10,
       "tile": "HKG.json.gz"
     },
@@ -1207,9 +1207,9 @@
       "name": "Tokyo Haneda International Airport",
       "h2h_n": 203,
       "h2h_inf": 85,
-      "geom_flights": 10,
-      "geom_days": 5,
-      "n_rwys": 4,
+      "geom_flights": 24,
+      "geom_days": 6,
+      "n_rwys": 8,
       "tile": "HND.json.gz"
     },
     {
@@ -1235,10 +1235,10 @@
       "name": "Rajiv Gandhi International Airport",
       "h2h_n": 763,
       "h2h_inf": 527,
-      "geom_flights": 44,
-      "geom_days": 6,
-      "n_rwys": 4,
-      "tile": "HYD.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "IAD",
@@ -1249,9 +1249,9 @@
       "name": "Washington Dulles International Airport",
       "h2h_n": 804,
       "h2h_inf": 430,
-      "geom_flights": 17,
+      "geom_flights": 31,
       "geom_days": 6,
-      "n_rwys": 9,
+      "n_rwys": 8,
       "tile": "IAD.json.gz"
     },
     {
@@ -1263,9 +1263,9 @@
       "name": "George Bush Intercontinental Airport",
       "h2h_n": 880,
       "h2h_inf": 289,
-      "geom_flights": 23,
-      "geom_days": 6,
-      "n_rwys": 7,
+      "geom_flights": 5,
+      "geom_days": 2,
+      "n_rwys": 2,
       "tile": "IAH.json.gz"
     },
     {
@@ -1279,7 +1279,7 @@
       "h2h_inf": 636,
       "geom_flights": 26,
       "geom_days": 6,
-      "n_rwys": 11,
+      "n_rwys": 7,
       "tile": "ICN.json.gz"
     },
     {
@@ -1319,9 +1319,9 @@
       "name": "\u0130stanbul Airport",
       "h2h_n": 617,
       "h2h_inf": 262,
-      "geom_flights": 40,
-      "geom_days": 6,
-      "n_rwys": 7,
+      "geom_flights": 1,
+      "geom_days": 1,
+      "n_rwys": 1,
       "tile": "IST.json.gz"
     },
     {
@@ -1333,10 +1333,10 @@
       "name": "King Abdulaziz International Airport",
       "h2h_n": 195,
       "h2h_inf": 158,
-      "geom_flights": 17,
-      "geom_days": 1,
-      "n_rwys": 3,
-      "tile": "JED.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "JFK",
@@ -1347,9 +1347,9 @@
       "name": "John F. Kennedy International Airport",
       "h2h_n": 1539,
       "h2h_inf": 836,
-      "geom_flights": 34,
+      "geom_flights": 76,
       "geom_days": 6,
-      "n_rwys": 12,
+      "n_rwys": 9,
       "tile": "JFK.json.gz"
     },
     {
@@ -1389,9 +1389,9 @@
       "name": "Kansai International Airport",
       "h2h_n": 414,
       "h2h_inf": 245,
-      "geom_flights": 13,
-      "geom_days": 6,
-      "n_rwys": 5,
+      "geom_flights": 19,
+      "geom_days": 5,
+      "n_rwys": 6,
       "tile": "KIX.json.gz"
     },
     {
@@ -1417,10 +1417,10 @@
       "name": "Kuala Lumpur International Airport",
       "h2h_n": 1270,
       "h2h_inf": 880,
-      "geom_flights": 35,
-      "geom_days": 6,
-      "n_rwys": 7,
-      "tile": "KUL.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "KWI",
@@ -1459,9 +1459,9 @@
       "name": "Los Angeles International Airport",
       "h2h_n": 486,
       "h2h_inf": 248,
-      "geom_flights": 13,
+      "geom_flights": 25,
       "geom_days": 6,
-      "n_rwys": 8,
+      "n_rwys": 5,
       "tile": "LAX.json.gz"
     },
     {
@@ -1473,9 +1473,9 @@
       "name": "Larnaca International Airport",
       "h2h_n": 580,
       "h2h_inf": 286,
-      "geom_flights": 20,
-      "geom_days": 6,
-      "n_rwys": 4,
+      "geom_flights": 5,
+      "geom_days": 1,
+      "n_rwys": 2,
       "tile": "LCA.json.gz"
     },
     {
@@ -1501,8 +1501,8 @@
       "name": "Leipzig/Halle Airport",
       "h2h_n": 115,
       "h2h_inf": 27,
-      "geom_flights": 3,
-      "geom_days": 2,
+      "geom_flights": 2,
+      "geom_days": 1,
       "n_rwys": 2,
       "tile": "LEJ.json.gz"
     },
@@ -1515,9 +1515,9 @@
       "name": "Li\u00e8ge Airport",
       "h2h_n": 1929,
       "h2h_inf": 698,
-      "geom_flights": 34,
+      "geom_flights": 15,
       "geom_days": 5,
-      "n_rwys": 5,
+      "n_rwys": 4,
       "tile": "LGG.json.gz"
     },
     {
@@ -1529,9 +1529,9 @@
       "name": "London Gatwick Airport",
       "h2h_n": 562,
       "h2h_inf": 319,
-      "geom_flights": 25,
+      "geom_flights": 56,
       "geom_days": 6,
-      "n_rwys": 4,
+      "n_rwys": 6,
       "tile": "LGW.json.gz"
     },
     {
@@ -1557,9 +1557,9 @@
       "name": "London Heathrow Airport",
       "h2h_n": 4729,
       "h2h_inf": 2673,
-      "geom_flights": 115,
+      "geom_flights": 138,
       "geom_days": 6,
-      "n_rwys": 7,
+      "n_rwys": 6,
       "tile": "LHR.json.gz"
     },
     {
@@ -1571,10 +1571,10 @@
       "name": "Milano Linate Airport",
       "h2h_n": 3,
       "h2h_inf": 1,
-      "geom_flights": 2,
-      "geom_days": 1,
-      "n_rwys": 2,
-      "tile": "LIN.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "LIS",
@@ -1585,8 +1585,8 @@
       "name": "Lisbon Humberto Delgado Airport",
       "h2h_n": 467,
       "h2h_inf": 233,
-      "geom_flights": 25,
-      "geom_days": 5,
+      "geom_flights": 35,
+      "geom_days": 6,
       "n_rwys": 4,
       "tile": "LIS.json.gz"
     },
@@ -1599,9 +1599,9 @@
       "name": "Chennai International Airport",
       "h2h_n": 220,
       "h2h_inf": 74,
-      "geom_flights": 23,
-      "geom_days": 2,
-      "n_rwys": 4,
+      "geom_flights": 17,
+      "geom_days": 1,
+      "n_rwys": 3,
       "tile": "MAA.json.gz"
     },
     {
@@ -1613,9 +1613,9 @@
       "name": "Adolfo Su\u00e1rez Madrid\u2013Barajas Airport",
       "h2h_n": 2233,
       "h2h_inf": 1277,
-      "geom_flights": 67,
+      "geom_flights": 43,
       "geom_days": 6,
-      "n_rwys": 8,
+      "n_rwys": 6,
       "tile": "MAD.json.gz"
     },
     {
@@ -1627,7 +1627,7 @@
       "name": "Manchester Airport",
       "h2h_n": 1780,
       "h2h_inf": 1093,
-      "geom_flights": 42,
+      "geom_flights": 69,
       "geom_days": 6,
       "n_rwys": 6,
       "tile": "MAN.json.gz"
@@ -1655,7 +1655,7 @@
       "name": "Muscat International Airport",
       "h2h_n": 1698,
       "h2h_inf": 1122,
-      "geom_flights": 64,
+      "geom_flights": 117,
       "geom_days": 6,
       "n_rwys": 8,
       "tile": "MCT.json.gz"
@@ -1683,9 +1683,9 @@
       "name": "Melbourne Airport",
       "h2h_n": 1085,
       "h2h_inf": 614,
-      "geom_flights": 19,
-      "geom_days": 4,
-      "n_rwys": 6,
+      "geom_flights": 56,
+      "geom_days": 6,
+      "n_rwys": 5,
       "tile": "MEL.json.gz"
     },
     {
@@ -1711,9 +1711,9 @@
       "name": "Miami International Airport",
       "h2h_n": 969,
       "h2h_inf": 435,
-      "geom_flights": 25,
-      "geom_days": 6,
-      "n_rwys": 11,
+      "geom_flights": 8,
+      "geom_days": 4,
+      "n_rwys": 4,
       "tile": "MIA.json.gz"
     },
     {
@@ -1725,9 +1725,9 @@
       "name": "Malta International Airport",
       "h2h_n": 130,
       "h2h_inf": 80,
-      "geom_flights": 3,
-      "geom_days": 3,
-      "n_rwys": 2,
+      "geom_flights": 19,
+      "geom_days": 6,
+      "n_rwys": 6,
       "tile": "MLA.json.gz"
     },
     {
@@ -1753,9 +1753,9 @@
       "name": "Ninoy Aquino International Airport",
       "h2h_n": 1386,
       "h2h_inf": 1012,
-      "geom_flights": 32,
+      "geom_flights": 62,
       "geom_days": 5,
-      "n_rwys": 5,
+      "n_rwys": 4,
       "tile": "MNL.json.gz"
     },
     {
@@ -1781,7 +1781,7 @@
       "name": "Munich Airport",
       "h2h_n": 1072,
       "h2h_inf": 627,
-      "geom_flights": 22,
+      "geom_flights": 55,
       "geom_days": 6,
       "n_rwys": 5,
       "tile": "MUC.json.gz"
@@ -1795,10 +1795,10 @@
       "name": "Milan Malpensa International Airport",
       "h2h_n": 2339,
       "h2h_inf": 1223,
-      "geom_flights": 70,
-      "geom_days": 6,
-      "n_rwys": 7,
-      "tile": "MXP.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "NBJ",
@@ -1823,9 +1823,9 @@
       "name": "Jomo Kenyatta International Airport",
       "h2h_n": 58,
       "h2h_inf": 38,
-      "geom_flights": 57,
+      "geom_flights": 34,
       "geom_days": 6,
-      "n_rwys": 3,
+      "n_rwys": 2,
       "tile": "NBO.json.gz"
     },
     {
@@ -1837,9 +1837,9 @@
       "name": "Nice-C\u00f4te d'Azur Airport",
       "h2h_n": 378,
       "h2h_inf": 189,
-      "geom_flights": 19,
+      "geom_flights": 21,
       "geom_days": 6,
-      "n_rwys": 6,
+      "n_rwys": 5,
       "tile": "NCE.json.gz"
     },
     {
@@ -1879,9 +1879,9 @@
       "name": "Narita International Airport",
       "h2h_n": 1061,
       "h2h_inf": 763,
-      "geom_flights": 38,
-      "geom_days": 6,
-      "n_rwys": 7,
+      "geom_flights": 17,
+      "geom_days": 4,
+      "n_rwys": 3,
       "tile": "NRT.json.gz"
     },
     {
@@ -1907,10 +1907,10 @@
       "name": "Miami-Opa Locka Executive Airport",
       "h2h_n": 1,
       "h2h_inf": 1,
-      "geom_flights": 1,
-      "geom_days": 1,
-      "n_rwys": 1,
-      "tile": "OPF.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "ORD",
@@ -1921,9 +1921,9 @@
       "name": "Chicago O'Hare International Airport",
       "h2h_n": 1882,
       "h2h_inf": 537,
-      "geom_flights": 42,
-      "geom_days": 6,
-      "n_rwys": 13,
+      "geom_flights": 22,
+      "geom_days": 5,
+      "n_rwys": 8,
       "tile": "ORD.json.gz"
     },
     {
@@ -1935,8 +1935,8 @@
       "name": "Oslo-Gardermoen International Airport",
       "h2h_n": 934,
       "h2h_inf": 432,
-      "geom_flights": 20,
-      "geom_days": 6,
+      "geom_flights": 8,
+      "geom_days": 2,
       "n_rwys": 5,
       "tile": "OSL.json.gz"
     },
@@ -1963,9 +1963,9 @@
       "name": "Bucharest Henri Coand\u0103 International Airport",
       "h2h_n": 902,
       "h2h_inf": 448,
-      "geom_flights": 34,
+      "geom_flights": 28,
       "geom_days": 6,
-      "n_rwys": 7,
+      "n_rwys": 6,
       "tile": "OTP.json.gz"
     },
     {
@@ -2019,9 +2019,9 @@
       "name": "Perth International Airport",
       "h2h_n": 597,
       "h2h_inf": 433,
-      "geom_flights": 8,
-      "geom_days": 4,
-      "n_rwys": 1,
+      "geom_flights": 27,
+      "geom_days": 6,
+      "n_rwys": 4,
       "tile": "PER.json.gz"
     },
     {
@@ -2033,9 +2033,9 @@
       "name": "Philadelphia International Airport",
       "h2h_n": 187,
       "h2h_inf": 59,
-      "geom_flights": 5,
+      "geom_flights": 3,
       "geom_days": 3,
-      "n_rwys": 3,
+      "n_rwys": 1,
       "tile": "PHL.json.gz"
     },
     {
@@ -2061,9 +2061,9 @@
       "name": "V\u00e1clav Havel Airport Prague",
       "h2h_n": 607,
       "h2h_inf": 300,
-      "geom_flights": 15,
-      "geom_days": 5,
-      "n_rwys": 5,
+      "geom_flights": 46,
+      "geom_days": 6,
+      "n_rwys": 6,
       "tile": "PRG.json.gz"
     },
     {
@@ -2075,10 +2075,10 @@
       "name": "Tocumen International Airport",
       "h2h_n": 2,
       "h2h_inf": 1,
-      "geom_flights": 4,
-      "geom_days": 1,
-      "n_rwys": 1,
-      "tile": "PTY.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "RFD",
@@ -2173,10 +2173,10 @@
       "name": "Istanbul Sabiha G\u00f6k\u00e7en International Airport",
       "h2h_n": 6,
       "h2h_inf": 4,
-      "geom_flights": 4,
-      "geom_days": 3,
-      "n_rwys": 3,
-      "tile": "SAW.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "SDF",
@@ -2201,9 +2201,9 @@
       "name": "Seattle\u2013Tacoma International Airport",
       "h2h_n": 515,
       "h2h_inf": 324,
-      "geom_flights": 4,
-      "geom_days": 2,
-      "n_rwys": 2,
+      "geom_flights": 17,
+      "geom_days": 6,
+      "n_rwys": 4,
       "tile": "SEA.json.gz"
     },
     {
@@ -2215,10 +2215,10 @@
       "name": "Seychelles International Airport",
       "h2h_n": 82,
       "h2h_inf": 68,
-      "geom_flights": 19,
-      "geom_days": 4,
-      "n_rwys": 3,
-      "tile": "SEZ.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "SFO",
@@ -2229,9 +2229,9 @@
       "name": "San Francisco International Airport",
       "h2h_n": 379,
       "h2h_inf": 223,
-      "geom_flights": 6,
-      "geom_days": 3,
-      "n_rwys": 5,
+      "geom_flights": 10,
+      "geom_days": 6,
+      "n_rwys": 3,
       "tile": "SFO.json.gz"
     },
     {
@@ -2243,10 +2243,10 @@
       "name": "Tan Son Nhat International Airport",
       "h2h_n": 34,
       "h2h_inf": 24,
-      "geom_flights": 6,
-      "geom_days": 1,
-      "n_rwys": 2,
-      "tile": "SGN.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "SHJ",
@@ -2257,8 +2257,8 @@
       "name": "Sharjah International Airport",
       "h2h_n": 1380,
       "h2h_inf": 0,
-      "geom_flights": 1043,
-      "geom_days": 6,
+      "geom_flights": 184,
+      "geom_days": 5,
       "n_rwys": 4,
       "tile": "SHJ.json.gz"
     },
@@ -2271,9 +2271,9 @@
       "name": "Singapore Changi Airport",
       "h2h_n": 1578,
       "h2h_inf": 1022,
-      "geom_flights": 68,
-      "geom_days": 6,
-      "n_rwys": 8,
+      "geom_flights": 3,
+      "geom_days": 1,
+      "n_rwys": 2,
       "tile": "SIN.json.gz"
     },
     {
@@ -2299,10 +2299,10 @@
       "name": "Shannon Airport",
       "h2h_n": 22,
       "h2h_inf": 11,
-      "geom_flights": 1,
-      "geom_days": 1,
-      "n_rwys": 1,
-      "tile": "SNN.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "SOF",
@@ -2313,9 +2313,9 @@
       "name": "Sofia Airport",
       "h2h_n": 120,
       "h2h_inf": 74,
-      "geom_flights": 6,
-      "geom_days": 3,
-      "n_rwys": 3,
+      "geom_flights": 1,
+      "geom_days": 1,
+      "n_rwys": 1,
       "tile": "SOF.json.gz"
     },
     {
@@ -2327,8 +2327,8 @@
       "name": "London Stansted Airport",
       "h2h_n": 600,
       "h2h_inf": 200,
-      "geom_flights": 37,
-      "geom_days": 6,
+      "geom_flights": 22,
+      "geom_days": 5,
       "n_rwys": 4,
       "tile": "STN.json.gz"
     },
@@ -2341,9 +2341,9 @@
       "name": "Sheremetyevo International Airport",
       "h2h_n": 133,
       "h2h_inf": 94,
-      "geom_flights": 7,
-      "geom_days": 4,
-      "n_rwys": 3,
+      "geom_flights": 9,
+      "geom_days": 3,
+      "n_rwys": 2,
       "tile": "SVO.json.gz"
     },
     {
@@ -2369,9 +2369,9 @@
       "name": "Sydney Kingsford Smith International Airport",
       "h2h_n": 804,
       "h2h_inf": 520,
-      "geom_flights": 16,
+      "geom_flights": 53,
       "geom_days": 6,
-      "n_rwys": 5,
+      "n_rwys": 4,
       "tile": "SYD.json.gz"
     },
     {
@@ -2397,10 +2397,10 @@
       "name": "Salzburg Airport",
       "h2h_n": 5,
       "h2h_inf": 2,
-      "geom_flights": 6,
-      "geom_days": 3,
-      "n_rwys": 2,
-      "tile": "SZG.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "SZX",
@@ -2411,10 +2411,10 @@
       "name": "Shenzhen Bao'an International Airport",
       "h2h_n": 95,
       "h2h_inf": 67,
-      "geom_flights": 2,
-      "geom_days": 2,
-      "n_rwys": 1,
-      "tile": "SZX.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "TAS",
@@ -2439,9 +2439,9 @@
       "name": "Tbilisi International Airport",
       "h2h_n": 123,
       "h2h_inf": 37,
-      "geom_flights": 8,
+      "geom_flights": 22,
       "geom_days": 2,
-      "n_rwys": 1,
+      "n_rwys": 2,
       "tile": "TBS.json.gz"
     },
     {
@@ -2453,10 +2453,10 @@
       "name": "Thiruvananthapuram International Airport",
       "h2h_n": 551,
       "h2h_inf": 349,
-      "geom_flights": 62,
-      "geom_days": 6,
-      "n_rwys": 4,
-      "tile": "TRV.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "TUN",
@@ -2523,9 +2523,9 @@
       "name": "Venice Marco Polo Airport",
       "h2h_n": 113,
       "h2h_inf": 91,
-      "geom_flights": 5,
-      "geom_days": 4,
-      "n_rwys": 3,
+      "geom_flights": 14,
+      "geom_days": 6,
+      "n_rwys": 2,
       "tile": "VCE.json.gz"
     },
     {
@@ -2537,10 +2537,10 @@
       "name": "Viracopos International Airport",
       "h2h_n": 21,
       "h2h_inf": 11,
-      "geom_flights": 2,
-      "geom_days": 1,
-      "n_rwys": 2,
-      "tile": "VCP.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "VIE",
@@ -2551,9 +2551,9 @@
       "name": "Vienna International Airport",
       "h2h_n": 1073,
       "h2h_inf": 507,
-      "geom_flights": 22,
-      "geom_days": 5,
-      "n_rwys": 5,
+      "geom_flights": 61,
+      "geom_days": 6,
+      "n_rwys": 6,
       "tile": "VIE.json.gz"
     },
     {
@@ -2579,9 +2579,9 @@
       "name": "Warsaw Chopin Airport",
       "h2h_n": 906,
       "h2h_inf": 456,
-      "geom_flights": 26,
+      "geom_flights": 49,
       "geom_days": 6,
-      "n_rwys": 6,
+      "n_rwys": 5,
       "tile": "WAW.json.gz"
     },
     {
@@ -2607,10 +2607,10 @@
       "name": "Seletar Airport",
       "h2h_n": 2,
       "h2h_inf": 0,
-      "geom_flights": 1,
-      "geom_days": 1,
-      "n_rwys": 1,
-      "tile": "XSP.json.gz"
+      "geom_flights": 0,
+      "geom_days": 0,
+      "n_rwys": 0,
+      "tile": null
     },
     {
       "id": "YOW",
@@ -2649,9 +2649,9 @@
       "name": "Montreal / Pierre Elliott Trudeau International Airport",
       "h2h_n": 374,
       "h2h_inf": 218,
-      "geom_flights": 18,
-      "geom_days": 6,
-      "n_rwys": 5,
+      "geom_flights": 6,
+      "geom_days": 4,
+      "n_rwys": 3,
       "tile": "YUL.json.gz"
     },
     {
@@ -2663,9 +2663,9 @@
       "name": "Toronto Pearson International Airport",
       "h2h_n": 580,
       "h2h_inf": 333,
-      "geom_flights": 9,
-      "geom_days": 4,
-      "n_rwys": 5,
+      "geom_flights": 24,
+      "geom_days": 6,
+      "n_rwys": 6,
       "tile": "YYZ.json.gz"
     },
     {
@@ -2677,9 +2677,9 @@
       "name": "Zagreb Franjo Tu\u0111man International Airport",
       "h2h_n": 265,
       "h2h_inf": 142,
-      "geom_flights": 5,
-      "geom_days": 3,
-      "n_rwys": 3,
+      "geom_flights": 2,
+      "geom_days": 1,
+      "n_rwys": 1,
       "tile": "ZAG.json.gz"
     },
     {
@@ -2705,9 +2705,9 @@
       "name": "Z\u00fcrich Airport",
       "h2h_n": 883,
       "h2h_inf": 490,
-      "geom_flights": 44,
+      "geom_flights": 36,
       "geom_days": 6,
-      "n_rwys": 12,
+      "n_rwys": 6,
       "tile": "ZRH.json.gz"
     },
     {
