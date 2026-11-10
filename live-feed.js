@@ -78,6 +78,7 @@ class LiveFeed {
     this.lastT = new Map();
     this.cooldownUntil = 0;
     this.lastCycleMs = 0;
+    this.onProgress = o.onProgress || null;
     this.lastFeed = this._emptyFeed(null, 0);
   }
 
@@ -88,11 +89,14 @@ class LiveFeed {
       ok: [],
       stale: [],
       failed: [],
+      pending: [],
       n_ok: 0,
       n_stale: 0,
       n_failed: 0,
+      n_pending: 0,
       n_types: this.types.length,
-      note: "Each ICAO type is fetched from adsb.lol /v2/type. Failed groups are retried later in the same cycle (and first on the next cycle). Last good sample is kept up to 20 min. Partial failure does not drop successful groups.",
+      loading: true,
+      note: "Each ICAO type is fetched from adsb.lol /v2/type. Widebody / Gulf types first. Each group is published as it arrives. Failed groups are retried later in the same cycle (and first on the next cycle). Last good sample is kept up to 20 min. Partial failure does not drop successful groups.",
     };
   }
 
@@ -175,8 +179,9 @@ class LiveFeed {
     return [...this.types.filter((t) => prev.has(t)), ...this.types.filter((t) => !prev.has(t))];
   }
 
-  _pack(groups, cycleMs) {
+  _pack(groups, cycleMs, pending) {
     const ok = [], stale = [], failed = [];
+    const pend = Array.isArray(pending) ? pending.slice() : [];
     for (const g of groups) {
       if (g.status === "ok") ok.push(g.t);
       else if (g.status === "stale") stale.push({ t: g.t, age_s: g.age_s, err: g.err, last_ok_utc: g.last_ok_utc });
@@ -188,12 +193,67 @@ class LiveFeed {
       ok,
       stale,
       failed,
+      pending: pend,
       n_ok: ok.length,
       n_stale: stale.length,
       n_failed: failed.length,
+      n_pending: pend.length,
       n_types: this.types.length,
+      loading: pend.length > 0,
       note: this._emptyFeed(null, 0).note,
     };
+  }
+
+  hydrateFromRows(rows, atMs) {
+    const ts = Number.isFinite(atMs) ? atMs : this.now();
+    const by = new Map();
+    for (const r of rows || []) {
+      if (!r || !r[0]) continue;
+      const t = String(r[3] || "").trim().toUpperCase();
+      if (!t) continue;
+      const a = {
+        hex: r[0],
+        flight: r[1] || "",
+        t,
+        lat: r[4],
+        lon: r[5],
+        alt_baro: r[10] ? "ground" : r[6],
+        gs: r[7],
+        track: r[8],
+        r: r[9] || "",
+        seen_pos: r[11] ?? 0,
+        baro_rate: r[12] ?? 0,
+      };
+      if (!by.has(t)) by.set(t, []);
+      by.get(t).push(a);
+    }
+    for (const [t, ac] of by) this.lastT.set(t, { ts, ac, err: null });
+    const ok = this.types.filter((t) => by.has(t));
+    this.lastFeed = {
+      ...this._emptyFeed(new Date(ts).toISOString(), 0),
+      at: new Date(ts).toISOString(),
+      ok,
+      n_ok: ok.length,
+      pending: [],
+      n_pending: 0,
+      loading: false,
+      note: "Warm-started from last-good snapshot. Type groups refresh in the background.",
+    };
+    return this.collectAircraft();
+  }
+
+  _emit(by, t0, inProgress, onProgress) {
+    const pending = inProgress ? this.types.filter((t) => !by.has(t)) : [];
+    const groups = this.types.filter((t) => by.has(t)).map((t) => by.get(t));
+    this.lastCycleMs = this.now() - t0;
+    this.lastFeed = this._pack(groups, this.lastCycleMs, pending);
+    const seen = this.collectAircraft();
+    const cb = onProgress || this.onProgress;
+    if (cb) {
+      try { cb({ seen, feed: this.lastFeed, partial: pending.length > 0 }); }
+      catch (e) { console.error("live progress", e && e.message); }
+    }
+    return seen;
   }
 
   collectAircraft() {
@@ -215,12 +275,13 @@ class LiveFeed {
     return seen;
   }
 
-  async refresh() {
+  async refresh(onProgress) {
     const t0 = this.now();
     const by = new Map();
     const order = this._order();
     for (const t of order) {
       by.set(t, this.applyResult(t, await this.fetchTypeRetry(t, 1, false)));
+      this._emit(by, t0, true, onProgress);
       await this.sleep(this.gapMs);
     }
     const need = order.filter((t) => {
@@ -232,12 +293,11 @@ class LiveFeed {
     });
     for (const t of need) {
       by.set(t, this.applyResult(t, await this.fetchTypeRetry(t, Math.max(1, this.attempts - 1), true)));
+      this._emit(by, t0, true, onProgress);
       await this.sleep(this.gapMs);
     }
+    const seen = this._emit(by, t0, false, onProgress);
     const groups = this.types.map((t) => by.get(t) || this.applyResult(t, { ac: null, err: "not fetched" }));
-    this.lastCycleMs = this.now() - t0;
-    this.lastFeed = this._pack(groups, this.lastCycleMs);
-    const seen = this.collectAircraft();
     if (this.lastFeed.failed.length) {
       console.error(
         "type groups failed",
@@ -256,12 +316,41 @@ class LiveFeed {
   }
 }
 
+function snapshotFresh(at, now, maxMs) {
+  const t = Date.parse(at);
+  const n = now == null ? Date.now() : now;
+  const max = maxMs == null ? 20 * 60e3 : maxMs;
+  return Number.isFinite(t) && n - t >= 0 && n - t < max;
+}
+
+function warmStartUrl(env) {
+  const e = env || process.env;
+  if (String(e.LIVE_WARM || "") === "0") return "";
+  const u = String(e.LIVE_WARM_URL || e.RENDER_EXTERNAL_URL || "").replace(/\/$/, "");
+  if (!u || /localhost|127\.0\.0\.1/i.test(u)) return "";
+  return u;
+}
+
+function loadLiveSnapshotFile(fsImpl, filePath, now, staleMs) {
+  try {
+    const j = JSON.parse(fsImpl.readFileSync(filePath, "utf8"));
+    if (!snapshotFresh(j && j.at, now, staleMs)) return null;
+    if (!Array.isArray(j.ac) || !j.ac.length) return null;
+    return j;
+  } catch (_) {
+    return null;
+  }
+}
+
 module.exports = {
   LiveFeed,
   parseTypes,
   parseRetryAfter,
   backoffMs,
   feedBanner,
+  snapshotFresh,
+  warmStartUrl,
+  loadLiveSnapshotFile,
   DEFAULT_TYPES,
   TYPE_URL,
   UA,

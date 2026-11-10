@@ -3,7 +3,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
-const { LiveFeed, parseTypes, feedBanner } = require("./live-feed");
+const { LiveFeed, parseTypes, feedBanner, snapshotFresh, warmStartUrl, loadLiveSnapshotFile, UA } = require("./live-feed");
 const airports = require("./public/airports.js");
 const HIST_DIR = path.join(__dirname, "data", "hist");
 const AIP_DIR = path.join(__dirname, "data", "aip");
@@ -43,8 +43,9 @@ const finCsv = (() => { const j = JSON.parse(fin); const k = Object.keys(j.m.QTR
 const globalAgg = fs.readFileSync(path.join(__dirname, "data/global.json"), "utf8");
 const names = JSON.parse(fs.readFileSync(path.join(__dirname, "data/airlines.json"), "utf8"));
 const { inspectSources } = require("./public/flightno.js");
+const LIVE_SNAP_PATH = path.join(__dirname, "data", "live-snapshot.json");
 let snapshot = { at: null, error: "warming up", airlines: [], total: 0 };
-let live = { at: null, fields: ["hex","callsign","airline","type","lat","lon","alt_ft","gs_kt","track","reg","on_ground","pos_age_s","vrate_fpm"], ac: [], nm: {} };
+let live = { at: null, fields: ["hex","callsign","airline","type","lat","lon","alt_ft","gs_kt","track","reg","on_ground","pos_age_s","vrate_fpm"], ac: [], nm: {}, feed: liveFeed.summary() };
 const trails = new Map(); 
 const tracks = fs.readFileSync(path.join(__dirname, "data/tracks.json"), "utf8");
 const csroute = fs.readFileSync(path.join(__dirname, "data/csroute.json"), "utf8");
@@ -166,51 +167,117 @@ async function ground(id) {
 const T0 = Date.now();
 const cov = new Map(); // "lat2,lon2" 2-degree cells with at least one position, last seen ms
 let busy = false;
+let snapWriteAt = 0, snapTimer = null;
+function saveLiveSnapshot(force) {
+  if (!live.at || !(live.ac || []).length) return;
+  const now = Date.now();
+  if (!force && now - snapWriteAt < 2000) {
+    if (!snapTimer) snapTimer = setTimeout(() => { snapTimer = null; saveLiveSnapshot(true); }, 2000 - (now - snapWriteAt));
+    return;
+  }
+  if (snapTimer) { clearTimeout(snapTimer); snapTimer = null; }
+  snapWriteAt = now;
+  try {
+    fs.writeFileSync(LIVE_SNAP_PATH, JSON.stringify({ at: live.at, ac: live.ac, nm: live.nm, fields: live.fields, feed: live.feed }));
+  } catch (e) { console.error("live snapshot save", e.message); }
+}
+function publishFromSeen(seen, f) {
+  const nowc = Date.now();
+  for (const a of seen.values()) if (typeof a.lat === "number" && (a.seen_pos ?? 0) <= 60) cov.set(`${Math.floor(a.lat / 2) * 2},${Math.floor(a.lon / 2) * 2}`, nowc);
+  for (const [k, t] of cov) if (nowc - t > 24 * 3600e3) cov.delete(k);
+  const by = {};
+  for (const a of seen.values()) {
+    const cs = (a.flight || "").trim();
+    if (!/^[A-Z]{3}\d/.test(cs)) continue;
+    const code = cs.slice(0, 3);
+    const air = typeof a.alt_baro === "number";
+    const s = (by[code] ||= { code, name: names[code] || code, n: 0, air: 0, altSum: 0, gsSum: 0, gsN: 0, types: {} });
+    s.n++;
+    if (air) { s.air++; s.altSum += a.alt_baro; }
+    if (air && typeof a.gs === "number") { s.gsSum += a.gs; s.gsN++; }
+    const t = a.t || "Unknown"; s.types[t] = (s.types[t] || 0) + 1;
+  }
+  const airlines = Object.values(by).filter((s) => s.n >= 5).map((s) => ({
+    code: s.code, name: s.name, n: s.n, air: s.air,
+    avgAlt: s.air ? Math.round(s.altSum / s.air) : null, avgGs: s.gsN ? Math.round(s.gsSum / s.gsN) : null,
+    types: Object.entries(s.types).sort((a, b) => b[1] - a[1]).slice(0, 5),
+  })).sort((a, b) => b.n - a.n);
+  const banner = feedBanner(f);
+  // Publish whatever groups succeeded or are still within the stale window. Do not
+  // drop the whole snapshot because some type fetches failed.
+  if (seen.size) {
+    const at = new Date().toISOString();
+    snapshot = { at, error: (f.n_ok || f.n_stale) ? null : (banner || null), airlines, total: seen.size, feed: f };
+    gholdClearSeen([...seen.keys()]);
+    const ac = [...seen.values()].filter((a) => typeof a.lat === "number" && typeof a.lon === "number" && (a.seen_pos ?? 0) <= 60 && /^[A-Z]{3}\d/.test((a.flight || "").trim()))
+      .map((a) => [a.hex, a.flight.trim(), a.flight.trim().slice(0, 3), a.t || "", +a.lat.toFixed(5), +a.lon.toFixed(5), typeof a.alt_baro === "number" ? a.alt_baro : 0, Math.round(a.gs || 0), Math.round(a.track ?? a.true_heading ?? a.mag_heading ?? 0), a.r || "", a.alt_baro === "ground" ? 1 : 0, Math.round(a.seen_pos ?? 0), Math.round(a.baro_rate ?? a.geom_rate ?? 0)]);
+    const nm = {};
+    for (const r of ac) { const c = r[2]; if (c && names[c] && !nm[c]) nm[c] = names[c]; }
+    live = { at, fields: live.fields, ac, nm, feed: f };
+    const now = Date.now();
+    for (const r of live.ac) { const t = trails.get(r[0]) || []; const p = t[t.length - 1]; if (!p || p[1] !== r[5] || p[2] !== r[4]) t.push([now, r[5], r[4], r[6], r[7], r[12], r[10]]); if (t.length > 360) t.shift(); trails.set(r[0], t); }
+    for (const [h, t] of trails) if (now - t[t.length - 1][0] > 20 * 60000) trails.delete(h);
+    if (!f.loading) { hist.push([at, seen.size, live.ac.length]); if (hist.length > 60) hist.shift(); }
+    saveLiveSnapshot();
+  } else {
+    snapshot = { ...snapshot, error: banner || snapshot.error || "no type groups loaded", feed: f };
+    live = { ...live, feed: f };
+  }
+}
+function applyLivePayload(j, source) {
+  if (!j || !Array.isArray(j.ac) || !j.ac.length) return false;
+  if (!snapshotFresh(j.at, Date.now(), liveFeed.staleMs)) return false;
+  const atMs = Date.parse(j.at);
+  liveFeed.hydrateFromRows(j.ac, atMs);
+  const f = liveFeed.summary();
+  f.note = `Warm-started from ${source}. Type groups refresh in the background. Render free disk does not survive deploy/spin-down.`;
+  liveFeed.lastFeed = f;
+  publishFromSeen(liveFeed.collectAircraft(), f);
+  return !!(live.ac && live.ac.length);
+}
+function loadDiskSnapshot() {
+  const j = loadLiveSnapshotFile(fs, LIVE_SNAP_PATH, Date.now(), liveFeed.staleMs);
+  if (!j) return false;
+  return applyLivePayload(j, "disk snapshot");
+}
+async function warmStartFromUrl() {
+  const base = warmStartUrl(process.env);
+  if (!base) return false;
+  try {
+    const r = await fetch(base + "/api/live", {
+      headers: { "User-Agent": UA + " warm-start" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return false;
+    const j = await r.json();
+    return applyLivePayload(j, "previous instance");
+  } catch (e) {
+    console.error("warm-start url", e.message);
+    return false;
+  }
+}
+async function warmStart() {
+  if (loadDiskSnapshot()) {
+    console.log("warm-start disk", "n=" + live.ac.length, live.at);
+    return "disk";
+  }
+  if (await warmStartFromUrl()) {
+    console.log("warm-start url", "n=" + live.ac.length, live.at);
+    return "url";
+  }
+  return null;
+}
 async function refresh() {
   if (busy) return; busy = true;
   const t0 = Date.now();
   try {
-    const { seen, feed: f } = await liveFeed.refresh();
-    const nowc = Date.now();
-    for (const a of seen.values()) if (typeof a.lat === "number" && (a.seen_pos ?? 0) <= 60) cov.set(`${Math.floor(a.lat / 2) * 2},${Math.floor(a.lon / 2) * 2}`, nowc);
-    for (const [k, t] of cov) if (nowc - t > 24 * 3600e3) cov.delete(k);
-    const by = {};
-    for (const a of seen.values()) {
-      const cs = (a.flight || "").trim();
-      if (!/^[A-Z]{3}\d/.test(cs)) continue;
-      const code = cs.slice(0, 3);
-      const air = typeof a.alt_baro === "number";
-      const s = (by[code] ||= { code, name: names[code] || code, n: 0, air: 0, altSum: 0, gsSum: 0, gsN: 0, types: {} });
-      s.n++;
-      if (air) { s.air++; s.altSum += a.alt_baro; }
-      if (air && typeof a.gs === "number") { s.gsSum += a.gs; s.gsN++; }
-      const t = a.t || "Unknown"; s.types[t] = (s.types[t] || 0) + 1;
-    }
-    const airlines = Object.values(by).filter((s) => s.n >= 5).map((s) => ({
-      code: s.code, name: s.name, n: s.n, air: s.air,
-      avgAlt: s.air ? Math.round(s.altSum / s.air) : null, avgGs: s.gsN ? Math.round(s.gsSum / s.gsN) : null,
-      types: Object.entries(s.types).sort((a, b) => b[1] - a[1]).slice(0, 5),
-    })).sort((a, b) => b.n - a.n);
+    const { seen, feed: f } = await liveFeed.refresh(({ seen: s, feed: pf }) => {
+      publishFromSeen(s, pf);
+      const last = (pf.ok && pf.ok[pf.ok.length - 1]) || (pf.stale && pf.stale[0] && pf.stale[0].t) || "";
+      console.log("live +", last, "n=" + s.size, "ok=" + pf.n_ok, "pending=" + pf.n_pending);
+    });
+    publishFromSeen(seen, f);
     const banner = feedBanner(f);
-    // Publish whatever groups succeeded or are still within the stale window. Do not
-    // drop the whole snapshot because some type fetches failed.
-    if (seen.size) {
-      const at = new Date().toISOString();
-      snapshot = { at, error: (f.n_ok || f.n_stale) ? null : (banner || null), airlines, total: seen.size, feed: f };
-      gholdClearSeen([...seen.keys()]);
-      const ac = [...seen.values()].filter((a) => typeof a.lat === "number" && typeof a.lon === "number" && (a.seen_pos ?? 0) <= 60 && /^[A-Z]{3}\d/.test((a.flight || "").trim()))
-        .map((a) => [a.hex, a.flight.trim(), a.flight.trim().slice(0, 3), a.t || "", +a.lat.toFixed(5), +a.lon.toFixed(5), typeof a.alt_baro === "number" ? a.alt_baro : 0, Math.round(a.gs || 0), Math.round(a.track ?? a.true_heading ?? a.mag_heading ?? 0), a.r || "", a.alt_baro === "ground" ? 1 : 0, Math.round(a.seen_pos ?? 0), Math.round(a.baro_rate ?? a.geom_rate ?? 0)]);
-      const nm = {};
-      for (const r of ac) { const c = r[2]; if (c && names[c] && !nm[c]) nm[c] = names[c]; }
-      live = { at, fields: live.fields, ac, nm, feed: f };
-      const now = Date.now();
-      for (const r of live.ac) { const t = trails.get(r[0]) || []; const p = t[t.length - 1]; if (!p || p[1] !== r[5] || p[2] !== r[4]) t.push([now, r[5], r[4], r[6], r[7], r[12], r[10]]); if (t.length > 360) t.shift(); trails.set(r[0], t); }
-      for (const [h, t] of trails) if (now - t[t.length - 1][0] > 20 * 60000) trails.delete(h);
-      hist.push([at, seen.size, live.ac.length]); if (hist.length > 60) hist.shift();
-    } else {
-      snapshot = { ...snapshot, error: banner || snapshot.error || "no type groups loaded", feed: f };
-      live = { ...live, feed: f };
-    }
     console.log("refresh", "n=" + seen.size, "ok=" + f.n_ok, "stale=" + f.n_stale, "failed=" + f.n_failed, "ms=" + (Date.now() - t0), banner || "all type groups ok");
   } catch (e) { snapshot.error = e.message; console.error("refresh", e.message); }
   busy = false;
@@ -220,7 +287,6 @@ function scheduleRefresh() {
   const wait = Math.max(8000, REFRESH_MS - elapsed);
   setTimeout(() => { refresh().finally(scheduleRefresh); }, wait);
 }
-refresh().finally(scheduleRefresh);
 
 const wx = require("./wx");
 const zlib = require("zlib");
@@ -229,7 +295,7 @@ const send = (res, code, type, body, cache) => {
   if (res.req && /gzip/.test(res.req.headers["accept-encoding"] || "") && body && body.length > 2048) { h["Content-Encoding"] = "gzip"; body = zlib.gzipSync(body); }
   res.writeHead(code, h); res.end(body);
 };
-http.createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
   const u = req.url.split("?")[0]; const q = new URL(req.url, "http://x").searchParams;
   if (u === "/api/ground") {
     const id = (q.get("apt") || "").toUpperCase();
@@ -308,4 +374,10 @@ http.createServer(async (req, res) => {
   if (u === "/flightno.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/flightno.js")));
   if (u === "/" || u === "/index.html") return send(res, 200, "text/html; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/index.html")));
   send(res, 404, "text/plain", "not found");
-}).listen(PORT, () => console.log(`listening on ${PORT}`));
+});
+async function boot() {
+  try { await warmStart(); } catch (e) { console.error("warm-start", e.message); }
+  server.listen(PORT, "0.0.0.0", () => console.log(`listening on ${PORT}`));
+  refresh().finally(scheduleRefresh);
+}
+boot();
