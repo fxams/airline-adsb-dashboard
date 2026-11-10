@@ -88,10 +88,13 @@ evidence.egllDesk = await shot(desk, "hist-egll-desk");
     hist: map.getLayer("hist-rep") && map.getLayoutProperty("hist-rep", "visibility"),
     lab: map.getLayer("hist-lab") && map.getLayoutProperty("hist-lab", "visibility"),
     rwy: typeof runwayPathsOn === "function" && runwayPathsOn(),
-    rwyb: !!(document.getElementById("rwyb")),
+    dep: typeof depPathsOn === "function" && depPathsOn(),
+    arr: typeof arrPathsOn === "function" && arrPathsOn(),
+    depb: !!(document.getElementById("depb")),
+    arrb: !!(document.getElementById("arrb")),
   }));
-  ok(zOut.rwyb, "RWY paths toolbar button");
-  ok(zOut.rwy === true, "Runway paths default on");
+  ok(zOut.depb && zOut.arrb, "Dep and Arr toolbar pills");
+  ok(zOut.dep === true && zOut.arr === true && zOut.rwy === true, "Departures and Arrivals default on");
   ok(zOut.hist === "visible", `hist-rep stays visible zoomed out (apt=${zOut.apt} z=${zOut.zoom})`);
   ok(zOut.lab === "none", "hist labels hidden at low zoom");
   evidence.zoomOut = zOut;
@@ -107,6 +110,22 @@ evidence.egllDesk = await shot(desk, "hist-egll-desk");
   await desk.evaluate(() => { setHideTracks(false); setRunwayPaths(false); });
   const off = await desk.evaluate(() => map.getLayer("hist-rep") && map.getLayoutProperty("hist-rep", "visibility"));
   ok(off === "none", "Runway paths toggle off hides hist-rep");
+  await desk.evaluate(() => { setDepPaths(true); setArrPaths(false); });
+  const depOnly = await desk.evaluate(() => ({
+    vis: map.getLayer("hist-rep") && map.getLayoutProperty("hist-rep", "visibility"),
+    filt: JSON.stringify(map.getFilter("hist-rep") || []),
+    depOn: depPathsOn(),
+    arrOn: arrPathsOn(),
+    sid: map.getLayer("aip-sid") && map.getLayoutProperty("aip-sid", "visibility"),
+  }));
+  ok(depOnly.vis === "visible" && depOnly.depOn && !depOnly.arrOn, "Departures-only keeps hist-rep visible");
+  ok(/dep/.test(depOnly.filt), "Departures-only filters hist-rep to dep");
+  await desk.evaluate(() => { setDepPaths(false); setArrPaths(true); });
+  const arrOnly = await desk.evaluate(() => ({
+    vis: map.getLayer("hist-rep") && map.getLayoutProperty("hist-rep", "visibility"),
+    filt: JSON.stringify(map.getFilter("hist-rep") || []),
+  }));
+  ok(arrOnly.vis === "visible" && /arr/.test(arrOnly.filt), "Arrivals-only filters hist-rep to arr");
   await desk.evaluate(() => { setRunwayPaths(true); });
   const back = await desk.evaluate(() => map.getLayer("hist-rep") && map.getLayoutProperty("hist-rep", "visibility"));
   ok(back === "visible", "Runway paths toggle on restores hist-rep");

@@ -30,8 +30,9 @@ ok(/not navigraph/i.test(JSON.stringify(idxFile)) && /not jeppesen/i.test(JSON.s
 
 const html = fs.readFileSync("public/index.html", "utf8");
 ok(html.includes("id=\"aipsid\""), "SID/STAR toggle");
-ok(html.includes("id=\"aipsidf\"") && html.includes("id=\"rwy\""), "filter-sheet Runway paths and SID/STAR toggles");
-ok(html.includes("id=\"rwyb\""), "map toolbar Runway paths button");
+ok(html.includes("id=\"aipsidf\"") && html.includes("id=\"depf\"") && html.includes("id=\"arrf\""), "filter-sheet Departures, Arrivals and SID/STAR toggles");
+ok(html.includes("id=\"depb\"") && html.includes("id=\"arrb\""), "map toolbar Dep/Arr pills");
+ok(html.includes("pathleg") && html.includes("365-day departures"), "filter-sheet path colour legend");
 ok(html.includes("id=\"aipp\""), "AIP panel");
 ok(html.includes("id=\"aipname\""), "name-only licence-restricted toggle");
 ok(/licence-restricted/i.test(html), "toggle labelled licence-restricted");
@@ -43,6 +44,9 @@ ok(/aip-ident\.js/.test(html), "aip-ident.js loaded");
 
 const mapjs = fs.readFileSync("public/map.js", "utf8");
 ok(mapjs.includes("aipLoad") && mapjs.includes("aip-sid"), "map overlay");
+ok(mapjs.includes("COL_DEP") && mapjs.includes("COL_ARR") && mapjs.includes("#3D8BFF") && mapjs.includes("#FF4B6B"), "distinct dep/arr colours");
+ok(!mapjs.includes("#4ee0ff") && !mapjs.includes("#ff9f43"), "old hist colours retired");
+ok(mapjs.includes("COL_SID") && mapjs.includes("line-dasharray"), "SID/STAR dashed in direction family");
 ok(mapjs.includes("identLive") && mapjs.includes("sidStarPanelHtml") && mapjs.includes("histIdentPopup"), "ident UI wired");
 ok(mapjs.includes("Name-only SID/STAR ID") || html.includes("Name-only SID/STAR ID"), "name-only copy");
 
