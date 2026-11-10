@@ -61,7 +61,7 @@ async function seed(page) {
       ["g16l", "QTR16L", "QTR", "A359", pts.l16.lat, pts.l16.lon, 0, 12, pts.l16.hdg, "A7-AMF", 1, 4, 0],
       ["a16r", "QTR16R", "QTR", "A359", pts.l16r.lat, pts.l16r.lon, 375, 147, pts.l16r.hdg, "A7-LOW", 0, 6, -200],
       ["air1", "QTR99", "QTR", "B77W", 25.40, 52.00, 37000, 480, 90, "A7-HI", 0, 3, 0],
-      ["stale", "QTRST", "QTR", "A320", pts.r34.lat, pts.r34.lon, 12000, 220, 336, "A7-ST", 0, 45, 0]
+      ["stale", "QTRST", "QTR", "A320", pts.r34.lat, pts.r34.lon, 12000, 220, 336, "A7-ST", 0, 70, 0]
     ];
     GND_AC = [
       ["g16l", "QTR16L", "QTR", "A359", pts.l16.lat, pts.l16.lon, pts.l16.hdg, 12, "taxi", 4, 1, "live", null, null, "A7-AMF", "DOH"],
@@ -97,7 +97,7 @@ async function measure(page) {
     const shownAir = typeof dispLonLat === "function" ? dispLonLat(25.40, 52.00, 480, 90, 0, 37000, 3) : null;
     const shownGnd = typeof dispLonLat === "function" ? dispLonLat(pts.l16.lat, pts.l16.lon, 12, pts.l16.hdg, 1, 0, 4) : null;
     const shownHeld = typeof dispLonLat === "function" ? dispLonLat(pts.arp.lat, pts.arp.lon, 0, 90, 1, 0, 2400) : null;
-    const shownStale = typeof dispLonLat === "function" ? dispLonLat(pts.r34.lat, pts.r34.lon, 220, 336, 0, 12000, 45) : null;
+    const shownStale = typeof dispLonLat === "function" ? dispLonLat(pts.r34.lat, pts.r34.lon, 220, 336, 0, 12000, 70) : null;
     const liveLay = map.getLayer("live") && {
       anchor: map.getLayoutProperty("live", "icon-anchor"),
       rot: map.getLayoutProperty("live", "icon-rotation-alignment"),

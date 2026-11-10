@@ -369,6 +369,7 @@ const server = http.createServer(async (req, res) => {
   if (u === "/api/map") return send(res, 200, "application/json", JSON.stringify(map));
   if (u === "/healthz") return send(res, 200, "text/plain", "ok");
   if (u === "/aip-ident.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/aip-ident.js")));
+  if (u === "/motion.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/motion.js")));
   if (u === "/map.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/map.js")));
   if (u === "/route-plaus.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/route-plaus.js")));
   if (u === "/flightno.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/flightno.js")));
