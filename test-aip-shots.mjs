@@ -45,6 +45,8 @@ async function info(page) {
     const vis = map.getLayer("aip-sid") && map.getLayoutProperty("aip-sid", "visibility");
     const aipp = (document.getElementById("aipp") || {}).innerText || "";
     const hpt = (document.getElementById("hpt") || {}).innerText || "";
+    const sidnote = (document.getElementById("sidnote") || {}).innerText || "";
+    const sidnotef = (document.getElementById("sidnotef") || {}).innerText || "";
     const aipsid = document.getElementById("aipsid");
     const aipname = document.getElementById("aipname");
     const feats = (src && src.features) || [];
@@ -57,6 +59,8 @@ async function info(page) {
       nNear: ((near && near.features) || []).length,
       aipp,
       hpt,
+      sidnote,
+      sidnotef,
       toggleShown: !!(aipsid && aipsid.closest("label") && aipsid.closest("label").style.display !== "none"),
       nameToggleShown: !!(aipname && aipname.closest("label") && aipname.closest("label").style.display !== "none"),
       nameChecked: !!(aipname && aipname.checked),
@@ -179,9 +183,9 @@ evidence.egllShot = await shot(desk, "aip-egll-linkonly");
 await desk.evaluate(() => { const el = document.getElementById("aipname"); el.checked = true; localStorage.aipname = "1"; aipPaint(); histPaint(); });
 await new Promise((r) => setTimeout(r, 400));
 const lhrOn = await info(desk);
-ok(/licence-restricted/i.test(lhrOn.aipp) && /OurAirports|OpenAIP|NATS/i.test(lhrOn.aipp), `EGLL assessment ${lhrOn.aipp.slice(0, 220)}`);
-ok(/never fabricated|not assigned|not invented/i.test(lhrOn.aipp), "EGLL assessment says names not fabricated");
-ok(!/\bBPK\d|\bDET\d|\bMID\d|\bWOBUN/i.test(lhrOn.aipp), "toggle-on still invents no EGLL SID names");
+ok(/licence-restricted/i.test(lhrOn.aipp + lhrOn.hpt) && /OurAirports|OpenAIP|NATS/i.test(lhrOn.aipp + lhrOn.hpt), `EGLL assessment ${(lhrOn.aipp + lhrOn.hpt).slice(0, 220)}`);
+ok(/never fabricated|not assigned|not invented/i.test(lhrOn.aipp + lhrOn.hpt), "EGLL assessment says names not fabricated");
+ok(!/\bBPK\d|\bDET\d|\bMID\d|\bWOBUN/i.test(lhrOn.aipp + lhrOn.hpt), "toggle-on still invents no EGLL SID names");
 evidence.lhrNameOn = lhrOn;
 {
   const gp = await desk.$("#gp");
@@ -191,7 +195,9 @@ evidence.lhrNameOn = lhrOn;
 await goApt(desk, "DOH", 12.3);
 const doh = await info(desk);
 ok(!doh.toggleShown && doh.nProc === 0, "DOH link-only, no geometry");
-ok(/Qatar|QCAA|AIM/i.test(doh.aipp), `DOH panel ${doh.aipp.slice(0, 180)}`);
+ok(/QCAA|AIM|AD 2/i.test(doh.aipp), `DOH panel ${doh.aipp.slice(0, 180)}`);
+ok(/Doha SID\/STAR charts: official links only \(licence\)/i.test(doh.sidnote + doh.sidnotef), `DOH short note ${doh.sidnote||doh.sidnotef}`);
+ok(!/personal, non-commercial/i.test(doh.aipp), "DOH panel is not the long QCAA legal blob");
 evidence.doh = doh;
 evidence.dohShot = await shot(desk, "aip-doh-linkonly");
 {
