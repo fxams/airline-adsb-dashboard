@@ -736,7 +736,7 @@ function gSetup(){if(map.getSource("sat"))return;const b=map.getStyle().layers.f
     map.addLayer({id:"hist-cor",type:"fill",source:"histcor",layout:{visibility:"none"},paint:{"fill-color":["match",["get","dir"],"dep",COL_DEP,COL_ARR],"fill-opacity":0.16}});
     map.addSource("histraw",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
     map.addLayer({id:"hist-raw",type:"line",source:"histraw",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","dir"],"dep",COL_SID,COL_STAR],"line-width":1.05,"line-opacity":0.28}});
-    map.addSource("hist",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+    map.addSource("hist",{type:"geojson",data:{type:"FeatureCollection",features:[]},tolerance:0});
     map.addLayer({id:"hist-cas",type:"line",source:"hist",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":COL_CAS,"line-width":["interpolate",["linear"],["zoom"],3,["case",["==",["get","sec"],1],3.8,5.4],7,["case",["==",["get","sec"],1],4.0,5.6],12,["case",["==",["get","sec"],1],3.6,5.0]],"line-opacity":0.78}});
     map.addLayer({id:"hist-rep",type:"line",source:"hist",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","dir"],"dep",COL_DEP,COL_ARR],"line-width":["interpolate",["linear"],["zoom"],3,["case",["==",["get","sec"],1],2.2,3.4],7,["case",["==",["get","sec"],1],2.4,3.6],12,["case",["==",["get","sec"],1],2.1,3.2]],"line-opacity":["case",["==",["get","sec"],1],0.82,0.98]}});
     map.addSource("histlab",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
@@ -894,6 +894,24 @@ function setAipOn(on){
   const b=$("sidb");if(b){b.classList.toggle("on",!!on);b.setAttribute("aria-pressed",on?"true":"false");const t=b.querySelector("[data-role=label]");if(t)t.textContent=on?"SID/STAR":"SID off";else b.textContent=on?"SID/STAR":"SID off"}
   aipPaint();
 }
+function sidNoteText(j){
+  if(!j||j.mode!=="link"||j.error) return "";
+  const icao=(j.icao||"").toUpperCase();
+  const apt=(j.apt||"").toUpperCase();
+  if(icao==="OTHH"||apt==="DOH") return "Doha SID/STAR charts: official links only (licence)";
+  const names={OMDB:"Dubai",OMAA:"Abu Dhabi",EGLL:"Heathrow",EGKK:"Gatwick",WSSS:"Singapore",VABB:"Mumbai",LIRF:"Rome",EDDF:"Frankfurt",RJAA:"Narita",OKBK:"Kuwait",OOMS:"Muscat",OBBI:"Bahrain",OEJN:"Jeddah",OERK:"Riyadh",LFPG:"Paris",EHAM:"Amsterdam"};
+  const n=names[icao]||j.state||icao||apt;
+  return n+" SID/STAR charts: official links only (licence)";
+}
+function syncSidNote(j){
+  const t=sidNoteText(j);
+  ["sidnote","sidnotef"].forEach(id=>{
+    const el=$(id);
+    if(!el) return;
+    el.textContent=t;
+    el.hidden=!t;
+  });
+}
 async function aipLoad(id){
   if(!id||id==="G"){AIP=null;AIP_APT=null;aipPaint();histPaint();return}
   if(AIP_APT===id&&AIP){aipPaint();histPaint();return}
@@ -939,20 +957,14 @@ function aipPaint(){
   if(map.getSource("aipnear")) map.getSource("aipnear").setData({type:"FeatureCollection",features:near});
   if(map.getSource("aiplab")) map.getSource("aiplab").setData({type:"FeatureCollection",features:labs});
   applyTrackVis();
+  syncSidNote(j);
   const el=$("aipp");
   if(el){
     if(!j||j.error){el.textContent="";}
     else if(j.mode==="link"){
       const href=aipEsc(j.ad2_url||j.source_url||"");
       const lab=aipEsc(j.ad2_label||"official AIP AD 2");
-      const termsHref=aipEsc(j.terms_url||j.source_url||"");
-      let html=`SID/STAR geometry is <b>not redrawn</b> for ${aipEsc(j.icao||j.apt)} (${aipEsc(j.state||"")}). ${aipEsc(j.terms||j.why||"")} Official charts: <a href="${href}" target="_blank" rel="noopener noreferrer">${lab}</a>${termsHref?` · <a href="${termsHref}" target="_blank" rel="noopener noreferrer">terms</a>`:""}. Not for navigation.`;
-      if(aipNameOn()){
-        html+=`<br><br><b>Name-only SID/STAR ID (licence-restricted) is on.</b> ${aipEsc(j.ident_terms||"No licence-safe SID/STAR coding table. Procedure names are not assigned.")} No procedure names or charted fixes are shown because none were ingested from this AIP. Names are never fabricated.`;
-      }else{
-        html+=`<br>SID/STAR not identified (no licence-safe coding table). Tick “Name-only SID/STAR ID (licence-restricted)” to read the assessment — names are not invented.`;
-      }
-      el.innerHTML=html;
+      el.innerHTML=`Official charts: <a href="${href}" target="_blank" rel="noopener noreferrer">${lab}</a>. Not for navigation. Geometry is not redrawn (licence).`;
     }else{
       const href=aipEsc(j.ad2_url||j.source_url||"");
       const src=aipEsc(j.source||"FAA CIFP");

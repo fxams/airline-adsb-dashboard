@@ -13,6 +13,7 @@ from hist_lib import (  # noqa: E402
     assign_runway,
     cluster_group,
     enu_ll,
+    hdg_err,
     hv_nm,
     kalman_rts,
     load_ourairports,
@@ -20,6 +21,7 @@ from hist_lib import (  # noqa: E402
     parse_trace,
     roll_and_airborne,
     rwy_frame,
+    _splice_observed_roll,
 )
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -191,6 +193,55 @@ _, x_dep = rwy_frame(rwy, first[1], first[0])
 ok(abs(x_dep) * 1852 < 80, f"27L dep start |cross| {abs(x_dep)*1852:.1f} m vs centreline")
 # Anchor is an observed sample, not the OurAirports threshold snapped.
 ok(hv_nm(first[1], first[0], rwy["lat"], rwy["lon"]) > 0.02, "dep start is observed on the roll, not snapped to the threshold")
+
+# Late first-hit + off-axis airborne medoid (OTHH 34R class): splice must keep
+# the ground-roll on the centreline instead of a chord across the terminal.
+def _rwy_pt(rwy, along_nm, cross_nm, **kw):
+    rad = math.radians(rwy["hdg"])
+    e = (along_nm * math.sin(rad) + cross_nm * math.cos(rad)) * 1852
+    n = (along_nm * math.cos(rad) - cross_nm * math.sin(rad)) * 1852
+    lat, lon = enu_ll(rwy["lat"], rwy["lon"], e, n)
+    return {
+        "lat": lat, "lon": lon,
+        "alt": kw.get("alt", 0), "gs": kw.get("gs", 80),
+        "trk": kw.get("trk", rwy["hdg"]), "gnd": kw.get("gnd", True),
+        "t": kw.get("t", 0), "leg": False, "stale": False,
+    }
+
+late = []
+for i in range(12):
+    pts = []
+    t0 = 1000
+    for k, along in enumerate((0.15, 0.45, 0.85, 1.25, 1.7, 2.15)):
+        pts.append(_rwy_pt(rwy, along, 0.002 * (i % 3 - 1), alt=0, gs=50 + k * 18, gnd=True, t=t0 + k * 3))
+    for k in range(8):
+        pts.append(_rwy_pt(
+            rwy, 2.5 + k * 0.55, 0.12 + k * 0.08,
+            alt=400 + k * 220, gs=160 + k * 8, gnd=False,
+            trk=(rwy["hdg"] + 35) % 360, t=t0 + 30 + k * 4,
+        ))
+    late.append({"pts": pts, "al": "QTR"})
+# Synthetic medoid that already left the pavement at vertex 1 (the production bug).
+fake_path = [
+    [_rwy_pt(rwy, 1.60, 0.002)["lon"], _rwy_pt(rwy, 1.60, 0.002)["lat"]],
+    [_rwy_pt(rwy, 2.35, 0.09)["lon"], _rwy_pt(rwy, 2.35, 0.09)["lat"]],
+    [_rwy_pt(rwy, 4.2, 0.35)["lon"], _rwy_pt(rwy, 4.2, 0.35)["lat"]],
+]
+spliced = _splice_observed_roll(fake_path, late, apt, "dep", rwy)
+ok(len(spliced) >= 4, f"spliced roll has body {len(spliced)}")
+a0, x0 = rwy_frame(rwy, spliced[0][1], spliced[0][0])
+a1, x1 = rwy_frame(rwy, spliced[1][1], spliced[1][0])
+ok(abs(x0) * 1852 < 80, f"spliced dep start |cross| {abs(x0)*1852:.1f} m")
+ok(abs(x1) * 1852 < 80, f"spliced dep second |cross| {abs(x1)*1852:.1f} m")
+ok(a1 > a0, "spliced roll advances along the runway")
+brg = math.degrees(math.atan2(
+    math.sin(math.radians(spliced[1][0] - spliced[0][0])) * math.cos(math.radians(spliced[1][1])),
+    math.cos(math.radians(spliced[0][1])) * math.sin(math.radians(spliced[1][1]))
+    - math.sin(math.radians(spliced[0][1])) * math.cos(math.radians(spliced[1][1])) * math.cos(math.radians(spliced[1][0] - spliced[0][0])),
+))
+brg = (brg + 360) % 360
+ok(hdg_err(brg, rwy["hdg"]) < 12, f"spliced first-segment heading {brg:.1f} vs rwy {rwy['hdg']} err {hdg_err(brg, rwy['hdg']):.1f}")
+ok(hv_nm(spliced[0][1], spliced[0][0], rwy["lat"], rwy["lon"]) > 0.02, "splice does not snap to the threshold")
 
 with tempfile.TemporaryDirectory() as td:
     idx = bht.write_tiles(td, apts, qtr, buckets, ["fixture"], ("2025-11-04", "2026-11-03"))

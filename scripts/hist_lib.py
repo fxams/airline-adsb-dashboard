@@ -596,7 +596,7 @@ def cluster_group(flights, apt, kind, rwy=None):
         p25, p75 = (med, med) if len(sub) < 4 else _cross_track_band(med, sub)
         path = _vec_to_ll(med, apt, kind)
         members = [keep[i] for i in idx]
-        path = _anchor_observed(path, [flights[i] for i in members], apt, kind, rwy)
+        path = _splice_observed_roll(path, [flights[i] for i in members], apt, kind, rwy)
         clusters.append({
             "n": int(cnt),
             "share": round(cnt / len(flights), 3),
@@ -648,6 +648,7 @@ def _anchor_observed(path, flights, apt, kind, rwy):
     """Replace the airport-end vertex with the median of observed roll positions.
 
     True ADS-B samples, not a synthetic snap to the OurAirports threshold.
+    Fallback when the full roll polyline cannot be built.
     """
     if not path or not flights:
         return path
@@ -673,6 +674,88 @@ def _anchor_observed(path, flights, apt, kind, rwy):
     else:
         out[-1] = vertex
     return out
+
+
+def _on_pavement(lon, lat, rwy):
+    along, cross = rwy_frame(rwy, lat, lon)
+    return -0.06 <= along <= rwy["length_nm"] + 0.10 and abs(cross) <= max(_max_cross_nm(rwy) * 1.8, 0.06)
+
+
+def _over_runway_strip(lon, lat, rwy):
+    """True while the vertex is still in the takeoff/landing along-range.
+
+    Medoid stations in this window are often already off-axis (SID heading).
+    Drawing them as the first airborne point chords across the terminal.
+    """
+    along, _cross = rwy_frame(rwy, lat, lon)
+    return -0.12 <= along <= rwy["length_nm"] + 0.45
+
+
+def _observed_roll_pts(flights, apt, kind, rwy):
+    """Observed on-runway samples, binned by along-track. Not a snapped centreline."""
+    hits = []
+    for fl in flights:
+        body = roll_and_airborne(fl.get("pts") or [], rwy, kind)
+        hits.extend(on_runway_hits(body, rwy))
+    if len(hits) < 2:
+        return []
+    hits.sort(key=lambda h: h["along"])
+    alongs = [h["along"] for h in hits]
+    span = alongs[-1] - alongs[0]
+    if span < 0.04:
+        pts = []
+        for h in (hits[0], hits[len(hits) // 2], hits[-1]):
+            pt = rr_near(h["p"]["lon"], h["p"]["lat"], apt)
+            if not pts or pts[-1] != pt:
+                pts.append(pt)
+        return pts
+    n_bins = max(5, min(14, int(span * NM_M / 260) + 1))
+    pts = []
+    half = max(0.035, span / max(1, n_bins - 1) * 0.7)
+    for i in range(n_bins):
+        a = alongs[0] + span * i / max(1, n_bins - 1)
+        window = [h for h in hits if abs(h["along"] - a) <= half]
+        if not window:
+            continue
+        slat = sorted(h["p"]["lat"] for h in window)
+        slon = sorted(h["p"]["lon"] for h in window)
+        mlat, mlon = slat[len(window) // 2], slon[len(window) // 2]
+        best = min(window, key=lambda h: (h["p"]["lat"] - mlat) ** 2 + ((h["p"]["lon"] - mlon) * math.cos(math.radians(mlat))) ** 2)
+        pt = rr_near(best["p"]["lon"], best["p"]["lat"], apt)
+        if pts and pts[-1] == pt:
+            continue
+        pts.append(pt)
+    return pts
+
+
+def _splice_observed_roll(path, flights, apt, kind, rwy):
+    """Keep the unsmoothed ground-roll on the pavement, then the airborne medoid.
+
+    Replacing only the first/last vertex left a chord from a late first-hit
+    (often mid-runway) to the SID, which drew across the terminal.
+    """
+    if not path or not flights or not rwy:
+        return _anchor_observed(path, flights, apt, kind, rwy)
+    roll = _observed_roll_pts(flights, apt, kind, rwy)
+    if len(roll) < 2:
+        return _anchor_observed(path, flights, apt, kind, rwy)
+    air = []
+    for pt in path:
+        lon, lat = pt[0], pt[1]
+        if _on_pavement(lon, lat, rwy) or _over_runway_strip(lon, lat, rwy):
+            continue
+        air.append(list(pt))
+    if kind == "dep":
+        out = [list(p) for p in roll] + air
+    else:
+        out = air + [list(p) for p in roll]
+    if len(out) < 2:
+        return path
+    dedup = [out[0]]
+    for pt in out[1:]:
+        if pt != dedup[-1]:
+            dedup.append(pt)
+    return dedup if len(dedup) >= 2 else path
 
 
 # --- Trace parsing -----------------------------------------------------------
@@ -862,5 +945,5 @@ def pack_tile(apt, flights_by_key, geom_days, h2h_n, h2h_inf, window):
         "discarded": discarded,
         "rwys": rwys,
         "raw": raw,
-        "note": "Observed ADS-B terminal-area tracks (adsb.lol, ODbL). Ground-roll samples are not Kalman-smoothed. Assigned by heading and lateral offset to one OurAirports runway end (parallels are not merged). Representative paths are the medoid of the dominant cluster, anchored at the median observed on-runway position — not snapped to the published threshold. Not published SID/STAR procedures.",
+        "note": "Observed ADS-B terminal-area tracks (adsb.lol, ODbL). Ground-roll samples are not Kalman-smoothed. Assigned by heading and lateral offset to one OurAirports runway end (parallels are not merged). Representative paths splice the observed on-runway roll (binned ADS-B hits) in front of the airborne medoid — not snapped to the published threshold. Not published SID/STAR procedures.",
     }

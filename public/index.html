@@ -30,6 +30,10 @@ code{color:var(--c3)}a{color:var(--c1)}@media(max-width:560px){.g2{grid-template
 .depb{border-right:1px solid var(--bd)}
 .depb.on{color:var(--dep);background:rgba(61,139,255,.16)}
 .arrb.on{color:var(--arr);background:rgba(255,75,107,.16)}
+.sidnote{display:none;position:absolute;z-index:11;left:8px;right:8px;bottom:calc(58px + env(safe-area-inset-bottom) + var(--vvb,0px));margin:0;padding:5px 8px;font-size:11px;line-height:1.3;color:var(--mu);text-align:center;background:rgba(6,12,24,.9);border:1px solid var(--bd);border-radius:8px;pointer-events:none}
+body.map-fs .sidnote:not([hidden]),#mw:fullscreen .sidnote:not([hidden]),#mw:-webkit-full-screen .sidnote:not([hidden]){display:block}
+#mfl .sidnote-fil{grid-column:1/-1;margin:4px 0 0;font-size:11px;line-height:1.35;color:var(--mu)}
+#mfl .sidnote-fil[hidden]{display:none!important}
 .qwrap{position:absolute;z-index:6;top:calc(54px + env(safe-area-inset-top));left:8px;width:min(340px,calc(100% - 16px))}
 .qbox{display:flex;align-items:center;gap:6px;background:rgba(6,12,24,.9);border:1px solid var(--bd);border-radius:10px;padding:4px 6px}
 .qbox input{flex:1;min-width:0;border:0;background:transparent;min-height:36px;font-size:14px;padding:6px 8px}
@@ -191,6 +195,9 @@ body.map-fs #map{height:100%!important;width:100%!important;border-radius:0!impo
 .mbar .depb{border-right:1px solid var(--bd)}
 .mbar .depb.on{color:var(--dep);background:rgba(61,139,255,.18)}
 .mbar .arrb.on{color:var(--arr);background:rgba(255,75,107,.18)}
+.sidnote{position:absolute;z-index:11;left:8px;right:8px;bottom:calc(58px + env(safe-area-inset-bottom) + var(--vvb,0px))}
+.sidnote:not([hidden]){display:block}
+body.map-fs .sidnote:not([hidden]),#mw:fullscreen .sidnote:not([hidden]),#mw:-webkit-full-screen .sidnote:not([hidden]){display:block}
 .wxbtn.on,.mbar .htb.on,.mbar .rlb.on{border-color:var(--c1);color:var(--c1)}
 .wxbtn.err{border-color:var(--warn);color:var(--warn)}
 .infosheet{display:none;position:absolute;z-index:12;left:8px;right:8px;bottom:calc(58px + env(safe-area-inset-bottom) + var(--vvb,0px));max-height:min(58vh,420px);overflow:auto;-webkit-overflow-scrolling:touch;background:rgba(6,12,24,.96);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;font-size:12px;line-height:1.45}
@@ -290,6 +297,7 @@ body.map-fs .infosheet .mfsnote:not([hidden]),#mw:fullscreen .infosheet .mfsnote
 <div id="filn" class="filn" aria-live="polite" aria-label="Live aircraft in this sample"></div>
 <div id="liveload" class="liveload" aria-live="polite">Loading live data…</div>
 <div id="map"></div>
+<p class="sidnote" id="sidnote" hidden></p>
 <div class="mbar" id="mbar">
 <button type="button" class="wxbtn mctl" id="wxbtn" aria-expanded="false" aria-controls="wxdock" title="Airport METAR and hazard overlays"><svg class="wxico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.5 19h11a4.5 4.5 0 0 0 .35-9A6.5 6.5 0 0 0 5.2 11 3.5 3.5 0 0 0 6.5 19z"/></svg>Weather</button>
 <div class="mtb" id="mtb"><button type="button" class="htb" id="htb" aria-pressed="false" title="Hide flight-path lines. Aircraft and coverage stay visible. Does not hide runway paths or published SID/STAR."><span data-role="label">Hide tracks</span></button><div class="dirpair" role="group" aria-label="Observed runway paths"><button type="button" class="depb" id="depb" aria-pressed="true" title="365-day observed departure paths for this airport, at every zoom. Off hides departures and published SIDs. Does not fetch every airport tile."><span data-role="label">Dep</span></button><button type="button" class="arrb" id="arrb" aria-pressed="true" title="365-day observed arrival paths for this airport, at every zoom. Off hides arrivals and published STARs. Does not fetch every airport tile."><span data-role="label">Arr</span></button></div><button type="button" class="rlb" id="rlb" aria-pressed="false" title="Show sourced registration next to aircraft at close zoom."><span data-role="label">Reg</span></button></div>
@@ -335,6 +343,7 @@ body.map-fs .infosheet .mfsnote:not([hidden]),#mw:fullscreen .infosheet .mfsnote
 <div><span class="ln" style="background:var(--arr)"></span>365-day arrivals</div>
 <div><span class="ln dash" style="border-color:var(--star)"></span>published STAR</div>
 <p class="mu">Solid = observed ADS-B. Dashed SID/STAR (US/CIFP) share that colour family. Not live trails or airline colours. Not for navigation.</p>
+<p class="mu sidnote-fil" id="sidnotef" hidden></p>
 </div>
 <div class="filblock">
 <div class="fillab">Airlines <span class="mu">union · Other = not QTR/UAE</span></div>
