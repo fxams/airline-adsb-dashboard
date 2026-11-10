@@ -3,7 +3,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
-const { LiveFeed, parseTypes, feedBanner, snapshotFresh, warmStartUrl, loadLiveSnapshotFile, UA } = require("./live-feed");
+const { LiveFeed, parseTypes, feedBanner, snapshotFresh, warmStartUrl, loadLiveSnapshotFile, filterAcBbox, UA } = require("./live-feed");
 const airports = require("./public/airports.js");
 const HIST_DIR = path.join(__dirname, "data", "hist");
 const AIP_DIR = path.join(__dirname, "data", "aip");
@@ -23,6 +23,7 @@ function loadAipIndex() {
     return { airports: [], n_airports: 0, n_draw: 0, n_link: 0, note: "No AIP SID/STAR index in this build." };
   }
 }
+const TILE_HUBS = airports.HUBS.slice();
 const histIndex = loadHistIndex();
 const aipIndex = loadAipIndex();
 function aipMeta(id) {
@@ -30,10 +31,10 @@ function aipMeta(id) {
 }
 const PORT = process.env.PORT || 10000;
 const REFRESH_MS = Number(process.env.REFRESH_SECONDS || 90) * 1000;
-// Public hub points (airports), 250 nm radius each.
-// Global feed: adsb.lol has no "whole world" endpoint, so we query every common airliner type globally (/v2/type).
+// Live feed: 250 nm point tiles across free providers (adsb.lol, adsb.fi; airplanes.live failover).
+// REFRESH_SECONDS is the global-tile freshness target, not a per-type loop. Hot hubs are faster.
 const TYPES = parseTypes(process.env.TYPES);
-const liveFeed = new LiveFeed({ types: TYPES });
+const liveFeed = new LiveFeed({ types: TYPES, hubs: TILE_HUBS, globalDueMs: REFRESH_MS });
 const lastT = liveFeed.lastT;
 const traced = JSON.parse(fs.readFileSync(path.join(__dirname, "data/traced.json"), "utf8"));
 const map = JSON.parse(fs.readFileSync(path.join(__dirname, "data/map.json"), "utf8"));
@@ -120,12 +121,13 @@ async function ground(id) {
   const c = gcache.get(hub.id); if (c && Date.now() - c.t < 30000) return c.v;
   const la = hub.lat, lo = hub.lon, name = hub.name;
   const pointNm = airports.POINT_NM, gndNm = airports.GND_NM;
-  let ac = [], err = null, src = "adsb.lol /v2/point";
-  for (let i = 0; i < 2 && !ac.length; i++) {
-    try { const r = await fetch(`https://api.adsb.lol/v2/point/${la}/${lo}/${pointNm}`, { headers: { "User-Agent": "airline-adsb-dashboard (github.com/fxams/airline-adsb-dashboard)" }, signal: AbortSignal.timeout(15000) }); if (!r.ok) throw new Error("HTTP " + r.status); ac = (await r.json()).ac || []; err = null; break; } catch (e) { err = String(e.message || e); await sleep(1500); }
-  }
+  let ac = [], err = null, src = "adsb.lol / adsb.fi 250 nm point";
+  try {
+    const got = await liveFeed.fetchPoint(la, lo, pointNm);
+    if (got && got.ac) { ac = got.ac; err = got.err || null; src = (got.provider || "point") + " 250 nm cap, requested " + pointNm + " nm"; }
+  } catch (e) { err = String(e.message || e); }
   if (err) {
-    src = "global type feed (fallback, airliner types only, up to ~90 s old)";
+    src = "tiled live feed fallback (airline callsigns already on the map, up to ~20 min old)";
     const d2 = (a) => ((a.lat - la) * 60) ** 2 + ((a.lon - lo) * 60 * Math.cos((la * Math.PI) / 180)) ** 2;
     const m = new Map(); for (const { ac: l } of lastT.values()) for (const a of l) if (typeof a.lat === "number" && d2(a) < pointNm * pointNm) m.set(a.hex, a); ac = [...m.values()];
   }
@@ -213,14 +215,17 @@ function publishFromSeen(seen, f) {
       .map((a) => [a.hex, a.flight.trim(), a.flight.trim().slice(0, 3), a.t || "", +a.lat.toFixed(5), +a.lon.toFixed(5), typeof a.alt_baro === "number" ? a.alt_baro : 0, Math.round(a.gs || 0), Math.round(a.track ?? a.true_heading ?? a.mag_heading ?? 0), a.r || "", a.alt_baro === "ground" ? 1 : 0, Math.round(a._age != null ? a._age : (a.seen_pos ?? 0)), Math.round(a.baro_rate ?? a.geom_rate ?? 0)]);
     const nm = {};
     for (const r of ac) { const c = r[2]; if (c && names[c] && !nm[c]) nm[c] = names[c]; }
-    live = { at, fields: live.fields, ac, nm, feed: f };
+    const ages = ac.filter((r) => !r[10]).map((r) => r[11]).filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
+    const pct = (p) => ages.length ? ages[Math.min(ages.length - 1, Math.floor(p / 100 * (ages.length - 1)))] : null;
+    f.age_air = { n: ages.length, p50: pct(50), p90: pct(90), max: ages.length ? ages[ages.length - 1] : null };
+    live = { at, fields: live.fields, ac, nm, feed: f, sources: f.sources || [] };
     const now = Date.now();
     for (const r of live.ac) { const t = trails.get(r[0]) || []; const p = t[t.length - 1]; if (!p || p[1] !== r[5] || p[2] !== r[4]) t.push([now, r[5], r[4], r[6], r[7], r[12], r[10]]); if (t.length > 360) t.shift(); trails.set(r[0], t); }
     for (const [h, t] of trails) if (now - t[t.length - 1][0] > 20 * 60000) trails.delete(h);
     if (!f.loading) { hist.push([at, seen.size, live.ac.length]); if (hist.length > 60) hist.shift(); }
     saveLiveSnapshot();
   } else {
-    snapshot = { ...snapshot, error: banner || snapshot.error || "no type groups loaded", feed: f };
+    snapshot = { ...snapshot, error: banner || snapshot.error || "no tiles loaded", feed: f };
     live = { ...live, feed: f };
   }
 }
@@ -230,7 +235,7 @@ function applyLivePayload(j, source) {
   const atMs = Date.parse(j.at);
   liveFeed.hydrateFromRows(j.ac, atMs);
   const f = liveFeed.summary();
-  f.note = `Warm-started from ${source}. Type groups refresh in the background. Render free disk does not survive deploy/spin-down.`;
+  f.note = `Warm-started from ${source}. Tiles refresh in the background. Render free disk does not survive deploy/spin-down.`;
   liveFeed.lastFeed = f;
   publishFromSeen(liveFeed.collectAircraft(), f);
   return !!(live.ac && live.ac.length);
@@ -278,13 +283,12 @@ async function refresh() {
     });
     publishFromSeen(seen, f);
     const banner = feedBanner(f);
-    console.log("refresh", "n=" + seen.size, "ok=" + f.n_ok, "stale=" + f.n_stale, "failed=" + f.n_failed, "ms=" + (Date.now() - t0), banner || "all type groups ok");
+    console.log("refresh", "n=" + seen.size, "ok=" + f.n_ok, "stale=" + f.n_stale, "failed=" + f.n_failed, "pending=" + f.n_pending, "ms=" + (Date.now() - t0), banner || "tiles ok");
   } catch (e) { snapshot.error = e.message; console.error("refresh", e.message); }
   busy = false;
 }
 function scheduleRefresh() {
-  const elapsed = liveFeed.lastCycleMs || 0;
-  const wait = Math.max(8000, REFRESH_MS - elapsed);
+  const wait = Math.max(150, liveFeed.nextWaitMs ? liveFeed.nextWaitMs() : 400);
   setTimeout(() => { refresh().finally(scheduleRefresh); }, wait);
 }
 
@@ -365,6 +369,21 @@ const server = http.createServer(async (req, res) => {
   if (u === "/api/wx/stations") return send(res, 200, "application/json", JSON.stringify(await wx.stations(q.get("ids") || "")), "public, max-age=60");
   if (u === "/api/wx/winds") return send(res, 200, "application/json", JSON.stringify(await wx.winds()), "public, max-age=120");
   if (u === "/api/live") return send(res, 200, "application/json", JSON.stringify({ ...live, history: hist, refreshSeconds: REFRESH_MS / 1000 }));
+  if (u === "/api/live/view") {
+    const west = q.get("west"), south = q.get("south"), east = q.get("east"), north = q.get("north");
+    const w = +west, s = +south, e = +east, n = +north;
+    if (![w, s, e, n].every(Number.isFinite)) return send(res, 400, "application/json", JSON.stringify({ error: "west,south,east,north required" }));
+    const lat = (s + n) / 2;
+    let lon = (w + e) / 2;
+    if (e < w) lon = ((w + e + 360) / 2);
+    if (lon > 180) lon -= 360;
+    liveFeed.noteViewport(lat, lon);
+    const ac = filterAcBbox(live.ac || [], w, s, e, n);
+    return send(res, 200, "application/json", JSON.stringify({
+      at: live.at, fields: live.fields, ac, n: ac.length, feed: live.feed, sources: live.sources || [],
+      note: "Filtered from the server live snapshot. Does not issue an upstream request. At most one already-scheduled tile is boosted every 20 s. Times UTC."
+    }), "public, max-age=5");
+  }
   if (u === "/api/feed") return send(res, 200, "application/json", JSON.stringify(liveFeed.summary()));
   if (u === "/api/map") return send(res, 200, "application/json", JSON.stringify(map));
   if (u === "/healthz") return send(res, 200, "text/plain", "ok");

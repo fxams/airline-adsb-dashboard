@@ -1,4 +1,4 @@
-// Hub airports for local ADS-B (adsb.lol /v2/point) and map presets.
+// Hub airports for local ADS-B (250 nm point tiles: adsb.lol / adsb.fi) and map presets.
 // Coordinates are public ARP figures (OurAirports, public domain). Not a procedure database.
 (function (root, factory) {
   const api = factory();

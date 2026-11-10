@@ -107,7 +107,7 @@ const html = fs.readFileSync(new URL("./public/index.html", import.meta.url), "u
 ok(/src="\/motion\.js"/.test(html), "index loads /motion.js");
 ok(/setInterval\(poll,15000\)/.test(html), "browser polls /api/live every 15 s");
 const srv = fs.readFileSync(new URL("./server.js", import.meta.url), "utf8");
-ok(/REFRESH_SECONDS \|\| 90/.test(srv), "backend type-cycle default stays 90 s");
+ok(/REFRESH_SECONDS \|\| 90/.test(srv), "REFRESH_SECONDS still names the global-tile freshness target");
 ok(/u === "\/motion\.js"/.test(srv), "server serves /motion.js");
 const mapjs = fs.readFileSync(new URL("./public/map.js", import.meta.url), "utf8");
 ok(/requestAnimationFrame\(tick\)/.test(mapjs) && /paintLive\(\{view:true\}\)/.test(mapjs), "rAF paints live markers");
