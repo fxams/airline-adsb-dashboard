@@ -87,6 +87,9 @@ async function layout(page) {
       wxbtn: box(wxbtn),
       infobtn: box(document.getElementById("infobtn")),
       htb: box(document.getElementById("htb")),
+      depb: box(document.getElementById("depb")),
+      arrb: box(document.getElementById("arrb")),
+      dirpair: box(document.querySelector(".dirpair")),
       rlb: box(document.getElementById("rlb")),
       mfsb: box(document.getElementById("mfsb")),
       fbtn: box(document.getElementById("fbtn")),
@@ -163,6 +166,9 @@ ok(/Weather/.test(lay.wxbtnText), "Weather button has text");
 ok(lay.wxbtn.h >= 44 && lay.wxbtn.w >= 44, "Weather tap target at least 44px");
 ok(lay.infobtn && lay.infobtn.vis && /Info/i.test(lay.infobtn.t), "Info button visible");
 ok(lay.htb && lay.htb.vis && lay.rlb && lay.rlb.vis, "tracks and registration on the mobile bar");
+ok(lay.depb && lay.depb.vis && lay.arrb && lay.arrb.vis && /Dep/i.test(lay.depb.t) && /Arr/i.test(lay.arrb.t), "Dep/Arr pills on the mobile bar");
+ok(lay.depb.h >= 44 && lay.arrb.h >= 44, "Dep/Arr tap targets at least 44px");
+ok(lay.dirpair && lay.dirpair.x >= 0 && lay.dirpair.x + lay.dirpair.w <= lay.inner.w + 1, "Dep/Arr pair stays on the bar");
 ok(lay.mfsb && lay.mfsb.vis && lay.fbtn && lay.fbtn.vis && lay.qs && lay.qs.vis, "filters, search, fullscreen reachable");
 ok(lay.filbar && lay.filbar.vis, "mobile airline chips are on the map");
 ok(lay.fbtn.h >= 44 && lay.fbtn.w >= 44, "Filters tap target at least 44px");

@@ -2,6 +2,9 @@
 let SEL=null,TR={},CSR=null,TK=null,prof=null,lastFrame=0,REG_BY_HEX={},SRCH_GND=[],QHits=[],QIx=-1,QTm=null;
 const TRACK_LAYERS=["trails","tk","tkgc","sel-flown","sel-join","sel-gap","sel-rem"];
 const HIST_LAB_MINZOOM=10.2;
+// 365-day paths: royal blue / rose, not live amber (#ffc400) and not airline cyan/magenta.
+const COL_DEP="#3D8BFF", COL_ARR="#FF4B6B", COL_SID="#8FB8FF", COL_STAR="#FF8A9E", COL_CAS="#070b14";
+const HIST_DIR_LAYERS=["hist-cas","hist-rep","hist-cor","hist-lab","hist-raw"];
 let HI=null,HIST=null,HIST_APT=null,AIPI=null,AIP=null,AIP_APT=null;
 function ageS(){return L&&L.at?Math.min(90,(Date.now()-new Date(L.at))/1000):0}
 function gndLikePos(onG,gs,alt,posAge){
@@ -154,28 +157,96 @@ function observedEvents(P,a){
   return ev;
 }
 function hideTracksOn(){return localStorage.hidet==="1"}
-function runwayPathsOn(){return localStorage.rwy!=="0"}
+function migrateDirToggles(){
+  if(localStorage.dep==null&&localStorage.arr==null){
+    const on=localStorage.rwy!=="0";
+    localStorage.dep=on?"1":"0";
+    localStorage.arr=on?"1":"0";
+  }
+}
+function depPathsOn(){migrateDirToggles();return localStorage.dep!=="0"}
+function arrPathsOn(){migrateDirToggles();return localStorage.arr!=="0"}
+function runwayPathsOn(){return depPathsOn()||arrPathsOn()}
+function histDirFilter(){
+  const d=depPathsOn(),a=arrPathsOn();
+  if(d&&a) return null;
+  if(d) return ["==",["get","dir"],"dep"];
+  if(a) return ["==",["get","dir"],"arr"];
+  return ["==",["get","dir"],"__none__"];
+}
+function aipKindFilter(){
+  const d=depPathsOn(),a=arrPathsOn();
+  if(d&&a) return null;
+  if(d) return ["==",["get","kind"],"sid"];
+  if(a) return ["==",["get","kind"],"star"];
+  return ["==",["get","kind"],"__none__"];
+}
+function setLayerFilter(id,f){
+  if(!map.getLayer(id)) return;
+  map.setFilter(id,f);
+}
+function syncDirUi(){
+  const d=depPathsOn(),a=arrPathsOn();
+  localStorage.rwy=(d||a)?"1":"0";
+  const de=$("depf"); if(de) de.checked=d;
+  const ae=$("arrf"); if(ae) ae.checked=a;
+  const db=$("depb"); if(db){db.classList.toggle("on",d);db.setAttribute("aria-pressed",d?"true":"false")}
+  const ab=$("arrb"); if(ab){ab.classList.toggle("on",a);ab.setAttribute("aria-pressed",a?"true":"false")}
+}
+function afterDirToggle(){
+  applyTrackVis();
+}
 function applyTrackVis(){
   if(!map)return;
   const hide=hideTracksOn(),vis=on=>on?"visible":"none";
+  const dep=depPathsOn(),arr=arrPathsOn();
   for(const id of TRACK_LAYERS)if(map.getLayer(id))map.setLayoutProperty(id,"visibility",vis(!hide));
   if(map.getLayer("arcs"))map.setLayoutProperty("arcs","visibility",vis(!hide&&$("arcs")&&$("arcs").checked));
   const histOn=runwayPathsOn()&&HIST&&!HIST.error;
   const z=map.getZoom?map.getZoom():0;
+  const hf=histDirFilter();
+  for(const id of HIST_DIR_LAYERS){
+    if(!map.getLayer(id)) continue;
+    setLayerFilter(id,hf);
+  }
+  if(map.getLayer("hist-cas")) map.setLayoutProperty("hist-cas","visibility",vis(histOn));
   if(map.getLayer("hist-rep")) map.setLayoutProperty("hist-rep","visibility",vis(histOn));
   if(map.getLayer("hist-cor")) map.setLayoutProperty("hist-cor","visibility",vis(histOn&&z>=9.5));
   if(map.getLayer("hist-lab")) map.setLayoutProperty("hist-lab","visibility",vis(histOn&&z>=HIST_LAB_MINZOOM));
   if(map.getLayer("hist-raw")) map.setLayoutProperty("hist-raw","visibility",vis(histOn&&$("hraw")&&$("hraw").checked));
+  const aipMaster=aipOn()&&AIP&&!AIP.error;
+  const kf=aipKindFilter();
+  if(map.getLayer("aip-sid-cas")) map.setLayoutProperty("aip-sid-cas","visibility",vis(aipMaster&&dep));
+  if(map.getLayer("aip-sid")) map.setLayoutProperty("aip-sid","visibility",vis(aipMaster&&dep));
+  if(map.getLayer("aip-star-cas")) map.setLayoutProperty("aip-star-cas","visibility",vis(aipMaster&&arr));
+  if(map.getLayer("aip-star")) map.setLayoutProperty("aip-star","visibility",vis(aipMaster&&arr));
+  if(map.getLayer("aip-near")){
+    map.setLayoutProperty("aip-near","visibility",vis(aipMaster&&(dep||arr)));
+    setLayerFilter("aip-near", kf);
+  }
   if(map.getLayer("aip-lab")){
-    const aipLines=map.getLayer("aip-sid")&&map.getLayoutProperty("aip-sid","visibility")==="visible";
-    map.setLayoutProperty("aip-lab","visibility",vis(aipLines&&z>=10.4));
+    map.setLayoutProperty("aip-lab","visibility",vis(aipMaster&&(dep||arr)&&z>=10.4));
+    setLayerFilter("aip-lab", kf===null?null:["any",kf,["==",["get","kind"],"src"]]);
   }
 }
+function setDepPaths(on){
+  migrateDirToggles();
+  localStorage.dep=on?"1":"0";
+  syncDirUi();
+  afterDirToggle();
+}
+function setArrPaths(on){
+  migrateDirToggles();
+  localStorage.arr=on?"1":"0";
+  syncDirUi();
+  afterDirToggle();
+}
 function setRunwayPaths(on){
-  localStorage.rwy=on?"1":"0";
-  const el=$("rwy");if(el)el.checked=!!on;
-  const b=$("rwyb");if(b){b.classList.toggle("on",!!on);b.setAttribute("aria-pressed",on?"true":"false");const t=b.querySelector("[data-role=label]");if(t)t.textContent=on?"RWY paths":"Paths off";else b.textContent=on?"RWY paths":"Paths off"}
-  applyTrackVis();
+  migrateDirToggles();
+  localStorage.dep=on?"1":"0";
+  localStorage.arr=on?"1":"0";
+  syncDirUi();
+  afterDirToggle();
 }
 function setHideTracks(on){
   localStorage.hidet=on?"1":"0";
@@ -662,30 +733,34 @@ function gSetup(){if(map.getSource("sat"))return;const b=map.getStyle().layers.f
   map.on("mouseenter","gnd",()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave","gnd",()=>map.getCanvas().style.cursor="");
   if(!map.getSource("hist")){
     map.addSource("histcor",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    map.addLayer({id:"hist-cor",type:"fill",source:"histcor",layout:{visibility:"none"},paint:{"fill-color":["match",["get","dir"],"dep","#4ee0ff","#ff9f43"],"fill-opacity":0.14}});
+    map.addLayer({id:"hist-cor",type:"fill",source:"histcor",layout:{visibility:"none"},paint:{"fill-color":["match",["get","dir"],"dep",COL_DEP,COL_ARR],"fill-opacity":0.16}});
     map.addSource("histraw",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    map.addLayer({id:"hist-raw",type:"line",source:"histraw",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","dir"],"dep","#8befff","#ffd19a"],"line-width":1.05,"line-opacity":0.28}});
+    map.addLayer({id:"hist-raw",type:"line",source:"histraw",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","dir"],"dep",COL_SID,COL_STAR],"line-width":1.05,"line-opacity":0.28}});
     map.addSource("hist",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    map.addLayer({id:"hist-rep",type:"line",source:"hist",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","dir"],"dep","#4ee0ff","#ff9f43"],"line-width":["interpolate",["linear"],["zoom"],3,["case",["==",["get","sec"],1],2.2,3.4],7,["case",["==",["get","sec"],1],2.4,3.6],12,["case",["==",["get","sec"],1],2.1,3.2]],"line-opacity":["case",["==",["get","sec"],1],0.75,0.95]}});
+    map.addLayer({id:"hist-cas",type:"line",source:"hist",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":COL_CAS,"line-width":["interpolate",["linear"],["zoom"],3,["case",["==",["get","sec"],1],3.8,5.4],7,["case",["==",["get","sec"],1],4.0,5.6],12,["case",["==",["get","sec"],1],3.6,5.0]],"line-opacity":0.78}});
+    map.addLayer({id:"hist-rep",type:"line",source:"hist",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","dir"],"dep",COL_DEP,COL_ARR],"line-width":["interpolate",["linear"],["zoom"],3,["case",["==",["get","sec"],1],2.2,3.4],7,["case",["==",["get","sec"],1],2.4,3.6],12,["case",["==",["get","sec"],1],2.1,3.2]],"line-opacity":["case",["==",["get","sec"],1],0.82,0.98]}});
     map.addSource("histlab",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    map.addLayer({id:"hist-lab",type:"symbol",source:"histlab",minzoom:10.2,layout:{visibility:"none","text-field":["get","lab"],"text-size":11,"text-font":["Open Sans Regular"],"text-anchor":"left","text-offset":[0.5,0],"text-optional":true,"text-allow-overlap":true,"text-ignore-placement":true,"text-padding":2},paint:{"text-color":"#e6f1ff","text-halo-color":"#05070d","text-halo-width":1.4}});
+    map.addLayer({id:"hist-lab",type:"symbol",source:"histlab",minzoom:10.2,layout:{visibility:"none","text-field":["get","lab"],"text-size":11,"text-font":["Open Sans Regular"],"text-anchor":"left","text-offset":[0.5,0],"text-optional":true,"text-allow-overlap":true,"text-ignore-placement":true,"text-padding":2},paint:{"text-color":["match",["get","dir"],"dep","#d4e4ff","#ffd4dc"],"text-halo-color":"#05070d","text-halo-width":1.8}});
     const histClick=(e, raw)=>{
       if(!e.features||!e.features[0]) return;
       histIdentPopup(e.lngLat, e.features[0].properties, raw);
     };
+    map.on("click","hist-cas",e=>histClick(e,false));
     map.on("click","hist-rep",e=>histClick(e,false));
     map.on("click","hist-raw",e=>histClick(e,true));
-    ["hist-rep","hist-raw"].forEach(l=>{map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",l,()=>map.getCanvas().style.cursor="")});
+    ["hist-cas","hist-rep","hist-raw"].forEach(l=>{map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",l,()=>map.getCanvas().style.cursor="")});
   }
   if($("hraw")&&!$("hraw").dataset.bound){$("hraw").dataset.bound="1";$("hraw").onchange=()=>histPaint()}
   if(!map.getSource("aip")){
     map.addSource("aip",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    map.addLayer({id:"aip-sid",type:"line",source:"aip",filter:["==",["get","kind"],"sid"],layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":"#7CFFB2","line-width":["interpolate",["linear"],["zoom"],2,0.7,8,1.1,12,1.35],"line-opacity":0.45,"line-dasharray":[2.2,1.6]}});
-    map.addLayer({id:"aip-star",type:"line",source:"aip",filter:["==",["get","kind"],"star"],layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":"#e08cff","line-width":["interpolate",["linear"],["zoom"],2,0.7,8,1.1,12,1.35],"line-opacity":0.45,"line-dasharray":[2.2,1.6]}});
+    map.addLayer({id:"aip-sid-cas",type:"line",source:"aip",filter:["==",["get","kind"],"sid"],layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":COL_CAS,"line-width":["interpolate",["linear"],["zoom"],2,1.8,8,2.4,12,2.8],"line-opacity":0.62,"line-dasharray":[2.2,1.6]}});
+    map.addLayer({id:"aip-sid",type:"line",source:"aip",filter:["==",["get","kind"],"sid"],layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":COL_SID,"line-width":["interpolate",["linear"],["zoom"],2,0.8,8,1.2,12,1.5],"line-opacity":0.78,"line-dasharray":[2.2,1.6]}});
+    map.addLayer({id:"aip-star-cas",type:"line",source:"aip",filter:["==",["get","kind"],"star"],layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":COL_CAS,"line-width":["interpolate",["linear"],["zoom"],2,1.8,8,2.4,12,2.8],"line-opacity":0.62,"line-dasharray":[2.2,1.6]}});
+    map.addLayer({id:"aip-star",type:"line",source:"aip",filter:["==",["get","kind"],"star"],layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":COL_STAR,"line-width":["interpolate",["linear"],["zoom"],2,0.8,8,1.2,12,1.5],"line-opacity":0.78,"line-dasharray":[2.2,1.6]}});
     map.addSource("aipnear",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    map.addLayer({id:"aip-near",type:"line",source:"aipnear",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","kind"],"sid","#b6ffd4","#f3c4ff"],"line-width":["interpolate",["linear"],["zoom"],2,1.2,8,1.8,12,2.6],"line-opacity":0.92}});
+    map.addLayer({id:"aip-near",type:"line",source:"aipnear",layout:{visibility:"none","line-join":"round","line-cap":"round"},paint:{"line-color":["match",["get","kind"],"sid",COL_SID,COL_STAR],"line-width":["interpolate",["linear"],["zoom"],2,1.2,8,1.8,12,2.4],"line-opacity":0.92,"line-dasharray":[1.6,1.2]}});
     map.addSource("aiplab",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-    map.addLayer({id:"aip-lab",type:"symbol",source:"aiplab",minzoom:10.4,layout:{visibility:"none","text-field":["get","lab"],"text-size":11,"text-font":["Open Sans Regular"],"text-anchor":"left","text-offset":[0.45,0],"text-optional":true,"text-allow-overlap":false,"text-padding":2},paint:{"text-color":"#d8ffe8","text-halo-color":"#05070d","text-halo-width":1.4}});
+    map.addLayer({id:"aip-lab",type:"symbol",source:"aiplab",minzoom:10.4,layout:{visibility:"none","text-field":["get","lab"],"text-size":11,"text-font":["Open Sans Regular"],"text-anchor":"left","text-offset":[0.45,0],"text-optional":true,"text-allow-overlap":false,"text-padding":2},paint:{"text-color":["match",["get","kind"],"sid","#d4e4ff","star","#ffd4dc","#e6f1ff"],"text-halo-color":"#05070d","text-halo-width":1.8}});
   }
   if($("aipsid")&&!$("aipsid").dataset.bound){$("aipsid").dataset.bound="1";$("aipsid").onchange=()=>setAipOn($("aipsid").checked)}
   if($("aipall")&&!$("aipall").dataset.bound){$("aipall").dataset.bound="1";$("aipall").onchange=()=>{localStorage.aipall=$("aipall").checked?"1":"0";aipPaint()}}
@@ -853,18 +928,16 @@ function aipPaint(){
       if(isNear){
         near.push({type:"Feature",properties:{kind:p.kind,id:p.id},geometry:{type:"LineString",coordinates:p.path}});
         const mid=p.path[Math.min(p.path.length-1, Math.floor(p.path.length/2))];
-        labs.push({type:"Feature",properties:{lab:`${p.id}${p.trans?" "+p.trans:""} · ${p.kind.toUpperCase()} · ${j.cycle||"CIFP"} · Not for navigation`},geometry:{type:"Point",coordinates:mid}});
+        labs.push({type:"Feature",properties:{kind:p.kind,lab:`${p.id}${p.trans?" "+p.trans:""} · ${p.kind.toUpperCase()} · ${j.cycle||"CIFP"} · Not for navigation`},geometry:{type:"Point",coordinates:mid}});
       }
     }
     if(j.lon!=null&&j.lat!=null){
-      labs.push({type:"Feature",properties:{lab:`${j.cycle||"FAA CIFP"} AIRAC ${j.airac||""} · Not for navigation`},geometry:{type:"Point",coordinates:[j.lon,j.lat]}});
+      labs.push({type:"Feature",properties:{kind:"src",lab:`${j.cycle||"FAA CIFP"} AIRAC ${j.airac||""} · Not for navigation`},geometry:{type:"Point",coordinates:[j.lon,j.lat]}});
     }
   }
   if(map.getSource("aip")) map.getSource("aip").setData({type:"FeatureCollection",features:feats});
   if(map.getSource("aipnear")) map.getSource("aipnear").setData({type:"FeatureCollection",features:near});
   if(map.getSource("aiplab")) map.getSource("aiplab").setData({type:"FeatureCollection",features:labs});
-  const vis=on?"visible":"none";
-  for(const id of ["aip-sid","aip-star","aip-near"]) if(map.getLayer(id)) map.setLayoutProperty(id,"visibility",vis);
   applyTrackVis();
   const el=$("aipp");
   if(el){

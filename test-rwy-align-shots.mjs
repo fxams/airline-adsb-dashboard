@@ -136,10 +136,12 @@ for (const apt of ["LHR", "DOH"]) {
   await new Promise((r) => setTimeout(r, 800));
   const vis = await mob.evaluate(() => ({
     hist: map.getLayer("hist-rep") && map.getLayoutProperty("hist-rep", "visibility"),
-    rwyb: !!(document.getElementById("rwyb")),
-    rwyOn: document.getElementById("rwyb") && document.getElementById("rwyb").classList.contains("on"),
+    depb: !!(document.getElementById("depb")),
+    arrb: !!(document.getElementById("arrb")),
+    depOn: document.getElementById("depb") && document.getElementById("depb").classList.contains("on"),
+    arrOn: document.getElementById("arrb") && document.getElementById("arrb").classList.contains("on"),
   }));
-  ok(vis.rwyb && vis.rwyOn, `${apt} mobile RWY paths button on`);
+  ok(vis.depb && vis.arrb && vis.depOn && vis.arrOn, `${apt} mobile Dep/Arr pills on`);
   ok(vis.hist === "visible", `${apt} mobile zoom-out hist visible`);
   const el = await mob.$("#mw");
   const p = `${OUT}/rwy-${apt.toLowerCase()}-zoomout-iphone.png`;
