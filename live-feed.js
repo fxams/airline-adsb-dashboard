@@ -266,10 +266,13 @@ class LiveFeed {
       // Always keep groups that succeeded or were marked stale this cycle, even if
       // later retries in the same cycle pushed the clock past staleMs.
       if (!keep.has(t) && now - o.ts >= this.staleMs) continue;
+      const lag = Math.max(0, (now - o.ts) / 1000);
       for (const a of o.ac) {
         if (!a || !a.hex) continue;
+        const seenPos = a.seen_pos ?? 99;
+        const age = seenPos + lag;
         const p = seen.get(a.hex);
-        if (!p || (a.seen_pos ?? 99) < (p.seen_pos ?? 99)) seen.set(a.hex, a);
+        if (!p || age < (p._age ?? 1e9)) seen.set(a.hex, { ...a, _age: age, _fetched: o.ts });
       }
     }
     return seen;

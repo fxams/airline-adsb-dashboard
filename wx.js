@@ -483,19 +483,23 @@ function subsampleWind(msgs, step) {
   return { lats, lons, levels: [...levels].sort((a, b) => b - a), times, fields };
 }
 
-const GFS_FHS = [6, 12], GFS_STEP = 3;
-const GFS_BOX = { leftlon: 0, rightlon: 110, toplat: 60, bottomlat: -35 };
+const GFS_FHS = [6, 12], GFS_STEP = 5;
+// grib-filter subset of the 1° GFS (repacked simple packing). A raw global
+// pgrb2 file is template 5.3 and this decoder cannot read it — the filter is
+// required. 0..359 / 90S..90N is the whole globe; display thins to 5°.
+const GFS_BOX = { leftlon: 0, rightlon: 359, toplat: 90, bottomlat: -90 };
 let lastNomads = 0, windCache = null;
 
-function gfsUrl(ymd, hh, fh) {
+function gfsUrl(ymd, hh, fh, box) {
+  const b = box || GFS_BOX;
   const fff = String(fh).padStart(3, "0");
   const q = new URLSearchParams({
     dir: `/gfs.${ymd}/${hh}/atmos`,
     file: `gfs.t${hh}z.pgrb2.1p00.f${fff}`,
     lev_850_mb: "on", lev_500_mb: "on", lev_300_mb: "on", lev_200_mb: "on",
     var_UGRD: "on", var_VGRD: "on", var_TMP: "on",
-    subregion: "", leftlon: String(GFS_BOX.leftlon), rightlon: String(GFS_BOX.rightlon),
-    toplat: String(GFS_BOX.toplat), bottomlat: String(GFS_BOX.bottomlat)
+    subregion: "", leftlon: String(b.leftlon), rightlon: String(b.rightlon),
+    toplat: String(b.toplat), bottomlat: String(b.bottomlat)
   });
   return "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_1p00.pl?" + q.toString();
 }
@@ -504,7 +508,7 @@ async function nomadsGet(url) {
   const wait = Math.max(0, lastNomads + 1500 - Date.now());
   lastNomads = Date.now() + wait;
   if (wait) await new Promise((r) => setTimeout(r, wait));
-  const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(25000) });
+  const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(60000) });
   if (!r.ok) throw new Error("NOMADS HTTP " + r.status);
   const buf = Buffer.from(await r.arrayBuffer());
   if (buf.length < 16 || buf.toString("ascii", 0, 4) !== "GRIB") throw new Error("NOMADS did not return GRIB2");
@@ -524,18 +528,58 @@ function gfsCycles() {
   return out.slice(0, 6);
 }
 
+function mergeWindGrids(parts) {
+  if (!parts.length) throw new Error("no wind grids");
+  if (parts.length === 1) return parts[0];
+  const lats = parts[0].lats;
+  const lons = parts.flatMap((p) => p.lons);
+  const fields = {};
+  const keys = [...new Set(parts.flatMap((p) => Object.keys(p.fields)))];
+  for (const k of keys) {
+    const recs = parts.map((p) => p.fields[k]);
+    if (recs.some((r) => !r)) continue;
+    const u = [], v = [], tC = [];
+    for (let j = 0; j < lats.length; j++) {
+      for (let p = 0; p < parts.length; p++) {
+        const n = parts[p].lons.length, rec = recs[p];
+        u.push(...rec.u.slice(j * n, j * n + n));
+        v.push(...rec.v.slice(j * n, j * n + n));
+        tC.push(...(rec.tC || []).slice(j * n, j * n + n));
+      }
+    }
+    fields[k] = { ...recs[0], u, v, tC };
+  }
+  return { lats, lons, levels: parts[0].levels, times: parts[0].times, fields };
+}
+
+async function fetchGfsMsgs(cyc, box) {
+  const msgs = [];
+  for (const fh of GFS_FHS) {
+    const buf = await nomadsGet(gfsUrl(cyc.ymd, cyc.hh, fh, box));
+    msgs.push(...decodeGrib2Simple(buf));
+  }
+  return msgs;
+}
+
 async function winds() {
   const now = Date.now();
   if (windCache && now - windCache.t < 3600000 && windCache.v.available) return { ...windCache.v, cached: true };
   let lastErr = "";
+  const halves = [
+    { leftlon: 0, rightlon: 179, toplat: 90, bottomlat: -90 },
+    { leftlon: 180, rightlon: 359, toplat: 90, bottomlat: -90 }
+  ];
   for (const cyc of gfsCycles()) {
     try {
-      const msgs = [];
-      for (const fh of GFS_FHS) {
-        const buf = await nomadsGet(gfsUrl(cyc.ymd, cyc.hh, fh));
-        msgs.push(...decodeGrib2Simple(buf));
+      let grid;
+      try {
+        grid = subsampleWind(await fetchGfsMsgs(cyc, GFS_BOX), GFS_STEP);
+      } catch (e) {
+        lastErr = String(e.message || e);
+        const parts = [];
+        for (const box of halves) parts.push(subsampleWind(await fetchGfsMsgs(cyc, box), GFS_STEP));
+        grid = mergeWindGrids(parts);
       }
-      const grid = subsampleWind(msgs, GFS_STEP);
       if (!grid.times.length || !Object.keys(grid.fields).length) throw new Error("decoded GRIB2 had no U/V fields");
       const v = {
         available: true, status: "ok", product: "forecast_winds_aloft", kind: "forecast",
@@ -544,7 +588,7 @@ async function winds() {
         at: new Date().toISOString(), note: NOTE,
         cycle_utc: grid.times[0].cycle_utc,
         bbox: GFS_BOX, step_deg: GFS_STEP, packing: "GRIB2 template 5.0 simple packing",
-        coverage: "Subset 1° GFS, then every " + GFS_STEP + "° for display (Europe / Africa / Middle East / South Asia). Not global. Not WAFS. Not live turbulence.",
+        coverage: "Global 1° GFS via NOMADS grib filter (0–359°E, 90S–90N), displayed every " + GFS_STEP + "°. Web Mercator clips arrows above ~85° latitude. Not WAFS. Not live turbulence.",
         lats: grid.lats, lons: grid.lons, levels: grid.levels, times: grid.times, fields: grid.fields
       };
       windCache = { t: now, v };

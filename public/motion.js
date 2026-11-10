@@ -6,9 +6,11 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const R2 = Math.PI / 180;
   const BLEND_MS = 1600;
-  const STALE_S = 60;
-  const MAX_EXTRAP_S = 45;
-  const MAX_EXTRAP_NM = 8;
+  // Match live-feed last-good window (~20 min). Do not freeze at 60 s: type-cycle
+  // lag on production is several minutes (429s), while packed seen_pos stays ~0–1 s.
+  const STALE_S = 1200;
+  const MAX_EXTRAP_S = 900;
+  const MAX_EXTRAP_NM = 120;
   const LOW_ALT_FT = 1000;
 
   function wrapLon(lo) {
@@ -58,14 +60,15 @@
     return ageSinceSnap + Math.max(0, +posAge || 0);
   }
   function target(m, now) {
-    // Stale gate is the ADS-B pos_age on the last fix, not wall-clock since L.at
-    // (backend type-cycle is ~90 s; freezing at 60 s of snapshot age would park
-    // every marker until the next publish). Runaway coast is the 45 s / 8 nm cap.
-    if (!canExtrap(m.fixGs, m.fixTrk, m.fixOnG, m.fixAlt, m.fixAge)) {
+    // dt includes packed pos_age (seen_pos + seconds since that type group was
+    // fetched). L.at is the last progressive publish, not this hex's fetch time.
+    const sincePub = Math.max(0, (now - m.fixAt) / 1000);
+    const age = (+m.fixAge || 0) + sincePub;
+    if (!canExtrap(m.fixGs, m.fixTrk, m.fixOnG, m.fixAlt, age)) {
       if (m.holdLon != null) return { lon: m.holdLon, lat: m.holdLat, trk: m.holdTrk };
       return { lon: m.fixLon, lat: m.fixLat, trk: m.fixTrk };
     }
-    const dt = Math.min(MAX_EXTRAP_S, Math.max(0, (now - m.fixAt) / 1000));
+    const dt = Math.min(MAX_EXTRAP_S, Math.max(0, age));
     const ll = dest(m.fixLat, m.fixLon, m.fixGs, m.fixTrk, dt);
     m.holdLon = ll[0];
     m.holdLat = ll[1];

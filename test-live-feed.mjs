@@ -233,6 +233,17 @@ ok(feedBanner({ failed: [], stale: [] }) === "", "feedBanner empty");
   ok(f2.stale.map((x) => x.t).join() === "A20N" || f2.ok.includes("A20N"), "A20N still present as stale or ok " + JSON.stringify({ ok: f2.ok, stale: f2.stale }));
 }
 
+{
+  const { feed, advance } = makeFeed(
+    () => jsonRes(200, { ac: [ac("q1", "QTR1", "A35K", { seen_pos: 2 })] }),
+    { types: ["A35K"], gapMs: 0 }
+  );
+  await feed.refresh();
+  advance(180000);
+  const a = feed.collectAircraft().get("q1");
+  ok(a && Math.abs(a._age - 182) < 2, "collectAircraft age includes type-group lag after 180s " + (a && a._age));
+}
+
 ok(snapshotFresh("2026-11-09T20:00:00Z", Date.parse("2026-11-09T20:05:00Z"), 20 * 60e3), "fresh snapshot within 20 min");
 ok(!snapshotFresh("2026-11-09T19:00:00Z", Date.parse("2026-11-09T20:00:00Z"), 20 * 60e3), "stale snapshot older than 20 min rejected");
 ok(warmStartUrl({ RENDER_EXTERNAL_URL: "https://airline-adsb-dashboard.onrender.com" }) === "https://airline-adsb-dashboard.onrender.com", "warm-start uses Render public URL");

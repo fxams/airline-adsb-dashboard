@@ -14,7 +14,7 @@ function gndLikePos(onG,gs,alt,posAge){
   if(onG) return true;
   if(!(gs>0.5)) return true;
   if(alt!=null && Number.isFinite(+alt) && +alt<1000) return true;
-  if(stale>=60) return true;
+  if(stale>=1200) return true;
   return false;
 }
 function snapAtMs(){return L&&L.at?+new Date(L.at):Date.now()}
@@ -148,7 +148,7 @@ function drawProf(P){
   showProfPoint(last);
   if(note) note.textContent=`Barometric altitude as FL (hundreds of feet), not a certified flight level. Chart averages (${gsTxt}; ${vsTxt}) are means of sourced samples in this server’s displayed history (${PROF_PTS.length} pts, GS ${gsVals.length}/${P.length}, VS ${vsVals.length}/${P.length}, ${utcHm(t0)}–${utcHm(t1)} UTC; max ~3 h). Hover or tap a point for that sample’s FL, GS and VS; missing fields stay n/a and are not filled from the average or zero. Not a full flight history.`;
 }
-function posFresh(a){if(!a||a.held||a.gnd||a.src!=="live")return false; if((a.age||0)>60)return false; if(L&&L.at&&Date.now()-Date.parse(L.at)>120000)return false; return a.gs>120}
+function posFresh(a){if(!a||a.held||a.gnd||a.src!=="live")return false; if(L&&L.at&&Date.now()-Date.parse(L.at)>180000)return false; return a.gs>120}
 function observedEvents(P,a){
   const ev={takeoff:null,landing:null,since:P[0]?P[0][0]:null,takeoffLL:null};
   let lastG=null;
@@ -695,10 +695,10 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
  const fnNote=fn.found?fn.note:(fn.note||idNote)+(fnCatalog?" "+fnCatalog:"");
  const coast=!a.held && !gndLikePos(a.gnd||a.held,a.gs,a.gnd||a.held?0:a.alt,a.age) && a.gs>0.5;
  const posNote=a.held?"Last ground position kept after the aircraft dropped out of the ADS-B feed. Not a live update."
-  :(coast?"Snapshot is the last adsb.lol position. Between refreshes the marker is dead-reckoned each frame from ground speed and track (estimate), then eased ~1.6 s onto a new fix. Heading is blended ADS-B track. Cap 45 s / 8 nm. Times UTC."
-  :"Snapshot is the last adsb.lol position. Marker stays on that snapshot (on-ground, below 1000 ft baro, missing speed/track, or stale ~60 s) — not dead-reckoned, not snapped to a runway. Heading is ADS-B track. Times UTC.");
+  :(coast?"Snapshot is the last adsb.lol position. Between refreshes the marker is dead-reckoned each frame from ground speed and track (estimate), then eased ~1.6 s onto a new fix. Heading is blended ADS-B track. Cap 15 min / 120 nm (covers stretched type-cycles). Times UTC."
+  :"Snapshot is the last adsb.lol position. Marker stays on that snapshot (on-ground, below 1000 ft baro, missing speed/track, or lost ~20 min) — not dead-reckoned, not snapped to a runway. Heading is ADS-B track. Times UTC.");
  const tmNote="No airline schedule feed is connected, so scheduled times stay unavailable. Estimated arrival is remaining great-circle distance ÷ current ground speed, UTC, only when the route destination is known and the position is a fresh moving airborne snapshot — not a schedule or airport actual. Actual arrival is shown only after an observed air-to-ground transition in this track. "+timeNote;
- more.unshift(idNote,fnNote,posNote); more.push(tmNote,"Barometric altitude as FL (hundreds of feet) is not a certified flight level. Hover or tap a profile point for that sample’s FL, ground speed and vertical speed; missing fields stay n/a. Not a full flight history.","Live lat/lon are stored to 5 decimal degrees (~1.1 m). Markers are not snapped to runway or taxiway centreline. Satellite pavement can sit tens of metres off WGS84. Dead-reckoning between snapshots is airborne-only (baro at least 1000 ft, gs over 0.5 kt, speed and track present, not stale ~60 s), capped at 45 s or 8 nm, with a ~1.6 s ease onto each new fix.","Not for operational flight planning. NOAA/NWS Aviation Weather Center. Live positions © adsb.lol contributors (ODbL). Routes: adsbdb.com. Times UTC.");
+ more.unshift(idNote,fnNote,posNote); more.push(tmNote,"Barometric altitude as FL (hundreds of feet) is not a certified flight level. Hover or tap a profile point for that sample’s FL, ground speed and vertical speed; missing fields stay n/a. Not a full flight history.","Live lat/lon are stored to 5 decimal degrees (~1.1 m). Markers are not snapped to runway or taxiway centreline. Satellite pavement can sit tens of metres off WGS84. Dead-reckoning between snapshots is airborne-only (baro at least 1000 ft, gs over 0.5 kt, speed and track present, not lost ~20 min), capped at 15 min or 120 nm, with a ~1.6 s ease onto each new fix. Packed pos_age includes type-group fetch lag.","Not for operational flight planning. NOAA/NWS Aviation Weather Center. Live positions © adsb.lol contributors (ODbL). Routes: adsbdb.com. Times UTC.");
  if(ident&&ident.note) more.push(ident.note);
  $("spb").innerHTML=`<div class="chips">${chips}</div>
   <p class="spcaveat">Not for operational flight planning</p>
@@ -1233,7 +1233,7 @@ function wxHazHtml(p){
   const kind=p.product==="isigmet"?"International SIGMET":p.product==="airsigmet"?"US SIGMET":p.product==="gairmet"?"US G-AIRMET (CONUS-only advisory, not a SIGMET)":esc(p.product||"Advisory");
   return `<b>${esc(p.origLabel||p.seriesId||p.hazard||"Advisory")}</b><br><i>Advisory · not a measured observation · not live turbulence</i><br>${esc(kind)}<br>${p.rawHeader?esc(p.rawHeader)+"<br>":""}${p.firName||p.fir?esc(p.firName||p.fir)+"<br>":""}${p.issueTime?`Issued ${utcShort(p.issueTime)}<br>`:""}Valid ${utcShort(p.validFrom)} → ${utcShort(p.validTo)}${p.top!=null?`<br>Top ${esc(p.top)} ft`:""}<br><span style="white-space:pre-wrap">${esc(p.raw||"")}</span><br><i>Not for operational flight planning. NOAA/NWS AWC / origin agency. Times UTC.</i>`}
 function wxWndHtml(p){
-  return `<b>GFS forecast winds aloft</b> (model forecast, not an observation)<br>${esc(p.hpa)} hPa · valid ${utcShort(p.valid)} · cycle ${utcShort(p.cycle)} · F${esc(p.fh)}<br>${esc(p.kt)} kt from ${esc(p.from)}°${p.tC!=null?` · ${esc(p.tC)} °C`:""}<br><i>NOAA GFS 1.0° subset via NOMADS grib filter. Not WAFS. Not for operational flight planning. Times UTC.</i>`}
+  return `<b>GFS forecast winds aloft</b> (model forecast, not an observation)<br>${esc(p.hpa)} hPa · valid ${utcShort(p.valid)} · cycle ${utcShort(p.cycle)} · F${esc(p.fh)}<br>${esc(p.kt)} kt from ${esc(p.from)}°${p.tC!=null?` · ${esc(p.tC)} °C`:""}<br><i>NOAA GFS 1.0° global via NOMADS grib filter. Not WAFS. Not for operational flight planning. Times UTC.</i>`}
 function wxIata(){return {DOH:"OTHH",DXB:"OMDB",AUH:"OMAA",LHR:"EGLL",JFK:"KJFK",CDG:"LFPG",FRA:"EDDF",SIN:"WSSS",BKK:"VTBS",HKG:"VHHH",BOM:"VABB",DEL:"VIDP",SYD:"YSSY",MEL:"YMML",NRT:"RJAA",HND:"RJTT"}}
 function wxFindMetar(code){
   const rows=(WX.st&&WX.st.metar)||[];
@@ -1338,14 +1338,24 @@ function wxDrawWind(){
   const rec=w.fields&&w.fields[fh+":"+lev];
   if(!rec){map.getSource("wxwnd").setData({type:"FeatureCollection",features:[]});return}
   const feats=[];
-  const nlon=(w.lons||[]).length;
-  for(let j=0;j<(w.lats||[]).length;j++) for(let i=0;i<nlon;i++){
+  const nlon=(w.lons||[]).length, z=map.getZoom?map.getZoom():2, phone=typeof isPhone==="function"?isPhone():innerWidth<=700;
+  const stride=(z<2.8||(phone&&z<3.5))?2:1;
+  const copies=z<3.2?[-360,0,360]:(z<4.5?[-360,0,360]:[0]);
+  for(let j=0;j<(w.lats||[]).length;j+=stride) for(let i=0;i<nlon;i+=stride){
+    const lat=w.lats[j];
+    if(lat==null||Math.abs(lat)>85) continue;
     const k=j*nlon+i, u=rec.u[k], v=rec.v[k];
     if(u==null||v==null)continue;
     const spd=Math.sqrt(u*u+v*v), kt=Math.round(spd*1.94384);
     let to=Math.atan2(u,v)*180/Math.PI; if(to<0)to+=360;
     const from=(to+180)%360;
-    feats.push({type:"Feature",properties:{kt,dir:Math.round(to),from:Math.round(from),hpa:lev,fh,valid:rec.valid_utc,cycle:rec.cycle_utc,tC:rec.tC?rec.tC[k]:null},geometry:{type:"Point",coordinates:[w.lons[i],w.lats[j]]}});
+    let lon=w.lons[i]; if(lon>180)lon-=360; else if(lon<-180)lon+=360;
+    const props={kt,dir:Math.round(to),from:Math.round(from),hpa:lev,fh,valid:rec.valid_utc,cycle:rec.cycle_utc,tC:rec.tC?rec.tC[k]:null};
+    for(const wrap of copies){
+      const x=lon+wrap;
+      if(x<-540||x>540) continue;
+      feats.push({type:"Feature",properties:props,geometry:{type:"Point",coordinates:[x,lat]}});
+    }
   }
   map.getSource("wxwnd").setData({type:"FeatureCollection",features:feats});
   applyWxVis();
@@ -1425,7 +1435,7 @@ function wxAdvLine(f){
   return `<div class="chip"><span>${esc(prod)} · advisory</span>${esc(p.origLabel||((p.hazard||"")+(p.qualifier?" "+p.qualifier:"")))}<div class="mu">${esc(p.rawHeader||p.firName||p.coverage||"")}${p.issueTime?`<br>Issued ${utcShort(p.issueTime)}`:""}<br>Valid ${utcShort(p.validFrom)} → ${utcShort(p.validTo)}</div></div>`;
 }
 function wxWindBlock(w,a,lat,lon){
-  if(!w) return `<p class="mu">Forecast winds aloft: enable the toggle to load NOAA GFS (1° subset). Not loaded yet.</p>`;
+  if(!w) return `<p class="mu">Forecast winds aloft: enable the toggle to load NOAA GFS (global 1°). Not loaded yet.</p>`;
   if(!w.available) return `<div class="scg">${na("Forecast winds aloft")}</div><p class="mu">${esc(w.reason||"Unavailable.")} This is not a finding of calm winds.</p>`;
   const alt=a&&!a.gnd&&!a.held?a.alt:null;
   const hpaWant=alt==null?300:alt>35000?200:alt>25000?300:alt>14000?500:850;
@@ -1434,10 +1444,11 @@ function wxWindBlock(w,a,lat,lon){
   const fh=(w.times&&w.times[0]&&w.times[0].fh)||6;
   const rec=w.fields&&w.fields[fh+":"+hpa];
   if(!rec||!w.lats||!w.lons) return `<div class="scg">${na("Forecast winds aloft")}</div><p class="mu">GFS field ${hpa} hPa F${fh} is not in the decoded subset.</p>`;
+  const lonWrap=(a,b)=>{let d=a-b;while(d>180)d-=360;while(d<-180)d+=360;return d};
   let bi=0,bj=0,bd=1e9;
-  for(let j=0;j<w.lats.length;j++) for(let i=0;i<w.lons.length;i++){const d=(w.lats[j]-lat)**2+(w.lons[i]-lon)**2;if(d<bd){bd=d;bi=i;bj=j}}
+  for(let j=0;j<w.lats.length;j++) for(let i=0;i<w.lons.length;i++){const d=(w.lats[j]-lat)**2+lonWrap(w.lons[i],lon)**2;if(d<bd){bd=d;bi=i;bj=j}}
   const k=bj*w.lons.length+bi, u=rec.u[k], v=rec.v[k];
-  if(u==null||v==null) return `<div class="scg">${na("Forecast winds aloft")}</div><p class="mu">No GFS sample at this location (outside the 1° subset box).</p>`;
+  if(u==null||v==null) return `<div class="scg">${na("Forecast winds aloft")}</div><p class="mu">No GFS sample at this location.</p>`;
   const spd=Math.sqrt(u*u+v*v), kt=Math.round(spd*1.94384);
   let to=Math.atan2(u,v)*180/Math.PI; if(to<0)to+=360;
   const tC=rec.tC&&rec.tC[k];

@@ -210,7 +210,7 @@ function publishFromSeen(seen, f) {
     snapshot = { at, error: (f.n_ok || f.n_stale) ? null : (banner || null), airlines, total: seen.size, feed: f };
     gholdClearSeen([...seen.keys()]);
     const ac = [...seen.values()].filter((a) => typeof a.lat === "number" && typeof a.lon === "number" && (a.seen_pos ?? 0) <= 60 && /^[A-Z]{3}\d/.test((a.flight || "").trim()))
-      .map((a) => [a.hex, a.flight.trim(), a.flight.trim().slice(0, 3), a.t || "", +a.lat.toFixed(5), +a.lon.toFixed(5), typeof a.alt_baro === "number" ? a.alt_baro : 0, Math.round(a.gs || 0), Math.round(a.track ?? a.true_heading ?? a.mag_heading ?? 0), a.r || "", a.alt_baro === "ground" ? 1 : 0, Math.round(a.seen_pos ?? 0), Math.round(a.baro_rate ?? a.geom_rate ?? 0)]);
+      .map((a) => [a.hex, a.flight.trim(), a.flight.trim().slice(0, 3), a.t || "", +a.lat.toFixed(5), +a.lon.toFixed(5), typeof a.alt_baro === "number" ? a.alt_baro : 0, Math.round(a.gs || 0), Math.round(a.track ?? a.true_heading ?? a.mag_heading ?? 0), a.r || "", a.alt_baro === "ground" ? 1 : 0, Math.round(a._age != null ? a._age : (a.seen_pos ?? 0)), Math.round(a.baro_rate ?? a.geom_rate ?? 0)]);
     const nm = {};
     for (const r of ac) { const c = r[2]; if (c && names[c] && !nm[c]) nm[c] = names[c]; }
     live = { at, fields: live.fields, ac, nm, feed: f };
