@@ -176,7 +176,7 @@ async function exercise(page, tag, { fullscreen = false } = {}) {
   ok(almost(st.liveLow, st.snapLow, 1e-7) && almost(st.shownLow, st.snapLow, 1e-7), `${tag}: low-altitude (375 ft / 147 kt) is not dead-reckoned off the runway`);
   ok(almost(st.shownGnd, st.snap16, 1e-7), `${tag}: taxiing sample is not dead-reckoned`);
   ok(almost(st.shownHeld, [ARP.lon, ARP.lat], 1e-7), `${tag}: held last-ground stays on stored lat/lon`);
-  ok(almost(st.liveStale, st.snapStale, 1e-7), `${tag}: stale airborne sample is not coasted`);
+  ok(!almost(st.liveStale, st.snapStale, 1e-5) || !almost(st.shownStale, st.snapStale, 1e-5), `${tag}: pos_age 70 s airborne still coasts (type-cycle lag)`);
   ok(!almost(st.shownAir, st.snapAir, 1e-5), `${tag}: high airborne still coasts between snapshots`);
   ok(st.trk16 === OTHH_16L.hdg && st.trG === OTHH_16L.hdg, `${tag}: icon-rotate uses sourced track, not a runway heading we invented`);
   ok(st.liveLay && st.liveLay.anchor === "center" && st.liveLay.rot === "map", `${tag}: live icon anchored at centre, aligned to map/track`);

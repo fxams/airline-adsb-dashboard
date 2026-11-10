@@ -109,9 +109,14 @@ evidence.wnd = { available: wnd.j.available, status: wnd.j.status, reason: (wnd.
 if (!wnd.j.available) {
   fail.push("winds unavailable: " + (wnd.j.reason || wnd.j.status));
 } else {
-  ok(wnd.j.lats[0] >= -36 && wnd.j.lats[0] <= -30, "wind grid starts near 35S got " + wnd.j.lats[0]);
-  ok(wnd.j.lats.every((x) => x >= -40 && x <= 70), "wind lats geographic");
-  ok(wnd.j.lons[0] === 0, "wind lons from 0");
+  ok(Math.min(...wnd.j.lats) <= -70, "wind grid reaches high southern latitudes got min " + Math.min(...wnd.j.lats));
+  ok(Math.max(...wnd.j.lats) >= 70, "wind grid reaches high northern latitudes got max " + Math.max(...wnd.j.lats));
+  ok(wnd.j.lats.every((x) => x >= -91 && x <= 91), "wind lats geographic");
+  const lonSpan = (() => {
+    const xs = wnd.j.lons.map((lo) => ((lo % 360) + 360) % 360).sort((a, b) => a - b);
+    return xs.length > 1 ? xs[xs.length - 1] - xs[0] : 0;
+  })();
+  ok(wnd.j.lons.length >= 60 && (lonSpan >= 300 || wnd.j.lons.some((lo) => lo < 0) && wnd.j.lons.some((lo) => lo > 0)), "wind lons span the globe, n=" + wnd.j.lons.length + " span=" + lonSpan);
   ok((wnd.j.levels || []).includes(300), "300 hPa");
   const rec = wnd.j.fields["6:300"] || Object.values(wnd.j.fields || {})[0];
   ok(rec && rec.u.length === wnd.j.lats.length * wnd.j.lons.length, "u grid size");
@@ -278,9 +283,27 @@ if (!wndUi.available) {
 } else {
   ok(wndUi.vis === "visible" && wndUi.n > 50, "wind arrows " + wndUi.n);
   ok(!wndUi.levDisabled && wndUi.levVal, "level select enabled");
-  ok(wndUi.sample && wndUi.sample.coord[1] >= -40 && wndUi.sample.coord[1] <= 70, "wind arrow geographic");
+  ok(wndUi.sample && wndUi.sample.coord[1] >= -85 && wndUi.sample.coord[1] <= 85, "wind arrow geographic got lat " + (wndUi.sample && wndUi.sample.coord[1]));
   ok(/GFS winds/i.test(wndUi.st), "status GFS cycle");
   ok(!wndUi.err, "winds-on is not treated as error");
+  const globe = await desk.evaluate(() => {
+    const src = (id) => { const s = map.getSource(id); return (s && s._data) || (s && s.serialize && s.serialize().data) || { features: [] }; };
+    const feats = src("wxwnd").features || [];
+    const wrap = (x) => ((x % 360) + 360) % 360;
+    const inBox = (west, east, south, north) => feats.filter((f) => {
+      const [x, y] = f.geometry.coordinates;
+      const lo = wrap(x);
+      const w = wrap(west), e = wrap(east);
+      const lonOk = w <= e ? lo >= w && lo <= e : lo >= w || lo <= e;
+      return lonOk && y >= south && y <= north;
+    }).length;
+    return { n: feats.length, pac: inBox(140, 180, -40, 40), am: inBox(-120, -60, -40, 50), atl: inBox(-40, 10, -40, 50), me: inBox(30, 70, 0, 40) };
+  });
+  evidence.deskWndGlobe = globe;
+  ok(globe.pac > 0, "wind arrows over the Pacific " + JSON.stringify(globe));
+  ok(globe.am > 0, "wind arrows over the Americas " + JSON.stringify(globe));
+  ok(globe.atl > 0, "wind arrows over the Atlantic " + JSON.stringify(globe));
+  ok(globe.me > 0, "wind arrows over the Middle East " + JSON.stringify(globe));
 }
 await desk.evaluate(() => map.flyTo({ center: [45, 25], zoom: 3.2, duration: 0 }));
 await new Promise((r) => setTimeout(r, 800));
