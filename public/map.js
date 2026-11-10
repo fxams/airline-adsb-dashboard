@@ -1,4 +1,5 @@
-// Live map: FR24-style aircraft layer, trails, selection panel, real flown tracks. Data: adsb.lol (ODbL).
+// Live map: FR24-style aircraft layer, trails, selection panel, real flown tracks.
+// Live positions: adsb.lol (ODbL), adsb.fi, airplanes.live when allowed.
 let SEL=null,TR={},CSR=null,TK=null,prof=null,lastFrame=0,lastAnim=0,REG_BY_HEX={},SRCH_GND=[],QHits=[],QIx=-1,QTm=null,MOT={};
 const TRACK_LAYERS=["trails","tk","tkgc","sel-flown","sel-join","sel-gap","sel-rem"];
 const HIST_LAB_MINZOOM=10.2;
@@ -498,7 +499,7 @@ function onPoll(){
   covDraw();
   syncMfOptions();drawLive();
 }
-function initMap(){map=new maplibregl.Map({container:"map",style:"https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",center:[35,28],zoom:innerWidth<700?1.1:2,attributionControl:{compact:true}});
+function initMap(){map=new maplibregl.Map({container:"map",style:"https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",center:[35,28],zoom:innerWidth<700?1.1:2,attributionControl:{compact:true,customAttribution:'<a href="https://www.adsb.lol">adsb.lol</a> (ODbL) · <a href="https://adsb.fi">adsb.fi</a> · <a href="https://airplanes.live">airplanes.live</a>'}});
  map.addControl(new maplibregl.NavigationControl(),"bottom-right");
  map.on("load",async()=>{map.addImage("plane",plane(),{sdf:true});if(map.hasImage("airport"))map.removeImage("airport");map.addImage("airport",airportMark(),{sdf:true});
   const cf=H.map.filter(r=>H.ap[r[1]]&&H.ap[r[2]]).map(r=>({type:"Feature",properties:{a:r[0],n:r[3],inf:r[4]||0,low:(r[3]<5||(r[4]||0)/r[3]>.5)?1:0,r:r[1]+"-"+r[2]},geometry:{type:"LineString",coordinates:gc(H.ap[r[1]],H.ap[r[2]])}}));
@@ -685,20 +686,20 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
  const etaHtml=canEta&&etaMs?cell("Estimated arrival",utcClock(etaMs)+(phone?"":`<div class="mu" style="margin:4px 0 0;font-size:11px;text-transform:none;letter-spacing:0">Estimated from remaining distance ÷ current ground speed, not schedule</div>`)):na("Estimated arrival");
  const landHtml=ev.landing?cell("Observed landing",utcClock(ev.landing)):na("Actual arrival");
  const timeNote=(ev.takeoff
-  ? "Observed takeoff is the first airborne sample after a ground sample in this server's track (not wheels-up, not a schedule or gate time). Upstream type-cycle refresh is about 90 s; the browser polls /api/live every 15 s."
+  ? "Observed takeoff is the first airborne sample after a ground sample in this server's track (not wheels-up, not a schedule or gate time). Upstream tiles refresh on the order of 12–90 s (hubs first); the browser polls /api/live every 15 s."
   : (ev.since?"No ground-to-air transition in this server's track. Tracking since is when this server first stored a position for the hex, not departure.":"No timestamped track yet for this hex."))
   +(ev.landing?" Observed landing is the first ground sample after airborne in this track (not on-blocks or gate).":" Actual arrival stays unavailable until an air-to-ground transition is captured.");
  const idNote=fn.found
-  ? `Callsign is the ADS-B transponder identity from adsb.lol (observed). Flight number ${esc(fn.number)} is the marketed/ticketed passenger number from ${esc(fn.source)}, consistent with the plausibility-checked ${esc((od&&od.oi)||"?")}–${esc((od&&od.di)||"?")} pair. Not derived by prefix conversion. Codeshares are not resolved.`
-  : "Callsign is the ADS-B transponder identity from adsb.lol (observed). Flight number means the marketed/ticketed passenger number: none of the connected free sources provide a verified current one, so it stays unavailable. An airline prefix conversion (QTR→QR, UAE→EK) is not that number — QTR68M is not QR68, UAE81W is not EK81. adsbdb <code>callsign_iata</code> is the same radio callsign with an IATA prefix and is never shown as a flight number. Codeshares are not resolved.";
+  ? `Callsign is the ADS-B transponder identity (observed). Flight number ${esc(fn.number)} is the marketed/ticketed passenger number from ${esc(fn.source)}, consistent with the plausibility-checked ${esc((od&&od.oi)||"?")}–${esc((od&&od.di)||"?")} pair. Not derived by prefix conversion. Codeshares are not resolved.`
+  : "Callsign is the ADS-B transponder identity (observed). Flight number means the marketed/ticketed passenger number: none of the connected free sources provide a verified current one, so it stays unavailable. An airline prefix conversion (QTR→QR, UAE→EK) is not that number — QTR68M is not QR68, UAE81W is not EK81. adsbdb <code>callsign_iata</code> is the same radio callsign with an IATA prefix and is never shown as a flight number. Codeshares are not resolved.";
  const fnCatalog=typeof catalogNote==="function"?catalogNote(DB&&DB.flight_number_lookup):"";
  const fnNote=fn.found?fn.note:(fn.note||idNote)+(fnCatalog?" "+fnCatalog:"");
  const coast=!a.held && !gndLikePos(a.gnd||a.held,a.gs,a.gnd||a.held?0:a.alt,a.age) && a.gs>0.5;
  const posNote=a.held?"Last ground position kept after the aircraft dropped out of the ADS-B feed. Not a live update."
-  :(coast?"Snapshot is the last adsb.lol position. Between refreshes the marker is dead-reckoned each frame from ground speed and track (estimate), then eased ~1.6 s onto a new fix. Heading is blended ADS-B track. Cap 15 min / 120 nm (covers stretched type-cycles). Times UTC."
-  :"Snapshot is the last adsb.lol position. Marker stays on that snapshot (on-ground, below 1000 ft baro, missing speed/track, or lost ~20 min) — not dead-reckoned, not snapped to a runway. Heading is ADS-B track. Times UTC.");
+  :(coast?"Snapshot is the last ADS-B position from the tiled live feed. Between refreshes the marker is dead-reckoned each frame from ground speed and track (estimate), then eased ~1.6 s onto a new fix. Heading is blended ADS-B track. Cap 15 min / 120 nm. Times UTC."
+  :"Snapshot is the last ADS-B position from the tiled live feed. Marker stays on that snapshot (on-ground, below 1000 ft baro, missing speed/track, or lost ~20 min) — not dead-reckoned, not snapped to a runway. Heading is ADS-B track. Times UTC.");
  const tmNote="No airline schedule feed is connected, so scheduled times stay unavailable. Estimated arrival is remaining great-circle distance ÷ current ground speed, UTC, only when the route destination is known and the position is a fresh moving airborne snapshot — not a schedule or airport actual. Actual arrival is shown only after an observed air-to-ground transition in this track. "+timeNote;
- more.unshift(idNote,fnNote,posNote); more.push(tmNote,"Barometric altitude as FL (hundreds of feet) is not a certified flight level. Hover or tap a profile point for that sample’s FL, ground speed and vertical speed; missing fields stay n/a. Not a full flight history.","Live lat/lon are stored to 5 decimal degrees (~1.1 m). Markers are not snapped to runway or taxiway centreline. Satellite pavement can sit tens of metres off WGS84. Dead-reckoning between snapshots is airborne-only (baro at least 1000 ft, gs over 0.5 kt, speed and track present, not lost ~20 min), capped at 15 min or 120 nm, with a ~1.6 s ease onto each new fix. Packed pos_age includes type-group fetch lag.","Not for operational flight planning. NOAA/NWS Aviation Weather Center. Live positions © adsb.lol contributors (ODbL). Routes: adsbdb.com. Times UTC.");
+ more.unshift(idNote,fnNote,posNote); more.push(tmNote,"Barometric altitude as FL (hundreds of feet) is not a certified flight level. Hover or tap a profile point for that sample’s FL, ground speed and vertical speed; missing fields stay n/a. Not a full flight history.","Live lat/lon are stored to 5 decimal degrees (~1.1 m). Markers are not snapped to runway or taxiway centreline. Satellite pavement can sit tens of metres off WGS84. Dead-reckoning between snapshots is airborne-only (baro at least 1000 ft, gs over 0.5 kt, speed and track present, not lost ~20 min), capped at 15 min or 120 nm, with a ~1.6 s ease onto each new fix. Packed pos_age is seen_pos plus seconds since that 250 nm tile was fetched.","Not for operational flight planning. NOAA/NWS Aviation Weather Center. Live positions: adsb.lol contributors (ODbL); adsb.fi (personal, non-commercial); airplanes.live when allowed. Routes: adsbdb.com. Times UTC.");
  if(ident&&ident.note) more.push(ident.note);
  $("spb").innerHTML=`<div class="chips">${chips}</div>
   <p class="spcaveat">Not for operational flight planning</p>
@@ -1138,8 +1139,19 @@ function aptFromView(){
   const n=AH.nearestApt(c.lat,c.lng,AH.AUTO_NM);
   return n?n.id:"G";
 }
+let lastViewBump=0;
+function bumpViewTile(){
+  if(!map) return;
+  const now=Date.now();
+  if(now-lastViewBump<20000) return;
+  lastViewBump=now;
+  const b=map.getBounds();
+  const qs="west="+b.getWest()+"&south="+b.getSouth()+"&east="+b.getEast()+"&north="+b.getNorth();
+  fetch("/api/live/view?"+qs).catch(()=>{});
+}
 function onAptMove(){
   if(APT_FLY||!map) return;
+  bumpViewTile();
   const want=aptFromView();
   if(want!==APT) setApt(want,{fly:false});
 }

@@ -6,8 +6,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const R2 = Math.PI / 180;
   const BLEND_MS = 1600;
-  // Match live-feed last-good window (~20 min). Do not freeze at 60 s: type-cycle
-  // lag on production is several minutes (429s), while packed seen_pos stays ~0–1 s.
+  // Match live-feed last-good window (~20 min). Do not freeze at 60 s: tile lag
+  // can still be tens of seconds, while packed seen_pos stays ~0–1 s.
   const STALE_S = 1200;
   const MAX_EXTRAP_S = 900;
   const MAX_EXTRAP_NM = 120;
@@ -60,7 +60,7 @@
     return ageSinceSnap + Math.max(0, +posAge || 0);
   }
   function target(m, now) {
-    // dt includes packed pos_age (seen_pos + seconds since that type group was
+    // dt includes packed pos_age (seen_pos + seconds since that tile was
     // fetched). L.at is the last progressive publish, not this hex's fetch time.
     const sincePub = Math.max(0, (now - m.fixAt) / 1000);
     const age = (+m.fixAge || 0) + sincePub;
