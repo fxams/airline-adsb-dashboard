@@ -130,6 +130,48 @@ function hv(lat1, lon1, lat2, lon2) {
   return 2 * R_EARTH_NM * Math.asin(Math.sqrt(Math.min(1, x)));
 }
 
+function seenPosS(a) {
+  if (!a) return 99;
+  const v = a.seen_pos;
+  if (v == null || !Number.isFinite(+v)) return 99;
+  return Math.max(0, +v);
+}
+
+function posTimeMs(fetchedTs, seenPos) {
+  const sp = seenPos == null || !Number.isFinite(+seenPos) ? 99 : Math.max(0, +seenPos);
+  return fetchedTs - sp * 1000;
+}
+
+function alongNm(lat0, lon0, lat1, lon1, trk) {
+  const nm = hv(lat0, lon0, lat1, lon1);
+  if (!(nm > 0) || trk == null || !Number.isFinite(+trk)) return 0;
+  const dLat = lat1 - lat0;
+  const dLon = (lon1 - lon0) * Math.cos(((lat0 + lat1) / 2) * Math.PI / 180);
+  const brg = (Math.atan2(dLon, dLat) * 180 / Math.PI + 360) % 360;
+  const d = ((((brg - +trk) % 360) + 540) % 360) - 180;
+  return nm * Math.cos(d * Math.PI / 180);
+}
+
+function pickFresher(prev, incoming) {
+  if (!prev) return incoming;
+  if (!incoming) return prev;
+  const dt = incoming._posTime - prev._posTime;
+  if (dt < -80) return prev;
+  if (dt <= 80) {
+    const prevGs = prev.gs > 0.5, incGs = incoming.gs > 0.5;
+    if (!prevGs && incGs) return incoming;
+    return prev;
+  }
+  if (typeof prev.lat === "number" && typeof incoming.lat === "number" && Number.isFinite(+prev.track)) {
+    const along = alongNm(prev.lat, prev.lon, incoming.lat, incoming.lon, prev.track);
+    if (along < -0.2 && dt < 60000) return prev;
+  }
+  const gs = incoming.gs > 0.5 ? incoming.gs : prev.gs;
+  const track = Number.isFinite(+incoming.track) ? incoming.track : prev.track;
+  const true_heading = incoming.true_heading != null ? incoming.true_heading : prev.true_heading;
+  return { ...incoming, gs, track, true_heading };
+}
+
 function parseAc(j) {
   if (!j || typeof j !== "object") return [];
   const ac = j.ac || j.aircraft;
@@ -255,6 +297,7 @@ class LiveFeed {
     this.viewBoostUntil = 0;
     this.viewBoostId = "";
     this.viewHits = [];
+    this.heldBest = new Map();
     const specs = Array.isArray(o.providers) && o.providers.length
       ? o.providers
       : PROVIDERS;
@@ -550,6 +593,7 @@ class LiveFeed {
       });
     }
     this.lastT.set("_warm", { ts, ac, err: null, provider: "warm" });
+    this.heldBest.clear();
     const ok = this.tiles.filter((t) => this.lastT.has(t.id)).map((t) => t.id);
     if (!ok.includes("_warm")) ok.unshift("_warm");
     this.lastFeed = {
@@ -583,14 +627,23 @@ class LiveFeed {
     for (const [, o] of this.lastT) {
       if (!o || !o.ac) continue;
       if (now - o.ts >= this.staleMs) continue;
-      const lag = Math.max(0, (now - o.ts) / 1000);
       for (const a of o.ac) {
         if (!a || !a.hex) continue;
-        const seenPos = a.seen_pos ?? 99;
-        const age = seenPos + lag;
-        const p = seen.get(a.hex);
-        if (!p || age < (p._age ?? 1e9)) seen.set(a.hex, { ...a, _age: age, _fetched: o.ts, _src: o.provider || null });
+        const pt = posTimeMs(o.ts, seenPosS(a));
+        const age = Math.max(0, (now - pt) / 1000);
+        const cand = { ...a, _age: age, _fetched: o.ts, _posTime: pt, _src: o.provider || null };
+        seen.set(a.hex, pickFresher(seen.get(a.hex), cand));
       }
+    }
+    for (const [hex, p] of seen) {
+      const held = this.heldBest.get(hex);
+      const keep = pickFresher(held, p);
+      const age = Math.max(0, (now - keep._posTime) / 1000);
+      seen.set(hex, { ...keep, _age: age });
+      this.heldBest.set(hex, seen.get(hex));
+    }
+    for (const [hex, h] of this.heldBest) {
+      if (now - (h._posTime || 0) >= this.staleMs) this.heldBest.delete(hex);
     }
     return seen;
   }
@@ -676,6 +729,10 @@ module.exports = {
   loadLiveSnapshotFile,
   generateTiles,
   hv,
+  alongNm,
+  posTimeMs,
+  seenPosS,
+  pickFresher,
   parseAc,
   filterAcBbox,
   sourceList,

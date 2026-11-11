@@ -95,6 +95,26 @@ ok(almost(done[2], 95, 1e-6), "heading lands on the new track");
 const wrap = LM.lerpAng(350, 10, 0.5);
 ok(almost(wrap, 0, 0.6) || almost(wrap, 360, 0.6), "heading interpolates across 360: " + wrap);
 
+const coastedBack = {};
+LM.upsert(coastedBack, "cb", { lat: 25, lon: 50, gs: 360, trk: 90, onG: 0, alt: 35000, age: 2 }, t0, t0);
+const farEast = LM.display(coastedBack.cb, t0 + 20000);
+LM.upsert(coastedBack, "cb", { lat: 25, lon: 50, gs: 360, trk: 90, onG: 0, alt: 35000, age: 1 }, t0 + 20000, t0 + 20000);
+const stillEast = LM.display(coastedBack.cb, t0 + 20000);
+ok(stillEast[0] >= farEast[0] - 1e-6, "younger overlapping fix does not jump backward got " + stillEast[0] + " vs " + farEast[0]);
+
+const carry = {};
+LM.upsert(carry, "c", { lat: 25, lon: 50, gs: 360, trk: 90, onG: 0, alt: 35000, age: 1 }, t0, t0);
+LM.upsert(carry, "c", { lat: 25.01, lon: 50.2, gs: 0, trk: null, onG: 0, alt: 35000, age: 1 }, t0 + 5000, t0 + 5000);
+const c1 = LM.display(carry.c, t0 + 15000);
+ok(c1[0] > 50.2, "carries gs/track across a fix that lacks them lon=" + c1[0]);
+
+const older = {};
+LM.upsert(older, "o", { lat: 25, lon: 50.3, gs: 360, trk: 90, onG: 0, alt: 35000, age: 1 }, t0 + 10000, t0 + 10000);
+const o1 = LM.display(older.o, t0 + 10000);
+LM.upsert(older, "o", { lat: 25, lon: 50.0, gs: 360, trk: 90, onG: 0, alt: 35000, age: 1 }, t0 + 10000, t0);
+const o2 = LM.display(older.o, t0 + 10000);
+ok(almost(o2[0], o1[0], 1e-9), "older posTime is rejected");
+
 LM.upsert(store, "abc", row, t0 + 500, t0);
 ok(store.abc === m0 || (store.abc.fixLat === 25 && store.abc.bDur === 0) || LM.sameFix(store.abc, 25, 50, 360, 90, 0), "same snapshot does not restart the blend");
 
@@ -112,6 +132,7 @@ ok(/u === "\/motion\.js"/.test(srv), "server serves /motion.js");
 const mapjs = fs.readFileSync(new URL("./public/map.js", import.meta.url), "utf8");
 ok(/requestAnimationFrame\(tick\)/.test(mapjs) && /paintLive\(\{view:true\}\)/.test(mapjs), "rAF paints live markers");
 ok(/animGap/.test(mapjs) && /document\.hidden/.test(mapjs), "anim throttles on hidden tabs / phones");
+ok(/nowMs/.test(mapjs) && /CLK_OFF/.test(mapjs) && /server_ms/.test(mapjs), "client uses server clock offset");
 
 if (fail.length) {
   console.error("FAIL\n" + fail.join("\n"));
