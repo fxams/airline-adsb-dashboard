@@ -32,7 +32,7 @@ function motShown(lat,lon,gs,trk,onG,alt,posAge,hex){
   const now=nowMs(), at=snapAtMs();
   if(!LM) return [lon, lat, trk];
   if(hex){
-    const m=LM.upsert(MOT, hex, motRow(lat,lon,gs,trk,onG,alt,posAge), now, at);
+    const m=MOT[hex]||LM.upsert(MOT, hex, motRow(lat,lon,gs,trk,onG,alt,posAge), now, at);
     return LM.display(m, now);
   }
   const tmp=LM.upsert({}, "_", motRow(lat,lon,gs,trk,onG,alt,posAge), now, at);
@@ -156,7 +156,7 @@ function drawProf(P){
   showProfPoint(last);
   if(note) note.textContent=`Barometric altitude as FL (hundreds of feet), not a certified flight level. Chart averages (${gsTxt}; ${vsTxt}) are means of sourced samples in this server’s displayed history (${PROF_PTS.length} pts, GS ${gsVals.length}/${P.length}, VS ${vsVals.length}/${P.length}, ${utcHm(t0)}–${utcHm(t1)} UTC; max ~3 h). Hover or tap a point for that sample’s FL, GS and VS; missing fields stay n/a and are not filled from the average or zero. Not a full flight history.`;
 }
-function posFresh(a){if(!a||a.held||a.gnd||a.src!=="live")return false; if(L&&L.at&&Date.now()-Date.parse(L.at)>180000)return false; return a.gs>120}
+function posFresh(a){if(!a||a.held||a.gnd||a.src!=="live")return false; if(L&&L.at&&Date.now()-Date.parse(L.at)>180000)return false; if((+a.age||0)>=90)return false; return a.gs>120}
 function observedEvents(P,a){
   const ev={takeoff:null,landing:null,since:P[0]?P[0][0]:null,takeoffLL:null};
   let lastG=null;
@@ -379,9 +379,11 @@ function airCountOf(code){
   if(!code) return rows.length;
   return rows.filter(a=>a[2]===code).length;
 }
+let liveErr=false;
 function liveLoading(){
   const n=((L&&L.ac)||[]).length;
   if(n) return false;
+  if(liveErr) return true;
   const f=L&&L.feed;
   if(f&&f.loading) return true;
   if(!L||!L.at) return true;
@@ -389,6 +391,17 @@ function liveLoading(){
 }
 function syncLiveLoad(){
   const el=$("liveload"); if(!el) return;
+  const n=((L&&L.ac)||[]).length;
+  if(liveErr&&!n){
+    el.hidden=false;
+    el.style.pointerEvents="auto";
+    if(!el.querySelector("#liveretry")){
+      el.innerHTML='Live data unavailable. <button type="button" id="liveretry">Retry</button>';
+      const b=$("liveretry"); if(b) b.onclick=()=>{liveErr=false;el.style.pointerEvents="none";el.textContent="Loading live data…";if(typeof poll==="function")poll()};
+    }
+    return;
+  }
+  el.style.pointerEvents="none";
   const on=liveLoading();
   el.hidden=!on;
   if(on) el.textContent="Loading live data…";
@@ -446,15 +459,20 @@ function inPad(lon,lat,p){
 }
 function acF(opts){
   const ty=($("tyf")&&$("tyf").value||"").trim().toUpperCase();
-  const rows=liveRows(), pad=(opts&&opts.view)?viewPad():null, cull=!!(opts&&opts.view&&pad&&rows.length>400);
-  const out=[];
+  const view=!(opts&&opts.view===false);
+  const rows=liveRows(), pad=view?viewPad():null, cull=!!(view&&pad&&rows.length>400);
+  const z=map&&map.getZoom?map.getZoom():2;
+  const cap=z<2.2?700:z<3.5?1600:z<5.5?3500:1e9;
+  const out=[]; let nOther=0;
   for(const a of rows){
     if(!airOk(a[2])||(ty&&!(String(a[3]||"").toUpperCase().startsWith(ty)))) continue;
     const shown=motShown(a[4],a[5],a[7],a[8],a[10],a[6],a[11],a[0]);
     if(cull && a[0]!==SEL && !inPad(shown[0],shown[1],pad)) continue;
+    const hl=["QTR","UAE"].includes(a[2])?1:0;
+    if(view && a[0]!==SEL && !hl){ nOther++; if(nOther>cap) continue; }
     const rg=(a[9]||"").trim(); if(a[0]&&rg)REG_BY_HEX[a[0]]=rg;
     const trk=shown[2]==null?a[8]:shown[2];
-    out.push({type:"Feature",properties:{h:a[0],cs:a[1],a:a[2],t:a[3],alt:a[6],gs:a[7],trk:trk,g:a[10],hl:["QTR","UAE"].includes(a[2])?1:0,s:a[0]===SEL?1:0,...(rg?{reg:rg}:{})},geometry:{type:"Point",coordinates:[shown[0],shown[1]]}});
+    out.push({type:"Feature",properties:{h:a[0],cs:a[1],a:a[2],t:a[3],alt:a[6],gs:a[7],trk:trk,g:a[10],hl:hl,s:a[0]===SEL?1:0,...(rg?{reg:rg}:{})},geometry:{type:"Point",coordinates:[shown[0],shown[1]]}});
   }
   return out;
 }
@@ -478,7 +496,7 @@ function paintLive(opts){
   } else if(map.getSource("trails")) map.getSource("trails").setData({type:"FeatureCollection",features:[]});
 }
 function drawLive(){
-  paintLive({view:false});
+  paintLive({view:true});
   applyTrackVis();applyRegLab();if(SEL)selUpdate();refreshQres();syncLiveCount();if(typeof syncFilChips==="function")syncFilChips();
 }
 function animGap(){
@@ -507,21 +525,33 @@ function onPoll(){
   covDraw();
   syncMfOptions();drawLive();
 }
-function initMap(){map=new maplibregl.Map({container:"map",style:"https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",center:[35,28],zoom:innerWidth<700?1.1:2,attributionControl:{compact:true,customAttribution:'<a href="https://www.adsb.lol">adsb.lol</a> (ODbL) · <a href="https://adsb.fi">adsb.fi</a> · <a href="https://airplanes.live">airplanes.live</a>'}});
- map.addControl(new maplibregl.NavigationControl(),"bottom-right");
- map.on("load",async()=>{map.addImage("plane",plane(),{sdf:true});if(map.hasImage("airport"))map.removeImage("airport");map.addImage("airport",airportMark(),{sdf:true});
+function fillArcs(){
+  if(!map||!map.getSource("arcs")||!H||!H.map||!H.ap)return;
   const cf=H.map.filter(r=>H.ap[r[1]]&&H.ap[r[2]]).map(r=>({type:"Feature",properties:{a:r[0],n:r[3],inf:r[4]||0,low:(r[3]<5||(r[4]||0)/r[3]>.5)?1:0,r:r[1]+"-"+r[2]},geometry:{type:"LineString",coordinates:gc(H.ap[r[1]],H.ap[r[2]])}}));
-  map.addSource("cov",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addLayer({id:"cov",type:"fill",source:"cov",paint:{"fill-color":"#3aa0ff","fill-opacity":.06}});map.addSource("covb",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addLayer({id:"covb",type:"line",source:"covb",layout:{"line-join":"round",visibility:localStorage.cvb==="0"?"none":"visible"},paint:{"line-color":"#5cc8ff","line-width":["interpolate",["linear"],["zoom"],1,.8,6,1.6],"line-opacity":.85}});
-  wxSetup();
-  map.addSource("arcs",{type:"geojson",data:{type:"FeatureCollection",features:cf}});
-  map.addLayer({id:"arcs",type:"line",source:"arcs",layout:{visibility:"none"},paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":["interpolate",["linear"],["get","n"],1,.3,1600,1.4],"line-opacity":["case",["==",["get","low"],1],.12,.35],"line-dasharray":[2,2]}});
-  HI=await fetch("/api/hist/index").then(r=>r.json()).catch(()=>null);
+  map.getSource("arcs").setData({type:"FeatureCollection",features:cf});
+}
+function applyTracks(j){
+  TK=j||{f:[],day:""};
+  const ts=$("tks"); if(!ts) return;
+  ts.innerHTML=`<option value="">Off</option><option value="QTR">All QTR (${TK.day||""})</option><option value="UAE">All UAE (${TK.day||""})</option>`+(TK.f||[]).map((f,i)=>[f.a+" "+f.o+"-"+f.d,i]).sort().map(([l,i])=>`<option value="${i}">${l}</option>`).join("");
+}
+function applyHistIndex(j){
+  HI=j;
   if(HI&&HI.airports&&AH&&AH.merge) AH.merge(HI.airports);
   if($("histinfo")&&HI) $("histinfo").textContent=`${HI.n_airports||0} observed QTR airports; geometry tiles ${HI.n_with_geom||0}; sampled UTC days ${(HI.geom_days||[]).join(", ")||"none"}; window ${HI.from||"?"}–${HI.to||"?"} UTC.`;
-  AIPI=await fetch("/api/aip/index").then(r=>r.json()).catch(()=>null);
+}
+function applyAipIndex(j){
+  AIPI=j;
   if($("aipinfo")&&AIPI) $("aipinfo").textContent=`${AIPI.n_draw||0} DRAW (FAA CIFP ${AIPI.cycle||""}, AIRAC ${AIPI.airac||"?"}, ${AIPI.effective_utc||"?"}–${AIPI.until_utc||"?"} UTC); ${AIPI.n_link||0} LINK-only official AIP AD 2. Per-flight ident: CIFP names only.`;
-  TK=await fetch("/api/tracks").then(r=>r.json()).catch(()=>({f:[]}));
-  const ts=$("tks");ts.innerHTML=`<option value="">Off</option><option value="QTR">All QTR (${TK.day})</option><option value="UAE">All UAE (${TK.day})</option>`+TK.f.map((f,i)=>[f.a+" "+f.o+"-"+f.d,i]).sort().map(([l,i])=>`<option value="${i}">${l}</option>`).join("");
+}
+function initMap(){map=new maplibregl.Map({container:"map",style:"https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",center:[35,28],zoom:innerWidth<700?1.1:2,attributionControl:{compact:true,customAttribution:'<a href="https://www.adsb.lol">adsb.lol</a> (ODbL) · <a href="https://adsb.fi">adsb.fi</a> · <a href="https://airplanes.live">airplanes.live</a>'}});
+ map.addControl(new maplibregl.NavigationControl(),"bottom-right");
+ map.on("load",()=>{map.addImage("plane",plane(),{sdf:true});if(map.hasImage("airport"))map.removeImage("airport");map.addImage("airport",airportMark(),{sdf:true});
+  map.addSource("cov",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addLayer({id:"cov",type:"fill",source:"cov",paint:{"fill-color":"#3aa0ff","fill-opacity":.06}});map.addSource("covb",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addLayer({id:"covb",type:"line",source:"covb",layout:{"line-join":"round",visibility:localStorage.cvb==="0"?"none":"visible"},paint:{"line-color":"#5cc8ff","line-width":["interpolate",["linear"],["zoom"],1,.8,6,1.6],"line-opacity":.85}});
+  wxSetup();
+  map.addSource("arcs",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+  map.addLayer({id:"arcs",type:"line",source:"arcs",layout:{visibility:"none"},paint:{"line-color":["match",["get","a"],"QTR",C1,C2],"line-width":["interpolate",["linear"],["get","n"],1,.3,1600,1.4],"line-opacity":["case",["==",["get","low"],1],.12,.35],"line-dasharray":[2,2]}});
+  fillArcs();
   map.addSource("tk",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addSource("tkgc",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
   const tv=hideTracksOn()?"none":"visible";
   map.addLayer({id:"tkgc",type:"line",source:"tkgc",layout:{visibility:tv},paint:{"line-color":"#ffffff","line-opacity":.45,"line-width":1,"line-dasharray":[3,3]}});
@@ -548,7 +578,6 @@ function initMap(){map=new maplibregl.Map({container:"map",style:"https://basema
   map.on("click","live",e=>select(e.features[0].properties.h));
   map.on("click","arcs",e=>{const p=e.features[0].properties;new maplibregl.Popup().setLngLat(e.lngLat).setHTML(`<span style="color:#000">${p.a} ${p.r}: ${fmt(p.n)} flights${p.inf?` (${p.inf} with one end inferred)`:""}${p.low?" · low confidence":""}</span>`).addTo(map)});
   ["live","arcs"].forEach(l=>{map.on("mouseenter",l,()=>map.getCanvas().style.cursor="pointer");map.on("mouseleave",l,()=>map.getCanvas().style.cursor="")});
-  CSR=await fetch("/api/csroute").then(r=>r.json()).catch(()=>null);
   map.on("moveend",onAptMove);
   map.on("zoom",applyTrackVis);
   const tick=()=>{
@@ -561,7 +590,20 @@ function initMap(){map=new maplibregl.Map({container:"map",style:"https://basema
   tick();
   map.on("move",()=>{if(Date.now()-lastAnim>80){lastAnim=Date.now();paintLive({view:true})}});
   document.addEventListener("visibilitychange",()=>{if(!document.hidden){lastAnim=0;paintLive({view:true})}});
-  onPoll();covDraw();setApt(localStorage.apt||"G");applyTrackVis();applyRegLab();syncWx()})}
+  gSetup();
+  onPoll();
+  applyTrackVis();applyRegLab();
+  Promise.all([
+    fetch("/api/hist/index").then(r=>r.json()).catch(()=>null),
+    fetch("/api/aip/index").then(r=>r.json()).catch(()=>null),
+    fetch("/api/tracks").then(r=>r.json()).catch(()=>({f:[]})),
+    fetch("/api/csroute").then(r=>r.json()).catch(()=>null)
+  ]).then(([hi,aipi,tk,csr])=>{
+    applyHistIndex(hi); applyAipIndex(aipi); applyTracks(tk); CSR=csr;
+    if(!aptInit) setApt(localStorage.apt||"G");
+    applyTrackVis(); applyRegLab(); syncWx(); covDraw();
+  }).catch(()=>{ if(!aptInit) setApt(localStorage.apt||"G"); applyTrackVis(); applyRegLab(); syncWx(); });
+ })}
 function colorMode(){if(!map.getLayer("live"))return;const m=$("cm").value;
  map.setPaintProperty("live","icon-color",["case",["==",["get","s"],1],"#ffffff",["==",["get","g"],1],GND,m==="alt"?ALTC:["match",["get","a"],"QTR",C1,"UAE",C2,AMB]]);
  $("lgc").innerHTML=m==="alt"?`<b>Altitude</b> <i style="background:#ff5a36"></i>&lt;10k <i style="background:#ffb000"></i>10–20k <i style="background:#c6ff3a"></i>20–30k <i style="background:#00e5ff"></i>30–40k <i style="background:#b06bff"></i>40k+ ft`:`<i style="background:${C1}"></i>QTR <i style="background:${C2}"></i>UAE <i style="background:${AMB}"></i>other airlines`}
@@ -822,7 +864,7 @@ const AH=typeof AirportHubs!=="undefined"?AirportHubs:null;
 function aptHub(id){return AH&&AH.resolveApt?AH.resolveApt(id):null}
 function aptNear(lat,lon,id,maxNm){const h=aptHub(id);if(!h||typeof lat!=="number")return false;return (AH.hv||hv)(lat,lon,h.lat,h.lon)<=(maxNm||50)}
 const APTC=(()=>{const o={}; if(AH&&AH.HUBS) for(const h of AH.HUBS) o[h.id]=[h.lon,h.lat]; return o})();
-let APT="G",GT=null,APT_FLY=false;
+let APT="G",GT=null,APT_FLY=false,aptInit=false;
 function gIcon(){const c=document.createElement("canvas");c.width=c.height=32;const x=c.getContext("2d");x.fillStyle="#fff";x.strokeStyle="#000";x.lineWidth=2;x.beginPath();x.moveTo(16,2);x.lineTo(28,28);x.lineTo(16,22);x.lineTo(4,28);x.closePath();x.stroke();x.fill();return x.getImageData(0,0,32,32)}
 function gSetup(){if(map.getSource("sat"))return;const b=map.getStyle().layers.find(l=>l.type==="symbol"||l.id==="cov");
  map.addSource("sat",{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,maxzoom:19,attribution:"Imagery © Esri, Maxar, Earthstar Geographics"});
@@ -869,6 +911,7 @@ function gSetup(){if(map.getSource("sat"))return;const b=map.getStyle().layers.f
   if($("aipname")&&!$("aipname").dataset.bound){$("aipname").dataset.bound="1";$("aipname").onchange=()=>{localStorage.aipname=$("aipname").checked?"1":"0";aipPaint();histPaint();if(SEL)selUpdate()}}
 }
 function setApt(a,opts){
+  aptInit=true;
   const fly=!opts||opts.fly!==false;
   const hub=a&&a!=="G"?aptHub(a):null;
   if(a&&a!=="G"&&!hub) return;

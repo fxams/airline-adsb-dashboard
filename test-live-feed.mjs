@@ -238,6 +238,11 @@ ok(warmStartUrl({ LIVE_WARM_URL: "http://127.0.0.1:10000" }) === "", "loopback w
   const src = fs.readFileSync(new URL("./server.js", import.meta.url), "utf8");
   ok(/\/api\/feed/.test(src), "server exposes /api/feed");
   ok(/\/api\/live\/view/.test(src), "server exposes /api/live/view");
+  ok(/\/api\/livehist/.test(src), "sparkline history is a separate /api/livehist");
+  ok(/warmLiveBody/.test(src), "live JSON is serialized off the request path");
+  ok(/max-age=3/.test(src), "live snapshot is briefly cacheable");
+  ok(/function indexHtml/.test(src), "index HTML is rewritten at serve time");
+  ok(/src="\$1\?v=\$\{BOOT_VER\}"/.test(src), "local script tags get ?v=BOOT_VER cache bust");
   ok(/liveFeed\.refresh/.test(src), "server refresh uses LiveFeed");
   ok(/publishFromSeen/.test(src), "server publishes from each progress callback");
   ok(/warmStart/.test(src) && /LIVE_SNAP_PATH/.test(src), "warm-start from disk snapshot or previous instance");
@@ -255,6 +260,9 @@ ok(warmStartUrl({ LIVE_WARM_URL: "http://127.0.0.1:10000" }) === "", "loopback w
   ok(/250 nm/.test(html) && /adsb\.fi/.test(html), "copy mentions 250 nm tiles and adsb.fi");
   ok(/Live ADS-B attribution/.test(html) && /opendatacommons\.org\/licenses\/odbl/.test(html), "method lists required live-source attribution");
   const mapjs = fs.readFileSync(new URL("./public/map.js", import.meta.url), "utf8");
+  try { new Function(mapjs); ok(true, "map.js parses"); }
+  catch (e) { ok(false, "map.js parses: " + e.message); }
+  ok(!/\(coast\?"Snapshot[\s\S]*Times UTC\."\)\s*:/.test(mapjs), "coast posNote ternary is not closed too early");
   ok(/customAttribution/.test(mapjs) && /adsb\.fi/.test(mapjs), "map attribution control cites live sources");
   ok(/\/api\/live\/view/.test(mapjs), "map moveend pings viewport endpoint (server-throttled)");
   ok(/id="liveload"/.test(html) && /Loading live data…/.test(html), "empty map shows Loading live data");
