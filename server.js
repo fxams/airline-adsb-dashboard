@@ -51,6 +51,11 @@ const trails = new Map();
 const tracks = fs.readFileSync(path.join(__dirname, "data/tracks.json"), "utf8");
 const csroute = fs.readFileSync(path.join(__dirname, "data/csroute.json"), "utf8");
 const hist = [];
+let liveVer = 0; // bumped whenever `live` is republished (keys the /api/live body cache)
+let lastClientAt = Date.now(), lastProgressPublish = 0;
+const IDLE_AFTER_MS = Number(process.env.IDLE_AFTER_SECONDS || 300) * 1000;
+const IDLE_REFRESH_MS = Number(process.env.IDLE_REFRESH_SECONDS || 15) * 1000;
+const PROGRESS_PUBLISH_MS = Number(process.env.PROGRESS_PUBLISH_MS || 3000);
 // adsbdb.com callsign -> route lookup; cached per callsign (24 h hit, 6 h miss), max 1 upstream request per second.
 const rc = new Map(); let lastDb = 0;
 async function adsbdb(cs) {
@@ -219,6 +224,7 @@ function publishFromSeen(seen, f) {
     const pct = (p) => ages.length ? ages[Math.min(ages.length - 1, Math.floor(p / 100 * (ages.length - 1)))] : null;
     f.age_air = { n: ages.length, p50: pct(50), p90: pct(90), max: ages.length ? ages[ages.length - 1] : null };
     live = { at, fields: live.fields, ac, nm, feed: f, sources: f.sources || [], server_ms: Date.now() };
+    liveVer++;
     const now = Date.now();
     for (const r of live.ac) { const t = trails.get(r[0]) || []; const p = t[t.length - 1]; if (!p || p[1] !== r[5] || p[2] !== r[4]) t.push([now, r[5], r[4], r[6], r[7], r[12], r[10]]); if (t.length > 360) t.shift(); trails.set(r[0], t); }
     for (const [h, t] of trails) if (now - t[t.length - 1][0] > 20 * 60000) trails.delete(h);
@@ -227,6 +233,7 @@ function publishFromSeen(seen, f) {
   } else {
     snapshot = { ...snapshot, error: banner || snapshot.error || "no tiles loaded", feed: f };
     live = { ...live, feed: f };
+    liveVer++;
   }
 }
 function applyLivePayload(j, source) {
@@ -277,6 +284,10 @@ async function refresh() {
   const t0 = Date.now();
   try {
     const { seen, feed: f } = await liveFeed.refresh(({ seen: s, feed: pf }) => {
+      // Mid-refresh progress used to republish (rebuild every row, trails, stats,
+      // snapshot JSON) per tile. Publish at most every PROGRESS_PUBLISH_MS.
+      if (Date.now() - lastProgressPublish < PROGRESS_PUBLISH_MS) return;
+      lastProgressPublish = Date.now();
       publishFromSeen(s, pf);
       const last = (pf.ok && pf.ok[pf.ok.length - 1]) || (pf.stale && pf.stale[0] && pf.stale[0].t) || "";
       console.log("live +", last, "n=" + s.size, "ok=" + pf.n_ok, "pending=" + pf.n_pending);
@@ -288,7 +299,10 @@ async function refresh() {
   busy = false;
 }
 function scheduleRefresh() {
-  const wait = Math.max(150, liveFeed.nextWaitMs ? liveFeed.nextWaitMs() : 400);
+  let wait = Math.max(150, liveFeed.nextWaitMs ? liveFeed.nextWaitMs() : 400);
+  // Nobody has loaded the dashboard/API recently (only /healthz pings): keep the
+  // feed warm but poll tiles far less often, so idle time doesn't burn the CPU cap.
+  if (Date.now() - lastClientAt > IDLE_AFTER_MS) wait = Math.max(wait, IDLE_REFRESH_MS);
   setTimeout(() => { refresh().finally(scheduleRefresh); }, wait);
 }
 
@@ -299,8 +313,45 @@ const send = (res, code, type, body, cache) => {
   if (res.req && /gzip/.test(res.req.headers["accept-encoding"] || "") && body && body.length > 2048) { h["Content-Encoding"] = "gzip"; body = zlib.gzipSync(body); }
   res.writeHead(code, h); res.end(body);
 };
+// Render free tier caps this service at 0.15 CPU. Re-serializing and gzipping
+// the multi-MB live snapshot, static JS and history tiles on every request (and
+// gunzip -> gzip for the .json.gz tiles) was most of the per-request cost, so
+// each body is serialized/compressed once per version and then reused.
+const bodyCache = new Map(); // key -> { ver, raw, gz }
+function cachedBody(key, ver, make) {
+  let e = bodyCache.get(key);
+  if (!e || e.ver !== ver) {
+    const raw = make();
+    e = { ver, raw: Buffer.isBuffer(raw) ? raw : Buffer.from(raw), gz: null };
+    bodyCache.set(key, e);
+  }
+  return e;
+}
+const sendCached = (res, code, type, key, ver, make, cache) => {
+  const e = cachedBody(key, ver, make);
+  const h = { "Content-Type": type, "Cache-Control": cache || "no-store, no-cache, must-revalidate, max-age=0", "Access-Control-Allow-Origin": "*", "Vary": "Accept-Encoding" };
+  let body = e.raw;
+  if (res.req && /gzip/.test(res.req.headers["accept-encoding"] || "") && body.length > 2048) {
+    if (!e.gz) e.gz = zlib.gzipSync(body);
+    h["Content-Encoding"] = "gzip"; body = e.gz;
+  }
+  res.writeHead(code, h); res.end(body);
+};
+// Pre-gzipped .json.gz tiles: pass the stored bytes straight through to gzip clients.
+const gzFileCache = new Map(); // path -> { gz, raw }
+const sendGzFile = (res, fp, cache) => {
+  let e = gzFileCache.get(fp);
+  if (!e) { e = { gz: fs.readFileSync(fp), raw: null }; if (gzFileCache.size > 400) gzFileCache.clear(); gzFileCache.set(fp, e); }
+  const h = { "Content-Type": "application/json", "Cache-Control": cache || "public, max-age=300", "Access-Control-Allow-Origin": "*", "Vary": "Accept-Encoding" };
+  if (res.req && /gzip/.test(res.req.headers["accept-encoding"] || "")) { h["Content-Encoding"] = "gzip"; res.writeHead(200, h); return res.end(e.gz); }
+  if (!e.raw) e.raw = zlib.gunzipSync(e.gz);
+  res.writeHead(200, h); res.end(e.raw);
+};
+const BOOT_VER = String(Date.now());
+const staticFile = (rel) => () => fs.readFileSync(path.join(__dirname, rel));
 const server = http.createServer(async (req, res) => {
   const u = req.url.split("?")[0]; const q = new URL(req.url, "http://x").searchParams;
+  if (u !== "/healthz") lastClientAt = Date.now();
   if (u === "/api/ground") {
     const id = (q.get("apt") || "").toUpperCase();
     const hub = airports.resolveApt(id);
@@ -322,7 +373,7 @@ const server = http.createServer(async (req, res) => {
         note: "No terminal-area QTR/UAE traces could be assigned to a runway in the sampled UTC days (no receiver coverage, too few points, or ambiguous runway). 365-day city-pair counts still come from the full aggregate. Observed ADS-B, not published SID/STAR."
       }), "public, max-age=300");
     }
-    return send(res, 200, "application/json", zlib.gunzipSync(fs.readFileSync(fp)).toString("utf8"), "public, max-age=300");
+    return sendGzFile(res, fp, "public, max-age=300");
   }
   if (u === "/api/aip/index") return send(res, 200, "application/json", JSON.stringify(aipIndex), "public, max-age=300");
   if (u === "/api/aip") {
@@ -334,7 +385,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (meta.tile) {
       const fp = path.join(AIP_DIR, meta.tile);
-      if (fs.existsSync(fp)) return send(res, 200, "application/json", zlib.gunzipSync(fs.readFileSync(fp)).toString("utf8"), "public, max-age=300");
+      if (fs.existsSync(fp)) return sendGzFile(res, fp, "public, max-age=300");
     }
     return send(res, 200, "application/json", JSON.stringify({
       apt: meta.id, icao: meta.icao, iata: meta.iata, name: meta.name, lat: meta.lat, lon: meta.lon,
@@ -348,9 +399,9 @@ const server = http.createServer(async (req, res) => {
       note: meta.why
     }), "public, max-age=300");
   }
-  if (u === "/airports.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/airports.js")));
+  if (u === "/airports.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/airports.js"));
   if (u === "/api/snapshot") return send(res, 200, "application/json", JSON.stringify(snapshot));
-  if (u === "/api/tracks") return send(res, 200, "application/json", tracks, "public, max-age=300");
+  if (u === "/api/tracks") return sendCached(res, 200, "application/json", u, BOOT_VER, () => tracks, "public, max-age=300");
   if (u === "/api/trails") { const o = {}; for (const [h, t] of trails) o[h] = t.slice(-12).map((p) => [p[1], p[2]]); return send(res, 200, "application/json", JSON.stringify(o)); }
   if (u === "/api/track") { const h = (q.get("hex") || "").toLowerCase(); return send(res, 200, "application/json", JSON.stringify({ hex: h, fields: ["t_ms", "lon", "lat", "alt_ft", "gs_kt", "vrate_fpm", "on_ground"], note: "Positions collected by this server every refresh since it last restarted (max ~3 h). on_ground is 1 when the ADS-B snapshot reported ground. First stored point is when this server began tracking the hex, not a departure time.", points: trails.get(h) || [] })); }
   if (u === "/api/coverage") return send(res, 200, "application/json", JSON.stringify({ cell_deg: 2, window_h: 24, since_utc: new Date(T0).toISOString(), note: "2-degree cells where at least one airliner position was received in the last 24 h (accumulated since server start, UTC). Estimated from observed traffic, not an official receiver map. Areas outside = no receiver data in the window.", cells: [...cov.keys()].map((k) => k.split(",").map(Number)) }));
@@ -359,16 +410,16 @@ const server = http.createServer(async (req, res) => {
     if (!cs) return send(res, 400, "application/json", "{}");
     return send(res, 200, "application/json", JSON.stringify(await adsbdb(cs)));
   }
-  if (u === "/api/csroute") return send(res, 200, "application/json", csroute, "public, max-age=300");
-  if (u === "/api/traced") return send(res, 200, "application/json", JSON.stringify(traced));
-  if (u === "/api/fin") return send(res, 200, "application/json", fin, "public, max-age=300");
+  if (u === "/api/csroute") return sendCached(res, 200, "application/json", u, BOOT_VER, () => csroute, "public, max-age=300");
+  if (u === "/api/traced") return sendCached(res, 200, "application/json", u, BOOT_VER, () => JSON.stringify(traced));
+  if (u === "/api/fin") return sendCached(res, 200, "application/json", u, BOOT_VER, () => fin, "public, max-age=300");
   if (u === "/api/fin.csv") { res.setHeader("Content-Disposition", "attachment; filename=qtr_uae_monthly_metrics.csv"); return send(res, 200, "text/csv", finCsv, "public, max-age=300"); }
-  if (u === "/api/h2h") return send(res, 200, "application/json", h2h, "public, max-age=300");
-  if (u === "/api/global") return send(res, 200, "application/json", globalAgg, "public, max-age=300");
+  if (u === "/api/h2h") return sendCached(res, 200, "application/json", u, BOOT_VER, () => h2h, "public, max-age=300");
+  if (u === "/api/global") return sendCached(res, 200, "application/json", u, BOOT_VER, () => globalAgg, "public, max-age=300");
   if (u === "/api/wx/hazards") return send(res, 200, "application/json", JSON.stringify(await wx.hazards()), "public, max-age=60");
   if (u === "/api/wx/stations") return send(res, 200, "application/json", JSON.stringify(await wx.stations(q.get("ids") || "")), "public, max-age=60");
   if (u === "/api/wx/winds") return send(res, 200, "application/json", JSON.stringify(await wx.winds()), "public, max-age=120");
-  if (u === "/api/live") return send(res, 200, "application/json", JSON.stringify({ ...live, history: hist, refreshSeconds: REFRESH_MS / 1000 }));
+  if (u === "/api/live") return sendCached(res, 200, "application/json", u, liveVer, () => JSON.stringify({ ...live, history: hist, refreshSeconds: REFRESH_MS / 1000 }));
   if (u === "/api/live/view") {
     const west = q.get("west"), south = q.get("south"), east = q.get("east"), north = q.get("north");
     const w = +west, s = +south, e = +east, n = +north;
@@ -385,14 +436,14 @@ const server = http.createServer(async (req, res) => {
     }), "public, max-age=5");
   }
   if (u === "/api/feed") return send(res, 200, "application/json", JSON.stringify(liveFeed.summary()));
-  if (u === "/api/map") return send(res, 200, "application/json", JSON.stringify(map));
+  if (u === "/api/map") return sendCached(res, 200, "application/json", u, BOOT_VER, () => JSON.stringify(map));
   if (u === "/healthz") return send(res, 200, "text/plain", "ok");
-  if (u === "/aip-ident.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/aip-ident.js")));
-  if (u === "/motion.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/motion.js")));
-  if (u === "/map.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/map.js")));
-  if (u === "/route-plaus.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/route-plaus.js")));
-  if (u === "/flightno.js") return send(res, 200, "application/javascript; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/flightno.js")));
-  if (u === "/" || u === "/index.html") return send(res, 200, "text/html; charset=utf-8", fs.readFileSync(path.join(__dirname, "public/index.html")));
+  if (u === "/aip-ident.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/aip-ident.js"));
+  if (u === "/motion.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/motion.js"));
+  if (u === "/map.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/map.js"));
+  if (u === "/route-plaus.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/route-plaus.js"));
+  if (u === "/flightno.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/flightno.js"));
+  if (u === "/" || u === "/index.html") return sendCached(res, 200, "text/html; charset=utf-8", "/", BOOT_VER, staticFile("public/index.html"));
   send(res, 404, "text/plain", "not found");
 });
 async function boot() {
