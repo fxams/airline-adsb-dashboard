@@ -166,6 +166,29 @@ ok(MAX_RADIUS_NM === 250, "point radius cap 250 nm");
 }
 
 {
+  const { feed } = makeFeed((url) => {
+    if (url.includes("25.2731")) return jsonRes(200, { ac: [ac("q1", "QTR1", "A35K", { seen_pos: 3, lon: 51.80, gs: 480, track: 90 })] });
+    return jsonRes(200, { ac: [ac("q1", "QTR1", "A35K", { seen_pos: 0, lon: 51.55, gs: 480, track: 90 })] });
+  });
+  await feed.refresh();
+  const a = feed.collectAircraft().get("q1");
+  ok(a && a.lon === 51.80, "overlapping older/behind sample does not replace fresher hex lon=" + (a && a.lon));
+}
+
+{
+  const { feed, advance } = makeFeed(
+    () => jsonRes(200, { ac: [ac("q1", "QTR1", "A35K", { seen_pos: 1, lon: 51.9, gs: 500, track: 90 })] }),
+    { tiles: [TILES[0]] }
+  );
+  await feed.refresh();
+  advance(5000);
+  feed.lastT.set("lhr", { ts: feed.now(), ac: [ac("q1", "QTR1", "A35K", { seen_pos: 0, lon: 51.7, gs: 0, track: 90 })], err: null, provider: "fi" });
+  const a = feed.collectAircraft().get("q1");
+  ok(a && a.lon === 51.9, "heldBest keeps newer posTime through a behind overlapping tile lon=" + (a && a.lon));
+  ok(a && a.gs === 500, "heldBest keeps last gs when overlapping tile has 0 kt");
+}
+
+{
   const { feed } = makeFeed(() => jsonRes(200, { ac: [] }), { tiles: [TILES[0], TILES[1]] });
   const at = feed.now();
   const seen = feed.hydrateFromRows([
@@ -222,6 +245,7 @@ ok(warmStartUrl({ LIVE_WARM_URL: "http://127.0.0.1:10000" }) === "", "loopback w
   ok(/await warmStart/.test(src) && /server\.listen/.test(src), "warm-start runs before listen");
   ok(/scheduleRefresh/.test(src), "overlapping interval skip replaced by sequential schedule");
   ok(/nextWaitMs/.test(src), "next cycle wait uses provider/tile token buckets");
+  ok(/server_ms/.test(src), "live payload includes server_ms for client clock offset");
   ok(/REFRESH_SECONDS \|\| 90/.test(src), "REFRESH_SECONDS still names the global-tile target");
   ok(/TILE_HUBS/.test(src) && /hubs: TILE_HUBS/.test(src), "live tiles use core hubs, not hist-merged airports");
   ok(!/lastT\.set\(t/.test(src), "old lastT 5 min loop removed from server.js");

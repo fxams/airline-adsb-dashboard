@@ -218,7 +218,7 @@ function publishFromSeen(seen, f) {
     const ages = ac.filter((r) => !r[10]).map((r) => r[11]).filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
     const pct = (p) => ages.length ? ages[Math.min(ages.length - 1, Math.floor(p / 100 * (ages.length - 1)))] : null;
     f.age_air = { n: ages.length, p50: pct(50), p90: pct(90), max: ages.length ? ages[ages.length - 1] : null };
-    live = { at, fields: live.fields, ac, nm, feed: f, sources: f.sources || [] };
+    live = { at, fields: live.fields, ac, nm, feed: f, sources: f.sources || [], server_ms: Date.now() };
     const now = Date.now();
     for (const r of live.ac) { const t = trails.get(r[0]) || []; const p = t[t.length - 1]; if (!p || p[1] !== r[5] || p[2] !== r[4]) t.push([now, r[5], r[4], r[6], r[7], r[12], r[10]]); if (t.length > 360) t.shift(); trails.set(r[0], t); }
     for (const [h, t] of trails) if (now - t[t.length - 1][0] > 20 * 60000) trails.delete(h);

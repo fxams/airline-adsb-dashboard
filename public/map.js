@@ -1,13 +1,20 @@
 // Live map: FR24-style aircraft layer, trails, selection panel, real flown tracks.
 // Live positions: adsb.lol (ODbL), adsb.fi, airplanes.live when allowed.
-let SEL=null,TR={},CSR=null,TK=null,prof=null,lastFrame=0,lastAnim=0,REG_BY_HEX={},SRCH_GND=[],QHits=[],QIx=-1,QTm=null,MOT={};
+let SEL=null,TR={},CSR=null,TK=null,prof=null,lastFrame=0,lastAnim=0,REG_BY_HEX={},SRCH_GND=[],QHits=[],QIx=-1,QTm=null,MOT={},CLK_OFF=0;
 const TRACK_LAYERS=["trails","tk","tkgc","sel-flown","sel-join","sel-gap","sel-rem"];
 const HIST_LAB_MINZOOM=10.2;
 // 365-day paths: royal blue / rose, not live amber (#ffc400) and not airline cyan/magenta.
 const COL_DEP="#3D8BFF", COL_ARR="#FF4B6B", COL_SID="#8FB8FF", COL_STAR="#FF8A9E", COL_CAS="#070b14";
 const HIST_DIR_LAYERS=["hist-cas","hist-rep","hist-cor","hist-lab","hist-raw"];
 let HI=null,HIST=null,HIST_APT=null,AIPI=null,AIP=null,AIP_APT=null;
-function ageS(){return L&&L.at?Math.min(90,(Date.now()-new Date(L.at))/1000):0}
+function ageS(){return L&&L.at?Math.min(90,(nowMs()-new Date(L.at))/1000):0}
+function syncClock(){
+  const t=L&&L.server_ms!=null?+L.server_ms:(L&&L.at?+new Date(L.at):NaN);
+  if(!Number.isFinite(t)) return;
+  const off=Date.now()-t;
+  CLK_OFF=CLK_OFF===0?off:CLK_OFF*0.85+off*0.15;
+}
+function nowMs(){return Date.now()-CLK_OFF}
 function gndLikePos(onG,gs,alt,posAge){
   const LM=typeof LiveMotion!=="undefined"?LiveMotion:null;
   const stale=posAge==null?0:(+posAge||0);
@@ -18,11 +25,11 @@ function gndLikePos(onG,gs,alt,posAge){
   if(stale>=1200) return true;
   return false;
 }
-function snapAtMs(){return L&&L.at?+new Date(L.at):Date.now()}
+function snapAtMs(){return L&&L.at?+new Date(L.at):nowMs()}
 function motRow(lat,lon,gs,trk,onG,alt,posAge){return {lat,lon,gs,trk,onG,alt,age:posAge}}
 function motShown(lat,lon,gs,trk,onG,alt,posAge,hex){
   const LM=typeof LiveMotion!=="undefined"?LiveMotion:null;
-  const now=Date.now(), at=snapAtMs();
+  const now=nowMs(), at=snapAtMs();
   if(!LM) return [lon, lat, trk];
   if(hex){
     const m=LM.upsert(MOT, hex, motRow(lat,lon,gs,trk,onG,alt,posAge), now, at);
@@ -485,7 +492,8 @@ function animGap(){
 function onPoll(){
   syncLiveLoad();
   if(!L&&!(LOCAL_AIR&&LOCAL_AIR.length))return;
-  const now=Date.now(), at=snapAtMs(), seen=new Set();
+  syncClock();
+  const now=nowMs(), at=snapAtMs(), seen=new Set();
   for(const a of liveRows()){
     seen.add(a[0]);
     if(typeof LiveMotion!=="undefined") LiveMotion.upsert(MOT, a[0], motRow(a[4],a[5],a[7],a[8],a[10],a[6],a[11]), now, at);
@@ -696,8 +704,8 @@ function selUpdate(first){const a=selAc();if(!a){unsel();return}
  const fnNote=fn.found?fn.note:(fn.note||idNote)+(fnCatalog?" "+fnCatalog:"");
  const coast=!a.held && !gndLikePos(a.gnd||a.held,a.gs,a.gnd||a.held?0:a.alt,a.age) && a.gs>0.5;
  const posNote=a.held?"Last ground position kept after the aircraft dropped out of the ADS-B feed. Not a live update."
-  :(coast?"Snapshot is the last ADS-B position from the tiled live feed. Between refreshes the marker is dead-reckoned each frame from ground speed and track (estimate), then eased ~1.6 s onto a new fix. Heading is blended ADS-B track. Cap 15 min / 120 nm. Times UTC."
-  :"Snapshot is the last ADS-B position from the tiled live feed. Marker stays on that snapshot (on-ground, below 1000 ft baro, missing speed/track, or lost ~20 min) — not dead-reckoned, not snapped to a runway. Heading is ADS-B track. Times UTC.");
+  :(coast?"Snapshot is the last ADS-B position from the tiled live feed. Between refreshes the marker is dead-reckoned each frame from ground speed, track and track rate (estimate). A new fix that lies behind the coasted position is not blended backward; only large errors are hard-corrected. Cap 15 min / 120 nm. Times UTC.")
+  :"Snapshot is the last ADS-B position from the tiled live feed. Marker stays on that snapshot (on-ground, below 1000 ft baro, no speed/track even after carrying the last velocity, or lost ~20 min) — not dead-reckoned, not snapped to a runway. Heading is ADS-B track. Times UTC.");
  const tmNote="No airline schedule feed is connected, so scheduled times stay unavailable. Estimated arrival is remaining great-circle distance ÷ current ground speed, UTC, only when the route destination is known and the position is a fresh moving airborne snapshot — not a schedule or airport actual. Actual arrival is shown only after an observed air-to-ground transition in this track. "+timeNote;
  more.unshift(idNote,fnNote,posNote); more.push(tmNote,"Barometric altitude as FL (hundreds of feet) is not a certified flight level. Hover or tap a profile point for that sample’s FL, ground speed and vertical speed; missing fields stay n/a. Not a full flight history.","Live lat/lon are stored to 5 decimal degrees (~1.1 m). Markers are not snapped to runway or taxiway centreline. Satellite pavement can sit tens of metres off WGS84. Dead-reckoning between snapshots is airborne-only (baro at least 1000 ft, gs over 0.5 kt, speed and track present, not lost ~20 min), capped at 15 min or 120 nm, with a ~1.6 s ease onto each new fix. Packed pos_age is seen_pos plus seconds since that 250 nm tile was fetched.","Not for operational flight planning. NOAA/NWS Aviation Weather Center. Live positions: adsb.lol contributors (ODbL); adsb.fi (personal, non-commercial); airplanes.live when allowed. Routes: adsbdb.com. Times UTC.");
  if(ident&&ident.note) more.push(ident.note);
