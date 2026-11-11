@@ -7,12 +7,26 @@ const NOTE = "Not for operational flight planning. Data from NOAA/NWS Aviation W
 const HUB_ICAO = "OTHH,OMDB,OMAA,OMAL,OMSJ,OERK,OEJN,OKBK,OBBI,OOMS,HECA,HLLT,HKJK,FACT,FAOR,EGLL,EGKK,EGCC,LFPG,EDDF,EDDM,EHAM,LIRF,LEMD,LEBL,LSZH,LTBA,LTFM,LGAV,KJFK,KEWR,KIAD,KORD,KLAX,KIAH,KATL,KMIA,KSFO,WSSS,WMKK,VTBS,VHHH,VABB,VIDP,RJTT,RJAA,YSSY,YMML,NZAA".split(",");
 
 let lastAwc = 0;
+let awcQueue = Promise.resolve();
+// One in-flight AWC call, next start ≥1.2s after the previous *finishes*.
+// Overlapping starts (old lastAwc) plus hazards+stations together 429'd METAR
+// while SIGMETs and GFS still loaded — iPhone chip "METAR error" with winds on.
 async function awcFetch(path) {
-  const wait = Math.max(0, lastAwc + 1200 - Date.now());
-  lastAwc = Date.now() + wait;
-  if (wait) await new Promise((r) => setTimeout(r, wait));
-  const r = await fetch(AWC + path, { headers: { "User-Agent": UA, Accept: "application/json" }, signal: AbortSignal.timeout(18000) });
-  return r;
+  const run = async () => {
+    const wait = Math.max(0, lastAwc + 1200 - Date.now());
+    if (wait) await new Promise((r) => setTimeout(r, wait));
+    const opts = { headers: { "User-Agent": UA, Accept: "application/json" }, signal: AbortSignal.timeout(18000) };
+    let r = await fetch(AWC + path, opts);
+    if (r.status === 429 || r.status === 503) {
+      await new Promise((x) => setTimeout(x, 1600));
+      r = await fetch(AWC + path, { headers: opts.headers, signal: AbortSignal.timeout(18000) });
+    }
+    lastAwc = Date.now();
+    return r;
+  };
+  const p = awcQueue.then(run, run);
+  awcQueue = p.then(() => undefined, () => undefined);
+  return p;
 }
 
 function ms(v) {
@@ -307,22 +321,34 @@ async function readJsonList(path) {
 }
 
 const stCache = new Map();
-async function pullStations(ids) {
-  const key = ids.slice().sort().join(",");
+const stInflight = new Map();
+function latestByIcao(rows) {
+  const m = new Map();
+  for (const row of rows) {
+    const id = row.icao || row.icaoId;
+    if (!id) continue;
+    const prev = m.get(id);
+    const t = Date.parse(row.obsTime || row.validFrom || 0);
+    const pt = prev ? Date.parse(prev.obsTime || prev.validFrom || 0) : -1;
+    if (!prev || (Number.isFinite(t) && t >= pt) || !Number.isFinite(pt)) m.set(id, row);
+  }
+  return [...m.values()];
+}
+async function pullStationsOnce(ids, key) {
   const hit = stCache.get(key);
-  if (hit && Date.now() - hit.t < 300000 && !hit.error) return { ...hit.v, cached: true };
+  if (hit && Date.now() - hit.t < 300000 && !hit.error && (hit.v.metar || []).length) return { ...hit.v, cached: true };
   const q = encodeURIComponent(ids.join(","));
   const errors = [];
   let metar = [], taf = [];
   try {
     const r = await readJsonList("/api/data/metar?ids=" + q + "&format=json");
     if (!r.ok) errors.push({ product: "METAR", error: r.error, status: r.status });
-    else metar = r.list.map(metarRow);
+    else metar = latestByIcao(r.list.map(metarRow));
   } catch (e) { errors.push({ product: "METAR", error: String(e.message || e) }); }
   try {
     const r = await readJsonList("/api/data/taf?ids=" + q + "&format=json");
     if (!r.ok) errors.push({ product: "TAF", error: r.error, status: r.status });
-    else taf = r.list.map(tafRow);
+    else taf = latestByIcao(r.list.map(tafRow));
   } catch (e) { errors.push({ product: "TAF", error: String(e.message || e) }); }
   const fail = !metar.length && !taf.length && errors.length;
   const v = {
@@ -330,27 +356,64 @@ async function pullStations(ids) {
     source: "NOAA/NWS Aviation Weather Center https://aviationweather.gov/data/api/",
     note: NOTE,
     ids,
-    error: fail ? "METAR/TAF unavailable: AviationWeather.gov error." : (errors.length ? "Partial upstream error" : null),
+    error: fail ? "METAR/TAF unavailable: AviationWeather.gov error." : (!metar.length && errors.length ? "Partial upstream error" : null),
     errors: errors.length ? errors : null,
     stale: false,
     metar, taf
   };
-  if (fail && hit && hit.v) return { ...hit.v, stale: true, error: v.error, errors: v.errors, servedAt: v.at };
-  stCache.set(key, { t: Date.now(), v, error: fail });
+  if (!metar.length && hit && (hit.v.metar || []).length) {
+    return { ...hit.v, stale: true, error: null, errors: v.errors, servedAt: v.at };
+  }
+  // Empty-METAR "success" (TAF-only after a 429) must not pin the overlay to
+  // "METAR error" for five minutes — retry next request.
+  stCache.set(key, { t: Date.now(), v, error: fail || !metar.length });
   if (stCache.size > 40) stCache.clear();
   return v;
 }
+async function pullStations(ids) {
+  const key = ids.slice().sort().join(",");
+  if (stInflight.has(key)) return stInflight.get(key);
+  const p = pullStationsOnce(ids, key).finally(() => stInflight.delete(key));
+  stInflight.set(key, p);
+  return p;
+}
 
-function cleanIds(raw) {
+function extraIcaos(raw) {
   const extra = String(raw || "").toUpperCase().split(/[^A-Z0-9]+/).filter((x) => x.length === 4).slice(0, 20);
-  const seen = new Set();
-  const out = [];
-  for (const id of HUB_ICAO.concat(extra)) if (!seen.has(id)) { seen.add(id); out.push(id); }
+  const hubs = new Set(HUB_ICAO);
+  const out = [], seen = new Set();
+  for (const id of extra) if (!hubs.has(id) && !seen.has(id)) { seen.add(id); out.push(id); }
   return out;
+}
+function mergeStationSets(hub, extra, extraIds) {
+  const metarBy = new Map(), tafBy = new Map();
+  for (const m of hub.metar || []) metarBy.set(m.icao, m);
+  for (const m of extra.metar || []) metarBy.set(m.icao, m);
+  for (const t of hub.taf || []) tafBy.set(t.icao, t);
+  for (const t of extra.taf || []) tafBy.set(t.icao, t);
+  const metar = [...metarBy.values()], taf = [...tafBy.values()];
+  const errors = [].concat(hub.errors || [], extra.errors || []);
+  return {
+    ...hub,
+    at: extra.at || hub.at,
+    ids: HUB_ICAO.concat(extraIds),
+    metar, taf,
+    error: metar.length ? null : (extra.error || hub.error),
+    errors: errors.length ? errors : null,
+    extraError: extra.error && extraIds.length ? extra.error : null
+  };
 }
 
 async function stations(rawIds) {
-  return pullStations(cleanIds(rawIds));
+  const extras = extraIcaos(rawIds);
+  const hub = await pullStations(HUB_ICAO.slice());
+  if (!extras.length) return hub;
+  try {
+    const more = await pullStations(extras);
+    return mergeStationSets(hub, more, extras);
+  } catch (e) {
+    return { ...hub, extraError: String(e.message || e), ids: HUB_ICAO.concat(extras) };
+  }
 }
 
 function windsBlocked(reason, extra) {
@@ -601,4 +664,4 @@ async function winds() {
   return windsBlocked("GFS winds unavailable after trying NOMADS GRIB2 1.0° subsets (simple packing). Last error: " + lastErr + " OpenDAP is retired (SCN 25-81); this path uses the grib filter instead. No substitute winds are invented.", { error: lastErr });
 }
 
-module.exports = { hazards, stations, winds, NOTE, HUB_ICAO, coord32, decodeGrib2Simple, bulletinIssue, pressureFromMetar, windFromMetar, metarRow, metarTimeZ, metarWindGroup, metarTempDew, metarAltimGroup, metarAvn };
+module.exports = { hazards, stations, winds, NOTE, HUB_ICAO, coord32, decodeGrib2Simple, bulletinIssue, pressureFromMetar, windFromMetar, metarRow, metarTimeZ, metarWindGroup, metarTempDew, metarAltimGroup, metarAvn, extraIcaos };
