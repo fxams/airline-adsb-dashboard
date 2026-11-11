@@ -123,8 +123,18 @@ async function overlaySmoke(name, viewport, ua) {
     }, { timeout: 90000 });
   } catch (_) {}
   await new Promise((r) => setTimeout(r, 4000));
-  await page.evaluate(() => { if (map && map.jumpTo) map.jumpTo({ center: [51.61, 25.26], zoom: 10.5 }); });
-  await new Promise((r) => setTimeout(r, 800));
+  await page.evaluate(() => {
+    if (map && map.jumpTo) map.jumpTo({ center: [51.61, 25.26], zoom: 10.5 });
+    if (map && map.resize) map.resize();
+  });
+  try {
+    await page.waitForFunction(() => {
+      if (!map || !map.getLayer || !map.getLayer("wxmet")) return false;
+      if (map.getLayoutProperty("wxmet", "visibility") === "none") return false;
+      try { return map.queryRenderedFeatures({ layers: ["wxmet"] }).length > 0; }
+      catch (_) { return false; }
+    }, { timeout: 20000 });
+  } catch (_) {}
   const st = await page.evaluate(() => {
     const chip = document.getElementById("wxst");
     const src = map.getSource && map.getSource("wxmet");
