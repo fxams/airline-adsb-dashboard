@@ -312,8 +312,13 @@ const wx = require("./wx");
 const zlib = require("zlib");
 const send = (res, code, type, body, cache) => {
   const h = { "Content-Type": type, "Cache-Control": cache || "no-store, no-cache, must-revalidate, max-age=0", "Access-Control-Allow-Origin": "*", "Vary": "Accept-Encoding" };
-  if (res.req && /gzip/.test(res.req.headers["accept-encoding"] || "") && body && body.length > 2048) { h["Content-Encoding"] = "gzip"; body = zlib.gzipSync(body); }
-  res.writeHead(code, h); res.end(body);
+  let buf = Buffer.isBuffer(body) ? body : Buffer.from(body == null ? "" : body);
+  if (res.req && /gzip/.test(res.req.headers["accept-encoding"] || "") && buf.length > 2048) {
+    buf = zlib.gzipSync(buf);
+    h["Content-Encoding"] = "gzip";
+  }
+  h["Content-Length"] = String(buf.length);
+  res.writeHead(code, h); res.end(buf);
 };
 // Render free tier caps this service at 0.15 CPU. Re-serializing and gzipping
 // the multi-MB live snapshot, static JS and history tiles on every request (and
@@ -343,8 +348,15 @@ const sendCached = (res, code, type, key, ver, make, cache) => {
   let body = e.raw;
   if (res.req && /gzip/.test(res.req.headers["accept-encoding"] || "") && body.length > 2048) {
     if (e.gz) { h["Content-Encoding"] = "gzip"; body = e.gz; }
-    else zlib.gzip(body, { level: 4 }, (err, gz) => { if (!err && e.ver === ver) e.gz = gz; });
+    else if (body.length < 512 * 1024) {
+      // wx JSON is small enough to gzip-once on the first request with a real
+      // Content-Length (Safari/WebKit + chunked gzip was a METAR parse miss).
+      e.gz = zlib.gzipSync(body);
+      h["Content-Encoding"] = "gzip";
+      body = e.gz;
+    } else zlib.gzip(body, { level: 4 }, (err, gz) => { if (!err && e.ver === ver) e.gz = gz; });
   }
+  h["Content-Length"] = String(body.length);
   res.writeHead(code, h); res.end(body);
 };
 // Pre-gzipped .json.gz tiles: pass the stored bytes straight through to gzip clients.
@@ -431,9 +443,19 @@ const server = http.createServer(async (req, res) => {
   if (u === "/api/fin.csv") { res.setHeader("Content-Disposition", "attachment; filename=qtr_uae_monthly_metrics.csv"); return send(res, 200, "text/csv", finCsv, "public, max-age=300"); }
   if (u === "/api/h2h") return sendCached(res, 200, "application/json", u, BOOT_VER, () => h2h, "public, max-age=300");
   if (u === "/api/global") return sendCached(res, 200, "application/json", u, BOOT_VER, () => globalAgg, "public, max-age=300");
-  if (u === "/api/wx/hazards") return send(res, 200, "application/json", JSON.stringify(await wx.hazards()), "public, max-age=60");
-  if (u === "/api/wx/stations") return send(res, 200, "application/json", JSON.stringify(await wx.stations(q.get("ids") || "")), "public, max-age=60");
-  if (u === "/api/wx/winds") return send(res, 200, "application/json", JSON.stringify(await wx.winds()), "public, max-age=120");
+  if (u === "/api/wx/hazards") {
+    const data = await wx.hazards();
+    return sendCached(res, 200, "application/json", "/api/wx/hazards", data.at || "haz", () => JSON.stringify(data), "public, max-age=60");
+  }
+  if (u === "/api/wx/stations") {
+    const ids = q.get("ids") || "";
+    const data = await wx.stations(ids);
+    return sendCached(res, 200, "application/json", "/api/wx/stations\0" + ids, data.at || "st", () => JSON.stringify(data), "public, max-age=60");
+  }
+  if (u === "/api/wx/winds") {
+    const data = await wx.winds();
+    return sendCached(res, 200, "application/json", "/api/wx/winds", data.cycle_utc || data.at || "wnd", () => JSON.stringify(data), "public, max-age=120");
+  }
   if (u === "/api/live") return sendCached(res, 200, "application/json", u, liveVer, () => JSON.stringify({ ...live, refreshSeconds: REFRESH_MS / 1000 }), "public, max-age=3");
   if (u === "/api/livehist") return sendCached(res, 200, "application/json", u, liveVer, () => JSON.stringify(hist), "public, max-age=5");
   if (u === "/api/live/view") {

@@ -1337,15 +1337,16 @@ function wxMetHtml(p){
 function wxStatus(msg,err){
   const el=$("wxst"), full=$("wxfull"), btn=$("wxbtn");
   const bits=[], chip=[];
-  const isErr=!!(err||(wxOn("haz")&&WX.haz&&WX.haz.error)||(wxOn("met")&&WX.st&&WX.st.error)||(wxOn("wnd")&&WX.wnd&&!WX.wnd.available));
+  const isErr=!!(err||(wxOn("haz")&&WX.haz&&WX.haz.error&&!(WX.haz.features&&WX.haz.features.features&&WX.haz.features.features.length))||(wxOn("met")&&WX.st&&WX.st.error&&!((WX.st.metar||[]).length))||(wxOn("wnd")&&WX.wnd&&!WX.wnd.available));
   if(msg)bits.push(msg);
   if(wxOn("haz")&&WX.haz){
-    if(WX.haz.error){bits.push(WX.haz.error);chip.push("hazards error")}
-    else {bits.push(`${WX.haz.counts&&WX.haz.counts.current||0} current advisories`+(WX.haz.expiredOmitted?` · ${WX.haz.expiredOmitted} expired omitted`:"" )+(WX.haz.stale?" · stale cache":""));chip.push((WX.haz.counts&&WX.haz.counts.current||0)+" adv."+(WX.haz.stale?" stale":""))}
+    if(WX.haz.error&&!(WX.haz.features&&WX.haz.features.features&&WX.haz.features.features.length)){bits.push(WX.haz.error);chip.push("hazards error")}
+    else {bits.push(`${WX.haz.counts&&WX.haz.counts.current||0} current advisories`+(WX.haz.expiredOmitted?` · ${WX.haz.expiredOmitted} expired omitted`:"" )+(WX.haz.stale?" · stale cache":""));chip.push((WX.haz.counts&&WX.haz.counts.current||0)+" adv."+(WX.haz.stale?" stale":""));if(WX.haz.error)bits.push(WX.haz.error)}
   }
   if(wxOn("met")&&WX.st){
-    if(WX.st.error){bits.push(WX.st.error);chip.push("METAR error")}
-    else {bits.push(`${(WX.st.metar||[]).length} METARs / ${(WX.st.taf||[]).length} TAFs`);chip.push((WX.st.metar||[]).length+" METAR")}
+    const n=(WX.st.metar||[]).length;
+    if(WX.st.error&&!n){bits.push(WX.st.error);chip.push("METAR error")}
+    else {bits.push(`${n} METARs / ${(WX.st.taf||[]).length} TAFs`);chip.push(n+" METAR");if(WX.st.error)bits.push(WX.st.error)}
   }
   if(wxOn("wnd")){
     const w=WX.wnd;
@@ -1371,8 +1372,24 @@ async function wxLoad(which){
     const extra=wxExtraIcao(), key=extra.slice().sort().join(",");
     if(WX.st&&WX.st._key===key&&!WX.load.st){wxDrawMetar();return}
     const q=extra.length?"?ids="+encodeURIComponent(extra.join(",")):"";
-    if(WX.load.st)return WX.load.st;
-    WX.load.st=fetch("/api/wx/stations"+q).then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status))).then(j=>{j._key=key;WX.st=j;WX.load.st=null;wxDrawMetar();wxStatus();if(SEL)wxPanel();return j}).catch(e=>{WX.load.st=null;WX.st={error:"METAR/TAF unavailable: "+e.message,metar:[],taf:[],_key:key};wxDrawMetar();wxStatus(WX.st.error,true);if(SEL)wxPanel();});
+    if(WX.load.st&&WX.load.stKey===key)return WX.load.st;
+    const prev=WX.load.st;
+    WX.load.stKey=key;
+    const run=()=>fetch("/api/wx/stations"+q).then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status))).then(j=>{
+      j._key=key;
+      if(WX.load.stKey&&WX.load.stKey!==key)return j;
+      WX.st=j;WX.load.st=null;WX.load.stKey=null;
+      try{wxDrawMetar()}catch(e){console.error(e)}
+      try{wxStatus();if(SEL)wxPanel()}catch(e){console.error(e)}
+      return j;
+    }).catch(e=>{
+      if(WX.load.stKey&&WX.load.stKey!==key)return WX.st;
+      WX.load.st=null;WX.load.stKey=null;
+      if(WX.st&&(WX.st.metar||[]).length){try{wxStatus();if(SEL)wxPanel()}catch(_){ }return WX.st}
+      WX.st={error:"METAR/TAF unavailable: "+e.message,metar:[],taf:[],_key:key};
+      try{wxDrawMetar();wxStatus(WX.st.error,true);if(SEL)wxPanel()}catch(_){}
+    });
+    WX.load.st=prev?prev.then(run,run):run();
     await WX.load.st;
   }
   if(which==="wnd"||which==="all"){
@@ -1462,7 +1479,10 @@ function wxPanel(){
   if(od&&typeof od.d.lat==="number") rem=typeof gc==="function"?gc([lat,lon],[od.d.lat,od.d.lon]):null;
   const needHaz=true, needSt=true;
   if(needHaz&&!WX.haz&&!WX.load.haz)wxLoad("haz");
-  if(needSt&&!WX.st&&!WX.load.st)wxLoad("st");
+  if(needSt){
+    const key=wxExtraIcao().slice().sort().join(",");
+    if(!WX.st||WX.st._key!==key)wxLoad("st");
+  }
   if(wxOn("wnd")&&!WX.wnd&&!WX.load.wnd)wxLoad("wnd");
   const h=WX.haz, st=WX.st, wnd=WX.wnd;
   const phone=isPhone();
@@ -1543,6 +1563,11 @@ function wxStationBlock(st,od,lat,lon,a){
   }).join("");
 }
 function syncWx(){
-  ["haz","met","wnd"].forEach(k=>{const id={haz:"wxhaz",met:"wxmet",wnd:"wxwnd"}[k];if($(id))$(id).checked=wxOn(k);if(wxOn(k))wxLoad(k==="met"?"st":k)});
+  ["haz","met","wnd"].forEach(k=>{const id={haz:"wxhaz",met:"wxmet",wnd:"wxwnd"}[k];if($(id))$(id).checked=wxOn(k)});
   applyWxVis();wxStatus();
+  (async()=>{
+    if(wxOn("met")) await wxLoad("st");
+    if(wxOn("haz")) wxLoad("haz");
+    if(wxOn("wnd")) wxLoad("wnd");
+  })();
 }

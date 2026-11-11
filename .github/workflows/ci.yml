@@ -34,3 +34,4 @@ jobs:
           done
           curl -sf http://127.0.0.1:10000/healthz >/dev/null
           CHROME="$CHROME" node test-map-boot.mjs
+          CHROME="$CHROME" node test-metar-overlay.mjs
