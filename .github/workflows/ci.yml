@@ -1,0 +1,36 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  map:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: browser-actions/setup-chrome@v1
+      - name: Parse-check JS
+        run: node scripts/check-js.mjs
+      - name: Install puppeteer-core
+        run: npm install --no-save puppeteer-core@23.11.1
+      - name: Headless map smoke
+        env:
+          LIVE_WARM: "0"
+          PORT: "10000"
+        run: |
+          set -e
+          CHROME=$(command -v chrome || command -v google-chrome || command -v google-chrome-stable)
+          echo "CHROME=$CHROME"
+          node server.js &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:10000/healthz >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:10000/healthz >/dev/null
+          CHROME="$CHROME" node test-map-boot.mjs

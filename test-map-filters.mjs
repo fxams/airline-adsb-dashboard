@@ -9,6 +9,25 @@ const fail = [];
 const evidence = { utc: new Date().toISOString() };
 function ok(cond, msg) { if (!cond) fail.push(msg); }
 
+{
+  const mapSrc = fs.readFileSync(new URL("./public/map.js", import.meta.url), "utf8");
+  const html = fs.readFileSync(new URL("./public/index.html", import.meta.url), "utf8");
+  try { new Function(mapSrc); ok(true, "map.js parses"); }
+  catch (e) { ok(false, "map.js parses: " + e.message); }
+  const liveIdx = mapSrc.indexOf('map.addSource("live"');
+  const histAwait = mapSrc.indexOf('await fetch("/api/hist/index")');
+  const tkAwait = mapSrc.indexOf('await fetch("/api/tracks")');
+  const csrAwait = mapSrc.indexOf('await fetch("/api/csroute")');
+  ok(liveIdx > 0, "live GeoJSON source is added");
+  ok(histAwait < 0 && tkAwait < 0 && csrAwait < 0, "initMap does not await hist/tracks/csroute before the live layer");
+  ok(/Promise\.all\(/.test(mapSrc) && /\/api\/tracks/.test(mapSrc), "heavy map layers fetch in parallel after live");
+  const boot = html.indexOf("if(window.initMap)initMap()");
+  const kpis = html.indexOf("kpis();h2h();dist();lead()");
+  ok(boot > 0 && kpis > boot, "map boots before KPI/echarts work");
+  ok(/liveretry/.test(mapSrc) && /Live data unavailable/.test(mapSrc), "live overlay has a Retry control");
+  ok(/AbortController/.test(html) && /12000/.test(html), "live poll aborts after 12s");
+}
+
 const browser = await puppeteer.launch({
   executablePath: "/usr/bin/google-chrome-stable",
   headless: "shell",

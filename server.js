@@ -225,6 +225,7 @@ function publishFromSeen(seen, f) {
     f.age_air = { n: ages.length, p50: pct(50), p90: pct(90), max: ages.length ? ages[ages.length - 1] : null };
     live = { at, fields: live.fields, ac, nm, feed: f, sources: f.sources || [], server_ms: Date.now() };
     liveVer++;
+    warmLiveBody();
     const now = Date.now();
     for (const r of live.ac) { const t = trails.get(r[0]) || []; const p = t[t.length - 1]; if (!p || p[1] !== r[5] || p[2] !== r[4]) t.push([now, r[5], r[4], r[6], r[7], r[12], r[10]]); if (t.length > 360) t.shift(); trails.set(r[0], t); }
     for (const [h, t] of trails) if (now - t[t.length - 1][0] > 20 * 60000) trails.delete(h);
@@ -234,6 +235,7 @@ function publishFromSeen(seen, f) {
     snapshot = { ...snapshot, error: banner || snapshot.error || "no tiles loaded", feed: f };
     live = { ...live, feed: f };
     liveVer++;
+    warmLiveBody();
   }
 }
 function applyLivePayload(j, source) {
@@ -327,13 +329,21 @@ function cachedBody(key, ver, make) {
   }
   return e;
 }
+function warmLiveBody() {
+  try {
+    const raw = Buffer.from(JSON.stringify({ ...live, refreshSeconds: REFRESH_MS / 1000 }));
+    const e = { ver: liveVer, raw, gz: null };
+    bodyCache.set("/api/live", e);
+    zlib.gzip(raw, { level: 4 }, (err, gz) => { if (!err && bodyCache.get("/api/live") === e) e.gz = gz; });
+  } catch (e) { console.error("warm live body", e.message); }
+}
 const sendCached = (res, code, type, key, ver, make, cache) => {
   const e = cachedBody(key, ver, make);
   const h = { "Content-Type": type, "Cache-Control": cache || "no-store, no-cache, must-revalidate, max-age=0", "Access-Control-Allow-Origin": "*", "Vary": "Accept-Encoding" };
   let body = e.raw;
   if (res.req && /gzip/.test(res.req.headers["accept-encoding"] || "") && body.length > 2048) {
-    if (!e.gz) e.gz = zlib.gzipSync(body);
-    h["Content-Encoding"] = "gzip"; body = e.gz;
+    if (e.gz) { h["Content-Encoding"] = "gzip"; body = e.gz; }
+    else zlib.gzip(body, { level: 4 }, (err, gz) => { if (!err && e.ver === ver) e.gz = gz; });
   }
   res.writeHead(code, h); res.end(body);
 };
@@ -349,6 +359,11 @@ const sendGzFile = (res, fp, cache) => {
 };
 const BOOT_VER = String(Date.now());
 const staticFile = (rel) => () => fs.readFileSync(path.join(__dirname, rel));
+const JS_CACHE = "public, max-age=60, must-revalidate";
+function indexHtml() {
+  const html = fs.readFileSync(path.join(__dirname, "public/index.html"), "utf8");
+  return html.replace(/src="(\/[^"]+\.js)"/g, `src="$1?v=${BOOT_VER}"`);
+}
 const server = http.createServer(async (req, res) => {
   const u = req.url.split("?")[0]; const q = new URL(req.url, "http://x").searchParams;
   if (u !== "/healthz") lastClientAt = Date.now();
@@ -399,7 +414,7 @@ const server = http.createServer(async (req, res) => {
       note: meta.why
     }), "public, max-age=300");
   }
-  if (u === "/airports.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/airports.js"));
+  if (u === "/airports.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/airports.js"), JS_CACHE);
   if (u === "/api/snapshot") return send(res, 200, "application/json", JSON.stringify(snapshot));
   if (u === "/api/tracks") return sendCached(res, 200, "application/json", u, BOOT_VER, () => tracks, "public, max-age=300");
   if (u === "/api/trails") { const o = {}; for (const [h, t] of trails) o[h] = t.slice(-12).map((p) => [p[1], p[2]]); return send(res, 200, "application/json", JSON.stringify(o)); }
@@ -419,7 +434,8 @@ const server = http.createServer(async (req, res) => {
   if (u === "/api/wx/hazards") return send(res, 200, "application/json", JSON.stringify(await wx.hazards()), "public, max-age=60");
   if (u === "/api/wx/stations") return send(res, 200, "application/json", JSON.stringify(await wx.stations(q.get("ids") || "")), "public, max-age=60");
   if (u === "/api/wx/winds") return send(res, 200, "application/json", JSON.stringify(await wx.winds()), "public, max-age=120");
-  if (u === "/api/live") return sendCached(res, 200, "application/json", u, liveVer, () => JSON.stringify({ ...live, history: hist, refreshSeconds: REFRESH_MS / 1000 }));
+  if (u === "/api/live") return sendCached(res, 200, "application/json", u, liveVer, () => JSON.stringify({ ...live, refreshSeconds: REFRESH_MS / 1000 }), "public, max-age=3");
+  if (u === "/api/livehist") return sendCached(res, 200, "application/json", u, liveVer, () => JSON.stringify(hist), "public, max-age=5");
   if (u === "/api/live/view") {
     const west = q.get("west"), south = q.get("south"), east = q.get("east"), north = q.get("north");
     const w = +west, s = +south, e = +east, n = +north;
@@ -438,12 +454,12 @@ const server = http.createServer(async (req, res) => {
   if (u === "/api/feed") return send(res, 200, "application/json", JSON.stringify(liveFeed.summary()));
   if (u === "/api/map") return sendCached(res, 200, "application/json", u, BOOT_VER, () => JSON.stringify(map));
   if (u === "/healthz") return send(res, 200, "text/plain", "ok");
-  if (u === "/aip-ident.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/aip-ident.js"));
-  if (u === "/motion.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/motion.js"));
-  if (u === "/map.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/map.js"));
-  if (u === "/route-plaus.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/route-plaus.js"));
-  if (u === "/flightno.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/flightno.js"));
-  if (u === "/" || u === "/index.html") return sendCached(res, 200, "text/html; charset=utf-8", "/", BOOT_VER, staticFile("public/index.html"));
+  if (u === "/aip-ident.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/aip-ident.js"), JS_CACHE);
+  if (u === "/motion.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/motion.js"), JS_CACHE);
+  if (u === "/map.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/map.js"), JS_CACHE);
+  if (u === "/route-plaus.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/route-plaus.js"), JS_CACHE);
+  if (u === "/flightno.js") return sendCached(res, 200, "application/javascript; charset=utf-8", u, BOOT_VER, staticFile("public/flightno.js"), JS_CACHE);
+  if (u === "/" || u === "/index.html") return sendCached(res, 200, "text/html; charset=utf-8", "/", BOOT_VER, indexHtml, "no-store, no-cache, must-revalidate, max-age=0");
   send(res, 404, "text/plain", "not found");
 });
 async function boot() {
